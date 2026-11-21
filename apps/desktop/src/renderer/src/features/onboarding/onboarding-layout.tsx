@@ -38,7 +38,7 @@ export function OnboardingLayout() {
 
   return (
     <div className="@container flex min-h-screen flex-col">
-      <header className="flex justify-center pt-6">
+      <header className="flex h-11 items-center justify-center">
         <ol
           aria-label={t("onboarding.progress", { current, total })}
           className="m-0 flex list-none items-center gap-1.5 p-0"
@@ -57,7 +57,7 @@ export function OnboardingLayout() {
       </header>
       <main
         className={cn(
-          "mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4.5 px-4 pb-12 @phone:px-8",
+          "mx-auto flex w-full flex-1 flex-col items-center justify-center gap-4.5 px-4 pb-12 pt-4 @phone:px-8 @max-phone:pb-6 @max-phone:pt-2",
           isSetup && "max-w-5xl",
           isConnect && "max-w-4xl",
           !isSetup && !isConnect && "max-w-xl",
@@ -68,7 +68,9 @@ export function OnboardingLayout() {
           key={pathname}
           ref={content}
           className={cn(
-            "animate-screen-in motion-reduce:animate-none flex w-full flex-col items-center text-center [&_h1]:rounded-md [&_h1]:outline-none [&_h1]:focus-visible:ring-2 [&_h1]:focus-visible:ring-ring [&_h1]:focus-visible:ring-offset-2 [&_h1]:focus-visible:ring-offset-background",
+            // Focus stays on the title for assistive tech after a route change, but a static h1 must not
+            // wear a visible ring/box. The global :focus-visible outline is suppressed on this target only.
+            "animate-screen-in motion-reduce:animate-none flex w-full flex-col items-center text-center [&_h1]:outline-none",
           )}
         >
           <Outlet />
