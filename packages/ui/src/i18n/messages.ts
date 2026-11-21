@@ -1,10 +1,11 @@
+import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 
 /**
  * English is the default and the fallback. French and Japanese ship in v1 (P13, decided 2026-11-19);
  * every user-facing string lives in a catalog so more languages need no code changes.
  */
-const USER_LOCALES = ["en", "fr", "ja"] as const;
+export const USER_LOCALES = ["en", "fr", "ja"] as const;
 
 export type UserLocale = (typeof USER_LOCALES)[number];
 
@@ -194,6 +195,7 @@ export const messages = {
 
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
+  ...appearanceMessages.en,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),

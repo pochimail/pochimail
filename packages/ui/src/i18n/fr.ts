@@ -1,3 +1,4 @@
+import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 
@@ -195,6 +196,7 @@ export const fr = {
 
   "settings.title": entry("Réglages", []),
   "settings.description": entry("Les préférences et les réglages du compte apparaîtront ici.", []),
+  ...appearanceMessages.fr,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Navigation principale", []),

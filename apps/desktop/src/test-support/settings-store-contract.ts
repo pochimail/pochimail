@@ -23,6 +23,8 @@ const settingsStoreChecks: readonly Check<SettingsStore>[] = [
         autonomy: "autopilot",
         capabilities: { ...DEFAULT_APP_SETTINGS.capabilities, declutter: false },
         notifications: false,
+        theme: "dark",
+        locale: "ja",
       };
       await s.save(WS_1, chosen);
       expect(unwrap(await s.get(WS_1))).toEqual(chosen);

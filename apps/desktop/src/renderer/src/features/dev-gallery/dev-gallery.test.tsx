@@ -21,7 +21,21 @@ const openGallery = async () => {
   port1.start();
   port2.start();
   serveRpc(fromDomPort(port2), {
-    procedures: {},
+    procedures: {
+      "settings.get": () => ({
+        autonomy: "suggest" as const,
+        capabilities: {
+          "catch-what-matters": true,
+          declutter: true,
+          organize: true,
+          "save-documents": true,
+        },
+        notifications: true,
+        theme: "system" as const,
+        locale: "en" as const,
+      }),
+      "settings.update": () => undefined,
+    },
     subscriptions: { "app.events": () => undefined, "scan.progress": () => undefined },
   });
   const client = createRpcClient(fromDomPort(port1));

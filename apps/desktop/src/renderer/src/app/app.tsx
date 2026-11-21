@@ -2,8 +2,9 @@ import { Toaster } from "@pochimail/ui/components/sonner";
 import { I18nProvider } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
+import { AppearanceProvider, useAppearance } from "../features/settings/appearance.tsx";
 import { AppEventsBridge } from "../lib/app-events-bridge.tsx";
 import { AppErrorBoundary } from "../lib/error-boundary.tsx";
 import { useAppLocale } from "../lib/locale.ts";
@@ -23,6 +24,12 @@ function AppShell({ router }: { router: AppRouter }) {
   );
 }
 
+/** The saved language replaces the OS language for every screen below the appearance controller. */
+function AppearanceI18n({ children }: { children: ReactNode }) {
+  const { locale } = useAppearance();
+  return <I18nProvider locale={locale}>{children}</I18nProvider>;
+}
+
 export type AppProps = {
   queryClient?: QueryClient;
   router?: AppRouter;
@@ -31,11 +38,12 @@ export type AppProps = {
 };
 
 /**
- * Renderer application shell: providers, theme-aware root, query client, worker connection, event bridge and router.
- * Accepts injectable dependencies so behaviour can be tested through this public entry point with fake IPC.
+ * Renderer application shell: providers, one appearance controller, query client, worker connection,
+ * event bridge and router. Accepts injectable dependencies so behaviour can be tested through this
+ * public entry point with fake IPC.
  */
 export function App(props: AppProps = {}) {
-  const locale = useAppLocale();
+  const osLocale = useAppLocale();
   const queryClient = useMemo(
     () => props.queryClient ?? createAppQueryClient(),
     [props.queryClient],
@@ -49,13 +57,17 @@ export function App(props: AppProps = {}) {
   }, [props.router, workerClient]);
 
   return (
-    <I18nProvider locale={locale}>
+    <I18nProvider locale={osLocale}>
       <AppErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <OptimisticActionProvider registry={registry}>
             <WorkerClientProvider client={workerClient}>
-              <AppShell router={router} />
-              <Toaster />
+              <AppearanceProvider>
+                <AppearanceI18n>
+                  <AppShell router={router} />
+                  <Toaster />
+                </AppearanceI18n>
+              </AppearanceProvider>
             </WorkerClientProvider>
           </OptimisticActionProvider>
         </QueryClientProvider>

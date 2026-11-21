@@ -1,0 +1,36 @@
+/** Appearance screen copy per locale. Plain objects, so this file needs nothing from the catalogs that spread it in. */
+export const appearanceMessages = {
+  en: {
+    "settings.appearance": { text: "Appearance", params: [] },
+    "appearance.theme": { text: "Theme", params: [] },
+    "appearance.theme.system": { text: "System", params: [] },
+    "appearance.theme.light": { text: "Light", params: [] },
+    "appearance.theme.dark": { text: "Dark", params: [] },
+    "appearance.language": { text: "Language", params: [] },
+    "appearance.locale.en": { text: "English", params: [] },
+    "appearance.locale.fr": { text: "Français", params: [] },
+    "appearance.locale.ja": { text: "日本語", params: [] },
+  },
+  fr: {
+    "settings.appearance": { text: "Apparence", params: [] },
+    "appearance.theme": { text: "Thème", params: [] },
+    "appearance.theme.system": { text: "Système", params: [] },
+    "appearance.theme.light": { text: "Clair", params: [] },
+    "appearance.theme.dark": { text: "Sombre", params: [] },
+    "appearance.language": { text: "Langue", params: [] },
+    "appearance.locale.en": { text: "English", params: [] },
+    "appearance.locale.fr": { text: "Français", params: [] },
+    "appearance.locale.ja": { text: "日本語", params: [] },
+  },
+  ja: {
+    "settings.appearance": { text: "外観", params: [] },
+    "appearance.theme": { text: "テーマ", params: [] },
+    "appearance.theme.system": { text: "システム", params: [] },
+    "appearance.theme.light": { text: "ライト", params: [] },
+    "appearance.theme.dark": { text: "ダーク", params: [] },
+    "appearance.language": { text: "言語", params: [] },
+    "appearance.locale.en": { text: "English", params: [] },
+    "appearance.locale.fr": { text: "Français", params: [] },
+    "appearance.locale.ja": { text: "日本語", params: [] },
+  },
+} as const;
