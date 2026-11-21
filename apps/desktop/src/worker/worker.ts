@@ -83,6 +83,18 @@ const emptyHandlers: Handlers = {
   },
 };
 
+/** Without storage there is no sign-in to run: say why instead of answering a generic failure after a click. */
+const unavailableHandlers: Handlers = {
+  ...emptyHandlers,
+  procedures: {
+    ...emptyHandlers.procedures,
+    "accounts.connect": () => ({
+      status: "failed" as const,
+      reason: "storage-unavailable" as const,
+    }),
+  },
+};
+
 /** Demo mode has no Google: "connecting" answers with the first fixture account, so onboarding can be tried end to end. */
 const withDemoConnect = (demo: Handlers): Handlers => ({
   ...demo,
@@ -100,7 +112,7 @@ const withDemoConnect = (demo: Handlers): Handlers => ({
 /** The real app over the empty answers; with no database key they stay empty. */
 const realHandlers = async (): Promise<Handlers> => {
   const databasePath = process.env.POCHIMAIL_DATABASE_PATH;
-  if (databasePath === undefined) return emptyHandlers;
+  if (databasePath === undefined) return unavailableHandlers;
   const app = createAccountsRuntime(await started, {
     databasePath,
     env: process.env,
@@ -109,7 +121,7 @@ const realHandlers = async (): Promise<Handlers> => {
     deviceName: () => platform.deviceName(),
     classifier: modelHost.classifier,
   });
-  if (app === undefined) return emptyHandlers;
+  if (app === undefined) return unavailableHandlers;
   return {
     procedures: { ...emptyHandlers.procedures, ...app.handlers.procedures },
     subscriptions: { ...emptyHandlers.subscriptions, ...app.handlers.subscriptions },

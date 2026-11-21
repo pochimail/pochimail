@@ -3,6 +3,12 @@ import type { AccountsUnitOfWork } from "@pochimail/accounts/ports/unit-of-work"
 import type { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
 import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import {
+  Cancelled,
+  type InvalidStateError,
+  ProviderFailed,
+  StorageError,
+} from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import type { SignInError, SignInGrant } from "@pochimail/net/oauth/sign-in";
 import type { OutputOf } from "../shared/ipc/contract.ts";
@@ -31,6 +37,19 @@ const failureOf = (error: SignInError): ConnectOutcome => {
   if (error instanceof InvalidCallback && error.reason === "provider-error")
     return { status: "cancelled" };
   if (error instanceof MissingClientConfig) return { status: "failed", reason: "not-configured" };
+  // The browser could not open or the token exchange failed: an actionable reason, never the provider's message.
+  if (error instanceof ProviderFailed || error instanceof InvalidCallback)
+    return { status: "failed", reason: "provider-failed" };
+  return { status: "failed", reason: "unknown" };
+};
+
+/** A rejected account write is a storage problem, not a mystery sign-in error; the message never leaves the worker. */
+const failureOfConnect = (
+  error: StorageError | InvalidStateError | Cancelled,
+  aborted: boolean,
+): ConnectOutcome => {
+  if (aborted || error instanceof Cancelled) return { status: "cancelled" };
+  if (error instanceof StorageError) return { status: "failed", reason: "storage-unavailable" };
   return { status: "failed", reason: "unknown" };
 };
 
@@ -90,9 +109,7 @@ export const createAccountProcedures = (
           },
           signal,
         );
-        if (!connected.ok) {
-          return signal.aborted ? { status: "cancelled" } : { status: "failed", reason: "unknown" };
-        }
+        if (!connected.ok) return failureOfConnect(connected.error, signal.aborted);
         try {
           await deps.startScan(connected.value.account.id);
         } catch {

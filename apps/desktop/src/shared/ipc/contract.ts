@@ -99,7 +99,13 @@ const queries = {
 } as const;
 
 /** Why a sign-in failed, as a closed set the screen can explain; never a provider message, URL or token. */
-export const CONNECT_FAILURES = ["not-configured", "no-address", "unknown"] as const;
+export const CONNECT_FAILURES = [
+  "not-configured",
+  "no-address",
+  "provider-failed",
+  "storage-unavailable",
+  "unknown",
+] as const;
 
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
