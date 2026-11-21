@@ -1,3 +1,4 @@
+import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 
@@ -165,6 +166,7 @@ export const ja = {
 
   "settings.title": entry("設定", []),
   "settings.description": entry("環境設定とアカウント設定がここに表示されます。", []),
+  ...appearanceMessages.ja,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("メインナビゲーション", []),

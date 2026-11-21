@@ -50,7 +50,7 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react";
-import { type ComponentType, useEffect } from "react";
+import { type ComponentType, type ReactNode, useEffect } from "react";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { visibleCategories } from "./visible-categories.ts";
@@ -131,7 +131,7 @@ function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) 
  * The frame of every screen after onboarding: sidebar, icon rail or bottom tabs by container width, with
  * the account switcher. The account selection lives in the router (`?account=`); counts follow it.
  */
-export function AppFrame() {
+export function AppFrame({ frameControls }: { readonly frameControls: ReactNode }) {
   const t = useT();
   const locale = useLocale();
   const client = useWorkerClient();
@@ -198,6 +198,8 @@ export function AppFrame() {
                 </DropdownMenuItem>
               </AccountSwitcherContent>
             </AccountSwitcher>
+            {/* Phone top bar: the same controls as the sidebar footer, placed by container width. */}
+            <div className="flex items-center gap-1 @min-phone:hidden">{frameControls}</div>
           </SidebarHeader>
           <SidebarContent aria-label={t("nav.label")}>
             <SidebarGroup>
@@ -272,6 +274,9 @@ export function AppFrame() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
+            <div className="mt-2 border-t border-border pt-2 @max-phone:hidden">
+              {frameControls}
+            </div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
