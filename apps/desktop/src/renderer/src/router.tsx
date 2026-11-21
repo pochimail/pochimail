@@ -53,7 +53,7 @@ const indexRoute = createRoute({
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "onboarding",
-  component: OnboardingLayout,
+  component: () => <OnboardingLayout controls={<AppearanceControls />} />,
 });
 
 const welcomeRoute = createRoute({

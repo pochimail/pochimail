@@ -2,7 +2,7 @@ import { Mascot } from "@pochimail/ui/components/mascot";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { cn } from "@pochimail/ui/lib/utils";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 /** Onboarding screens in order; the step indicator shows on these only. */
 const ONBOARDING_PATHS = ["/welcome", "/connect", "/setup"] as const;
@@ -11,7 +11,7 @@ const ONBOARDING_PATHS = ["/welcome", "/connect", "/setup"] as const;
  * Shared frame for the onboarding screens. It stays mounted while the route changes, so Pochi and the
  * step indicator keep their place and only the content below slides in (docs/design.md, Screen to screen).
  */
-export function OnboardingLayout() {
+export function OnboardingLayout({ controls }: { controls?: ReactNode }) {
   const t = useT();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const index = (ONBOARDING_PATHS as readonly string[]).indexOf(pathname);
@@ -38,7 +38,12 @@ export function OnboardingLayout() {
 
   return (
     <div className="@container flex min-h-screen flex-col">
-      <header className="flex h-11 items-center justify-center">
+      <header className="relative flex h-11 items-center justify-center">
+        {/* Appearance stays reachable during onboarding. Absolute in the header's right spacer so the
+            step indicator remains optically centered and the reference geometry is unchanged. */}
+        {controls === undefined ? null : (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2">{controls}</div>
+        )}
         <ol
           aria-label={t("onboarding.progress", { current, total })}
           className="m-0 flex list-none items-center gap-1.5 p-0"
