@@ -1,8 +1,9 @@
 // Guards: a sign-in that leaks a token to the renderer, stores one outside the keychain, or leaves the person on a wrong state.
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { StorageError } from "@pochimail/kernel/errors";
 import { WorkspaceId } from "@pochimail/kernel/ids";
-import { unwrap } from "@pochimail/kernel/result";
+import { err, unwrap } from "@pochimail/kernel/result";
 import { type OAuthProviderConfig, oauthProviderConfig } from "@pochimail/net/oauth/providers";
 import { createOAuthRevoker } from "@pochimail/net/oauth/revoke";
 import { OAuthSignIn } from "@pochimail/net/oauth/sign-in";
@@ -30,6 +31,12 @@ const setup = async (options: {
   failScan?: boolean;
   /** The browser never comes back: a person who is still deciding. */
   hang?: boolean;
+  /** The system browser cannot open, before any consent page is shown. */
+  failBrowser?: boolean;
+  /** The token endpoint rejects the code. */
+  failTokenExchange?: boolean;
+  /** Local storage refuses the account row, as it does when the worker has no database key. */
+  failStorage?: boolean;
 }) => {
   const server = await startFakeOAuthServer(
     options.address === undefined ? {} : { address: options.address },
@@ -44,9 +51,13 @@ const setup = async (options: {
   const opened: string[] = [];
   const signIn = new OAuthSignIn({
     env: options.env ?? { POCHIMAIL_GOOGLE_CLIENT_ID: "test-client" },
-    fetch: loopbackFetch,
+    fetch: async (url, init) =>
+      options.failTokenExchange && init.method === "POST" && url.includes("/token")
+        ? { ok: false, status: 400, body: '{"error":"invalid_grant"}' }
+        : loopbackFetch(url, init),
     openBrowser: async (url) => {
       opened.push(url);
+      if (options.failBrowser) throw new Error("browser unavailable");
       if (options.hang) return;
       const consent = await fetch(url, { redirect: "manual" });
       const location = consent.headers.get("location");
@@ -54,6 +65,18 @@ const setup = async (options: {
     },
   });
   const store = createInMemoryUnitOfWork();
+  const uow = options.failStorage
+    ? {
+        ...store.uow,
+        reads: {
+          ...store.uow.reads,
+          accounts: {
+            ...store.uow.reads.accounts,
+            list: async () => err(new StorageError("storage unavailable")),
+          },
+        },
+      }
+    : store.uow;
   const secrets = createInMemorySecretStore();
   const revoker = createOAuthRevoker({
     fetch: loopbackFetch,
@@ -65,9 +88,9 @@ const setup = async (options: {
     },
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
     workspaceId,
-    uow: store.uow,
+    uow,
     connectAccount: new ConnectAccount({
-      uow: store.uow,
+      uow,
       secrets,
       clock: { now: () => new Date("2026-11-21T10:00:00.000Z") },
       ids: { next: (prefix) => `${prefix}_${crypto.randomUUID()}` },
@@ -147,6 +170,44 @@ describe("accounts.connect", () => {
     expect(await client.call("accounts.list")).toEqual([]);
     const revoked = server.requests().find((r) => r.path === "/revoke");
     expect(revoked?.params.token).toMatch(/^refresh-/);
+    close();
+  });
+
+  it("a browser that cannot open answers a provider failure before any consent", async () => {
+    const { client, opened, close } = await setup({
+      address: "person@example.test",
+      failBrowser: true,
+    });
+    expect(await client.call("accounts.connect", { provider: "google" })).toEqual({
+      status: "failed",
+      reason: "provider-failed",
+    });
+    expect(opened).toHaveLength(1);
+    expect(await client.call("accounts.list")).toEqual([]);
+    close();
+  });
+
+  it("a rejected token exchange answers a closed failure without the provider's message", async () => {
+    const { client, close } = await setup({
+      address: "person@example.test",
+      failTokenExchange: true,
+    });
+    const outcome = await client.call("accounts.connect", { provider: "google" });
+    expect(outcome).toEqual({ status: "failed", reason: "provider-failed" });
+    expect(JSON.stringify(outcome)).not.toContain("invalid_grant");
+    expect(await client.call("accounts.list")).toEqual([]);
+    close();
+  });
+
+  it("unavailable storage answers a specific reason and stores nothing", async () => {
+    const { client, close } = await setup({
+      address: "person@example.test",
+      failStorage: true,
+    });
+    expect(await client.call("accounts.connect", { provider: "google" })).toEqual({
+      status: "failed",
+      reason: "storage-unavailable",
+    });
     close();
   });
 

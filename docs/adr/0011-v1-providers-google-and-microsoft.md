@@ -2,6 +2,8 @@
 
 Status: Accepted (2026-11-19) · Amends: [ADR 0004](0004-incremental-sync-and-imap.md)
 
+Superseded 2026-11-21 for the Connect screen only: Microsoft sign-in is deferred until the Graph adapter lands, so the screen offers Google alone. The v1 provider architecture above is unchanged; this is a rollout note, not a reversal of the decision.
+
 ## Context
 Each provider adds an adapter, a sign-in flow, recorded fixtures, network hosts and support load. Gmail and Outlook/Microsoft 365 cover most users, and both offer true delta sync and OAuth. Generic IMAP (Yahoo, iCloud, others) needs app passwords, a provider picker and a separate sync strategy.
 
