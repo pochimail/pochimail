@@ -1,14 +1,6 @@
 import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from "react";
 import { type AppSettings, DEFAULT_APP_SETTINGS, type Theme } from "#shared/settings.ts";
 import { useAppLocale } from "../../lib/locale.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
@@ -31,8 +23,8 @@ type Appearance = {
 const AppearanceContext = createContext<Appearance | undefined>(undefined);
 
 /**
- * One controller for the root `.dark` class and the UI language. A preference that has never been
- * chosen follows the OS; persistence is memory-only today, so the saved default means "not chosen".
+ * One controller for the root `.dark` class and the UI language. A `null` locale means "follow the
+ * OS"; saving a concrete locale makes the choice explicit and survives provider remounts.
  */
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const client = useWorkerClient();
@@ -42,12 +34,8 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     queryFn: () => client.call("settings.get"),
   });
   const systemLocale = useAppLocale();
-  const [chosen, setChosen] = useState(false);
   const theme = settings.data?.theme ?? DEFAULT_APP_SETTINGS.theme;
-  const savedLocale = settings.data?.locale;
-  const needsSystemLocale =
-    !chosen && (savedLocale === undefined || savedLocale === DEFAULT_APP_SETTINGS.locale);
-  const locale = needsSystemLocale ? systemLocale : (savedLocale ?? systemLocale);
+  const locale = settings.data?.locale ?? systemLocale;
 
   useEffect(() => followSystemTheme(theme), [theme]);
 
@@ -70,10 +58,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       theme,
       locale,
       selectTheme: (theme) => select({ theme }),
-      selectLocale: (locale) => {
-        setChosen(true);
-        return select({ locale });
-      },
+      selectLocale: (locale) => select({ locale }),
     }),
     [theme, locale, select],
   );

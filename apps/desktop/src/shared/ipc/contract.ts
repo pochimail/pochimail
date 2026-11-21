@@ -86,7 +86,7 @@ const queries = {
       capabilities: capabilitiesSchema,
       notifications: z.boolean(),
       theme: themeSchema.optional(),
-      locale: localeSchema.optional(),
+      locale: localeSchema.nullable().optional(),
     }),
   },
   "app.state": {
@@ -147,7 +147,7 @@ const mutations = {
       capabilities: capabilitiesSchema.optional(),
       notifications: z.boolean().optional(),
       theme: themeSchema.optional(),
-      locale: localeSchema.optional(),
+      locale: localeSchema.nullable().optional(),
     }),
     output: z.undefined(),
   },
