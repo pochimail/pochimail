@@ -13,8 +13,8 @@ export interface AppSettings {
   readonly notifications: boolean;
   /** Appearance follows the OS until someone chooses Light or Dark. */
   readonly theme: Theme;
-  /** UI language; the same closed set the i18n catalogs ship. */
-  readonly locale: UserLocale;
+  /** UI language: null follows the OS until someone chooses one. */
+  readonly locale: UserLocale | null;
 }
 
 export const THEMES = ["system", "light", "dark"] as const;
@@ -43,7 +43,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   capabilities: DEFAULT_CAPABILITIES,
   notifications: true,
   theme: "system",
-  locale: "en",
+  locale: null,
 };
 
 export interface SettingsStore {
@@ -65,7 +65,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   const row = isRecord(raw) ? raw : {};
   const autonomy = AUTONOMY_LEVELS.find((level) => level === row["autonomy"]);
   const theme = THEMES.find((value) => value === row["theme"]);
-  const locale = SETTINGS_LOCALES.find((value) => value === row["locale"]);
+  const locale = SETTINGS_LOCALES.find((value) => value === row["locale"]) ?? null;
   const saved = isRecord(row["capabilities"]) ? row["capabilities"] : {};
   const capabilities = Object.fromEntries(
     CAPABILITIES.map((name) => {
@@ -81,6 +81,6 @@ export function normalizeSettings(raw: unknown): AppSettings {
         ? row["notifications"]
         : DEFAULT_APP_SETTINGS.notifications,
     theme: theme ?? DEFAULT_APP_SETTINGS.theme,
-    locale: locale ?? DEFAULT_APP_SETTINGS.locale,
+    locale,
   };
 }

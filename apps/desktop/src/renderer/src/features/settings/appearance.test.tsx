@@ -15,7 +15,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-type Stored = { readonly theme: "system" | "light" | "dark"; readonly locale: "en" | "fr" | "ja" };
+type Stored = {
+  readonly theme: "system" | "light" | "dark";
+  readonly locale: "en" | "fr" | "ja" | null;
+};
 
 /** A real RPC server behind the public App entry point: every selection goes through the typed contract. */
 function fakeApp(initial: Stored) {
@@ -41,7 +44,7 @@ function fakeApp(initial: Stored) {
         updates.push(patch);
         stored = {
           theme: patch.theme ?? stored.theme,
-          locale: patch.locale ?? stored.locale,
+          locale: "locale" in patch ? (patch.locale ?? null) : stored.locale,
         };
         return undefined;
       },
@@ -49,11 +52,12 @@ function fakeApp(initial: Stored) {
     subscriptions: { "app.events": () => undefined },
   });
   const client = createRpcClient(fromDomPort(port1));
-  const router = createAppRouter(
-    { getWorkerClient: () => Promise.resolve(client) },
-    { initialEntries: ["/settings"] },
-  );
-  return { client, router, updates, stored: () => stored };
+  const open = () =>
+    createAppRouter(
+      { getWorkerClient: () => Promise.resolve(client) },
+      { initialEntries: ["/settings"] },
+    );
+  return { client, router: open(), open, updates, stored: () => stored };
 }
 
 /** Stubs the OS appearance with a change event, so "System" can be observed resuming OS changes. */
@@ -119,7 +123,7 @@ describe("appearance controller", () => {
   // Guards: a mounted screen staying in the old language when the OS language changes.
   it("re-renders a mounted screen when the OS language changes", async () => {
     const languages = vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
-    const fake = fakeApp({ theme: "system", locale: "en" });
+    const fake = fakeApp({ theme: "system", locale: null });
     openSettings(fake);
     const heading = await screen.findByRole("heading", { level: 1, name: "Settings" });
 
@@ -151,7 +155,7 @@ describe("appearance controller", () => {
   // Guards: a language selection that changes the icon but never reaches the worker or the screen.
   it("selecting a language writes settings.update and re-renders the screen", async () => {
     vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
-    const fake = fakeApp({ theme: "system", locale: "en" });
+    const fake = fakeApp({ theme: "system", locale: null });
     openSettings(fake);
     await screen.findByRole("heading", { level: 1, name: "Settings" });
 
@@ -163,5 +167,29 @@ describe("appearance controller", () => {
     );
     expect(fake.updates).toContainEqual({ locale: "fr" });
     expect(fake.stored().locale).toBe("fr");
+  });
+
+  // Guards: an explicit English choice on a non-English OS reverting to the OS on remount (the saved default is not "never chosen").
+  it("keeps an explicit English choice across provider remount on a non-English OS", async () => {
+    vi.spyOn(navigator, "languages", "get").mockReturnValue(["fr-FR"]);
+    const fake = fakeApp({ theme: "system", locale: null });
+    const view = openSettings(fake);
+    await screen.findByRole("heading", { level: 1, name: "Réglages" });
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Langue" })[0] ?? document.body);
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "English" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Settings"),
+    );
+    expect(fake.stored().locale).toBe("en");
+
+    view.unmount();
+    openSettings({ ...fake, router: fake.open() });
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Settings"),
+    );
+    expect(fake.stored().locale).toBe("en");
   });
 });
