@@ -14,6 +14,7 @@ import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
 import { OverviewPage } from "./features/overview/overview-page.tsx";
+import { AppearanceControls } from "./features/settings/appearance-controls.tsx";
 import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
@@ -31,10 +32,11 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 });
 
 // Every screen after onboarding shares one frame (sidebar / rail / tabs); it never remounts between them.
+// Routes compose features: the frame renders the controls it is given, so features stay independent.
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "shell",
-  component: AppFrame,
+  component: () => <AppFrame frameControls={<AppearanceControls />} />,
 });
 
 const indexRoute = createRoute({
@@ -51,7 +53,7 @@ const indexRoute = createRoute({
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "onboarding",
-  component: OnboardingLayout,
+  component: () => <OnboardingLayout controls={<AppearanceControls />} />,
 });
 
 const welcomeRoute = createRoute({

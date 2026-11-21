@@ -2,6 +2,7 @@ import { AUTONOMY_LEVELS, type AutonomyLevel } from "@pochimail/actions/policies
 import type { AsyncResult } from "@pochimail/kernel/common";
 import type { StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
+import { USER_LOCALES, type UserLocale } from "@pochimail/ui/i18n/messages.ts";
 
 /** Workspace-wide preferences the Settings screen edits. Defaults are the safe ones: suggest only, counts-only notifications. */
 export interface AppSettings {
@@ -10,7 +11,16 @@ export interface AppSettings {
   /** Brief §2, question 1: which jobs the assistant may do. All on by default. */
   readonly capabilities: Capabilities;
   readonly notifications: boolean;
+  /** Appearance follows the OS until someone chooses Light or Dark. */
+  readonly theme: Theme;
+  /** UI language: null follows the OS until someone chooses one. */
+  readonly locale: UserLocale | null;
 }
+
+export const THEMES = ["system", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];
+/** One source of truth: the settings choices are exactly the shipped UI locales. */
+export const SETTINGS_LOCALES = USER_LOCALES;
 
 export const CAPABILITIES = [
   "catch-what-matters",
@@ -32,6 +42,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   autonomy: "suggest",
   capabilities: DEFAULT_CAPABILITIES,
   notifications: true,
+  theme: "system",
+  locale: null,
 };
 
 export interface SettingsStore {
@@ -52,6 +64,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export function normalizeSettings(raw: unknown): AppSettings {
   const row = isRecord(raw) ? raw : {};
   const autonomy = AUTONOMY_LEVELS.find((level) => level === row["autonomy"]);
+  const theme = THEMES.find((value) => value === row["theme"]);
+  const locale = SETTINGS_LOCALES.find((value) => value === row["locale"]) ?? null;
   const saved = isRecord(row["capabilities"]) ? row["capabilities"] : {};
   const capabilities = Object.fromEntries(
     CAPABILITIES.map((name) => {
@@ -66,5 +80,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
       typeof row["notifications"] === "boolean"
         ? row["notifications"]
         : DEFAULT_APP_SETTINGS.notifications,
+    theme: theme ?? DEFAULT_APP_SETTINGS.theme,
+    locale,
   };
 }

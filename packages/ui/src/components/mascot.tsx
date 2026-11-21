@@ -107,24 +107,20 @@ function Mascot({
       style={{ transformOrigin: found ? "50% 95%" : "50% 92%", ...style }}
       {...props}
     >
+      {/* The placeholder is a flat PNG: only breathing can play on it. Motion.dc.html's blink targets eye
+          groups in the source artwork, so scaling the whole image would squash Pochi (and is omitted here). */}
       <span
         data-slot="mascot-breathe"
         className={cn("block", idle && "animate-pochi-breathe")}
         style={{ transformOrigin: "50% 92%" }}
       >
-        <span
-          data-slot="mascot-blink"
-          className={cn("block", idle && "animate-pochi-blink")}
-          style={{ transformOrigin: "center" }}
-        >
-          <img
-            data-slot="mascot-image"
-            src={x1}
-            srcSet={`${x1} 1x, ${x2} 2x`}
-            alt={alt}
-            className="block h-auto w-full"
-          />
-        </span>
+        <img
+          data-slot="mascot-image"
+          src={x1}
+          srcSet={`${x1} 1x, ${x2} 2x`}
+          alt={alt}
+          className="block h-auto w-full"
+        />
       </span>
     </span>
   );

@@ -158,12 +158,12 @@ describe("app frame", () => {
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
   });
 
-  it("tabs through the switcher, then Overview, then the categories in order (guards a rail or tab bar that reorders focus)", async () => {
+  it("tabs through the switcher, the compact controls, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
     setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
     const focused: string[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 6; i++) {
       await userEvent.tab();
       focused.push(
         document.activeElement?.getAttribute("aria-label") ??
@@ -172,8 +172,9 @@ describe("app frame", () => {
       );
     }
     expect(focused[0]).toMatch(/^Account:/);
-    expect(focused[1]).toBe("Overview");
-    expect(focused[2]).toMatch(/^People/);
-    expect(focused[3]).toMatch(/^Records/);
+    expect(focused.slice(1, 3)).toEqual(["Theme", "Language"]);
+    expect(focused[3]).toBe("Overview");
+    expect(focused[4]).toMatch(/^People/);
+    expect(focused[5]).toMatch(/^Records/);
   });
 });

@@ -7,19 +7,26 @@ export const connectMessages = {
       params: [],
     },
     "connect.google": { text: "Continue with Google", params: [] },
-    "connect.microsoft": { text: "Continue with Microsoft", params: [] },
-    "connect.comingSoon": { text: "Coming soon", params: [] },
     "connect.imap": { text: "Other providers (IMAP) are coming in version 1.1.", params: [] },
     "connect.waiting": { text: "Waiting for you to sign in in your browser…", params: [] },
     "connect.cancelled": { text: "Sign-in was cancelled. Nothing was connected.", params: [] },
     "connect.failed": { text: "I couldn’t connect your account. Nothing was changed.", params: [] },
     "connect.notConfigured": { text: "This build has no Google sign-in set up.", params: [] },
+    "connect.providerFailed": {
+      text: "I couldn’t finish signing in with Google. Check your connection and try again. Nothing was changed.",
+      params: [],
+    },
+    "connect.storageUnavailable": {
+      text: "I can’t open my local storage yet. Restart Pochimail, then try again. Nothing was changed.",
+      params: [],
+    },
     "connect.cancel": { text: "Cancel", params: [] },
     "connect.noAddress": {
       text: "Google didn’t share your email address, so I couldn’t connect your account. Nothing was changed.",
       params: [],
     },
     "connect.retry": { text: "Try again", params: [] },
+    "connect.back": { text: "Back", params: [] },
     "connect.promises.heading": { text: "My promises", params: [] },
     "connect.promise.local.title": {
       text: "Your email stays on this {device}",
@@ -47,8 +54,6 @@ export const connectMessages = {
       params: [],
     },
     "connect.google": { text: "Continuer avec Google", params: [] },
-    "connect.microsoft": { text: "Continuer avec Microsoft", params: [] },
-    "connect.comingSoon": { text: "Bientôt disponible", params: [] },
     "connect.imap": {
       text: "Les autres fournisseurs (IMAP) arrivent dans la version 1.1.",
       params: [],
@@ -69,12 +74,21 @@ export const connectMessages = {
       text: "Cette version n’a pas de connexion Google configurée.",
       params: [],
     },
+    "connect.providerFailed": {
+      text: "Je n’ai pas pu terminer la connexion avec Google. Vérifiez votre connexion, puis réessayez. Rien n’a été modifié.",
+      params: [],
+    },
+    "connect.storageUnavailable": {
+      text: "Je ne peux pas encore ouvrir mon stockage local. Redémarrez Pochimail, puis réessayez. Rien n’a été modifié.",
+      params: [],
+    },
     "connect.cancel": { text: "Annuler", params: [] },
     "connect.noAddress": {
       text: "Google n’a pas partagé votre adresse email, je n’ai donc pas pu connecter votre compte. Rien n’a été modifié.",
       params: [],
     },
     "connect.retry": { text: "Réessayer", params: [] },
+    "connect.back": { text: "Retour", params: [] },
     "connect.promises.heading": { text: "Mes promesses", params: [] },
     "connect.promise.local.title": {
       text: "Vos emails restent sur ce {device}",
@@ -102,8 +116,6 @@ export const connectMessages = {
       params: [],
     },
     "connect.google": { text: "Googleで続行", params: [] },
-    "connect.microsoft": { text: "Microsoftで続行", params: [] },
-    "connect.comingSoon": { text: "近日対応", params: [] },
     "connect.imap": {
       text: "その他のプロバイダ（IMAP）はバージョン1.1で対応予定です。",
       params: [],
@@ -121,12 +133,21 @@ export const connectMessages = {
       text: "このビルドにはGoogleサインインが設定されていません。",
       params: [],
     },
+    "connect.providerFailed": {
+      text: "Googleでのサインインを完了できませんでした。接続を確認してもう一度お試しください。何も変更していません。",
+      params: [],
+    },
+    "connect.storageUnavailable": {
+      text: "ローカルストレージをまだ開けません。Pochimailを再起動してもう一度お試しください。何も変更していません。",
+      params: [],
+    },
     "connect.cancel": { text: "キャンセル", params: [] },
     "connect.noAddress": {
       text: "Googleからメールアドレスが共有されなかったため、アカウントを接続できませんでした。何も変更していません。",
       params: [],
     },
     "connect.retry": { text: "もう一度試す", params: [] },
+    "connect.back": { text: "戻る", params: [] },
     "connect.promises.heading": { text: "お約束", params: [] },
     "connect.promise.local.title": {
       text: "メールはこの{device}の中にとどまります",

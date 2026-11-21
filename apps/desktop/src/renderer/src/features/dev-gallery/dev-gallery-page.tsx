@@ -1,7 +1,8 @@
 import { MotionProvider } from "@pochimail/ui/components/motion-provider";
 import { Switch } from "@pochimail/ui/components/switch";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useAppearance } from "../settings/appearance.tsx";
 import { type GalleryEntry, motionEntries, stateEntries } from "./gallery-entries.tsx";
 
 function Section({
@@ -38,16 +39,9 @@ function Section({
 /** Dev/E2E only (router.tsx): every required state and motion moment, with theme and reduced-motion toggles. */
 export function DevGalleryPage() {
   const t = useT();
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const { theme, selectTheme } = useAppearance();
+  const dark = theme === "dark";
   const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    const root = document.documentElement;
-    const before = root.classList.contains("dark");
-    root.classList.toggle("dark", dark);
-    return () => {
-      root.classList.toggle("dark", before);
-    };
-  }, [dark]);
 
   return (
     <MotionProvider animations={!reduceMotion}>
@@ -56,7 +50,11 @@ export function DevGalleryPage() {
         <p className="mt-4 text-muted-foreground">{t("devGallery.description")}</p>
         <div className="mt-6 flex flex-wrap gap-8">
           <div className="flex items-center gap-2">
-            <Switch id="gallery-dark" checked={dark} onCheckedChange={setDark} />
+            <Switch
+              id="gallery-dark"
+              checked={dark}
+              onCheckedChange={(checked) => void selectTheme(checked ? "dark" : "system")}
+            />
             <label htmlFor="gallery-dark">{t("devGallery.dark")}</label>
           </div>
           <div className="flex items-center gap-2">

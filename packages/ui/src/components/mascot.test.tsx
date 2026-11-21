@@ -22,15 +22,25 @@ describe("Mascot public behavior", () => {
     );
   });
 
-  it("guards idle loops missing when animations are enabled by running breathing and blink loops", () => {
+  it("guards the idle breathing loop when animations are enabled", () => {
     const html = renderMarkup(
       <MotionProvider animations>
         <Mascot pose="default" />
       </MotionProvider>,
     );
     expect(html).toContain("animate-pochi-breathe");
-    expect(html).toContain("animate-pochi-blink");
     expect(html).not.toContain("animate-pochi-found");
+  });
+
+  it("guards whole-image blink that squashes the flat placeholder PNG", () => {
+    const html = renderMarkup(
+      <MotionProvider animations>
+        <Mascot pose="default" />
+      </MotionProvider>,
+    );
+    expect(html).not.toContain("animate-pochi-blink");
+    expect(html).not.toContain('data-slot="mascot-blink"');
+    expect(html).toContain('data-slot="mascot-image"');
   });
 
   it("guards missing found reaction by playing the squish-bounce when Pochi finds something", () => {

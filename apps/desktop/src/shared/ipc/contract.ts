@@ -2,7 +2,7 @@ import { AUTONOMY_LEVELS } from "@pochimail/actions/policies/autonomy";
 import { categorySchema } from "@pochimail/classification/model/category";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
-import { CAPABILITIES } from "../settings.ts";
+import { CAPABILITIES, SETTINGS_LOCALES, THEMES } from "../settings.ts";
 
 /**
  * The typed contract every screen uses (ADR 0002, M4-01). Handlers backed by core use cases live in worker/handlers.ts (M4-02).
@@ -13,6 +13,8 @@ const jobId = z.string().min(1).max(200);
 const actionId = z.string().min(1).max(200);
 
 const autonomySchema = z.enum(AUTONOMY_LEVELS);
+const themeSchema = z.enum(THEMES);
+const localeSchema = z.enum(SETTINGS_LOCALES);
 const capabilitiesSchema = z.object(
   Object.fromEntries(CAPABILITIES.map((name) => [name, z.boolean()])) as Record<
     (typeof CAPABILITIES)[number],
@@ -78,10 +80,13 @@ const queries = {
   },
   "settings.get": {
     input: z.undefined(),
+    // Optional so a caller written before these preferences existed stays valid; the controller defaults it.
     output: z.object({
       autonomy: autonomySchema,
       capabilities: capabilitiesSchema,
       notifications: z.boolean(),
+      theme: themeSchema.optional(),
+      locale: localeSchema.nullable().optional(),
     }),
   },
   "app.state": {
@@ -99,7 +104,13 @@ const queries = {
 } as const;
 
 /** Why a sign-in failed, as a closed set the screen can explain; never a provider message, URL or token. */
-export const CONNECT_FAILURES = ["not-configured", "no-address", "unknown"] as const;
+export const CONNECT_FAILURES = [
+  "not-configured",
+  "no-address",
+  "provider-failed",
+  "storage-unavailable",
+  "unknown",
+] as const;
 
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
@@ -141,6 +152,8 @@ const mutations = {
       autonomy: autonomySchema.optional(),
       capabilities: capabilitiesSchema.optional(),
       notifications: z.boolean().optional(),
+      theme: themeSchema.optional(),
+      locale: localeSchema.nullable().optional(),
     }),
     output: z.undefined(),
   },
