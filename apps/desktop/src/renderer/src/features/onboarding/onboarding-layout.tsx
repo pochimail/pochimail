@@ -1,4 +1,4 @@
-import { Mascot } from "@pochimail/ui/components/mascot";
+import { Mascot, type MascotPose } from "@pochimail/ui/components/mascot";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { cn } from "@pochimail/ui/lib/utils";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
@@ -11,7 +11,14 @@ const ONBOARDING_PATHS = ["/welcome", "/connect", "/setup"] as const;
  * Shared frame for the onboarding screens. It stays mounted while the route changes, so Pochi and the
  * step indicator keep their place and only the content below slides in (docs/design.md, Screen to screen).
  */
-export function OnboardingLayout({ controls }: { controls?: ReactNode }) {
+export function OnboardingLayout({
+  controls,
+  pose,
+}: {
+  controls?: ReactNode;
+  /** Pochi's theme-derived resting pose, supplied by the route. */
+  pose: MascotPose;
+}) {
   const t = useT();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const index = (ONBOARDING_PATHS as readonly string[]).indexOf(pathname);
@@ -68,7 +75,7 @@ export function OnboardingLayout({ controls }: { controls?: ReactNode }) {
           !isSetup && !isConnect && "max-w-xl",
         )}
       >
-        {isSetup || isConnect ? null : <Mascot size="lg" />}
+        {isSetup || isConnect ? null : <Mascot size="lg" pose={pose} />}
         <div
           key={pathname}
           ref={content}

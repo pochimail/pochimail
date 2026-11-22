@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@pochimail/ui/components/dropdown-menu";
+import { Mascot, type MascotPose } from "@pochimail/ui/components/mascot";
 import {
   Sidebar,
   SidebarBrand,
@@ -131,7 +132,14 @@ function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) 
  * The frame of every screen after onboarding: sidebar, icon rail or bottom tabs by container width, with
  * the account switcher. The account selection lives in the router (`?account=`); counts follow it.
  */
-export function AppFrame({ frameControls }: { readonly frameControls: ReactNode }) {
+export function AppFrame({
+  frameControls,
+  pose,
+}: {
+  readonly frameControls: ReactNode;
+  /** Pochi's pose for the signed-in context, supplied by the route. */
+  readonly pose: MascotPose;
+}) {
   const t = useT();
   const locale = useLocale();
   const client = useWorkerClient();
@@ -169,7 +177,10 @@ export function AppFrame({ frameControls }: { readonly frameControls: ReactNode 
       <SidebarLayout>
         <Sidebar>
           <SidebarHeader>
-            <SidebarBrand>{t("nav.brand")}</SidebarBrand>
+            <SidebarBrand className="flex items-center gap-2">
+              <Mascot pose={pose} size="xs" className="w-8" data-hover-pochi="" />
+              {t("nav.brand")}
+            </SidebarBrand>
             <AccountSwitcher>
               <AccountSwitcherTrigger aria-label={`${t("switcher.menu")}: ${currentLabel}`}>
                 <UsersIcon aria-hidden="true" />

@@ -1,11 +1,11 @@
-import { Mascot } from "@pochimail/ui/components/mascot";
+import { Mascot, type MascotPose } from "@pochimail/ui/components/mascot";
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 
 const PROMISES = ["local", "control", "delete"] as const;
 
 /** "My promises": what Pochimail commits to before any account is connected (docs/product.md). */
-export function ConnectPromises({ device }: { device: string }) {
+export function ConnectPromises({ device, pose }: { device: string; pose: MascotPose }) {
   const t = useT();
   const locale = useLocale();
   const label = deviceLabel(device, locale);
@@ -14,7 +14,7 @@ export function ConnectPromises({ device }: { device: string }) {
       {/* Pochi is twice the xs width here; the callout reuses SpeechBubble's tokens and tail, which the
           shared component cannot do here because it fixes the mascot at sm. */}
       <div data-slot="speech-bubble" className="flex items-start gap-4">
-        <Mascot size="xs" className="w-20" />
+        <Mascot size="xs" className="w-20" pose={pose} />
         <div
           data-slot="speech-bubble-body"
           className="relative min-w-0 flex-1 rounded-xl bg-card px-4 py-3 text-left text-body leading-normal break-words text-card-foreground shadow-[inset_0_0_0_1px_var(--border)]"

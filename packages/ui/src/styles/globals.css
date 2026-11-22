@@ -35,6 +35,13 @@
   }
 }
 
+/* The shell's small Pochi replays the found keyframes on hover; no new motion and no loop. */
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-animations="off"]) [data-hover-pochi]:hover {
+    animation: var(--animate-pochi-found);
+  }
+}
+
 /* The eye blink in the board targets Rive eye groups; the placeholder art is one flat PNG. Two lids
    close over the bead eyes at the board's 5.3s cadence, so Pochi blinks without the body squashing.
    Eye boxes come from the reference SVG's bead rects (140,193,28,40 / 232,193,28,40 of 400x340). */

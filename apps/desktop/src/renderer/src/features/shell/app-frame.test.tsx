@@ -26,7 +26,7 @@ const mailboxes: Record<string, Counts> = {
   a2: { ...zero, people: 2, records: 3 },
 };
 
-const setup = (initialPath = "/overview") => {
+const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "system") => {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
@@ -70,6 +70,7 @@ const setup = (initialPath = "/overview") => {
           "save-documents": true,
         },
         notifications: true,
+        theme,
       }),
     },
     subscriptions: {
@@ -94,6 +95,31 @@ const setup = (initialPath = "/overview") => {
 
 const sidebar = async () =>
   within(await screen.findByRole("navigation", { name: "Main navigation" }));
+
+const brandMascot = async () =>
+  (await screen.findByText("Pochimail")).parentElement?.querySelector('[data-slot="mascot"]');
+
+describe("Pochi in the signed-in shell", () => {
+  it("keeps one small, hoverable Pochi beside the brand (guards losing Pochi after Setup)", async () => {
+    setup();
+    const mascot = await brandMascot();
+    expect(mascot).not.toBeNull();
+    expect(mascot?.className).toContain("w-8");
+    expect(mascot?.hasAttribute("data-hover-pochi")).toBe(true);
+  });
+
+  it("uses the night pose in dark mode (guards a theme-blind mascot)", async () => {
+    setup("/overview", "dark");
+    const mascot = await brandMascot();
+    await waitFor(() => expect(mascot?.getAttribute("data-pose")).toBe("night"));
+  });
+
+  it("uses the reading pose on Documents (guards a context-blind mascot)", async () => {
+    setup("/documents");
+    const mascot = await brandMascot();
+    expect(mascot?.getAttribute("data-pose")).toBe("reading");
+  });
+});
 
 describe("app frame", () => {
   it("hides a category with no email and shows it once it gets mail (guards D5: empty categories listed)", async () => {
