@@ -53,6 +53,7 @@ import {
 import { type ComponentType, useEffect } from "react";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
+import { ProviderIcon } from "./provider-icon.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
 import { visibleCategories } from "./visible-categories.ts";
 
@@ -198,6 +199,7 @@ export function AppFrame() {
                   </AccountSwitcherItem>
                   {accountList.map((a) => (
                     <AccountSwitcherItem key={a.id} value={a.id}>
+                      <ProviderIcon provider={a.provider} />
                       {a.displayName}
                     </AccountSwitcherItem>
                   ))}
