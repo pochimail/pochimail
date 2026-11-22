@@ -164,11 +164,19 @@ export function AppFrame() {
     });
   useRefreshCategoriesWhileScanning(accountList);
 
+  const isMacDesktop = /Macintosh/.test(navigator.userAgent);
+
   return (
     <SidebarProvider>
       <SidebarLayout>
         <Sidebar>
-          <SidebarHeader>
+          <SidebarHeader
+            className={
+              isMacDesktop
+                ? "pt-12 [-webkit-app-region:drag] [app-region:drag] [&_a]:[-webkit-app-region:no-drag] [&_a]:[app-region:no-drag] [&_button]:[-webkit-app-region:no-drag] [&_button]:[app-region:no-drag]"
+                : undefined
+            }
+          >
             <SidebarBrand>{t("nav.brand")}</SidebarBrand>
             <AccountSwitcher>
               <AccountSwitcherTrigger aria-label={`${t("switcher.menu")}: ${currentLabel}`}>

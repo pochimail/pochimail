@@ -188,4 +188,24 @@ describe("app frame", () => {
     expect(screen.getAllByRole("radiogroup", { name: "Theme" })).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Language" })).toHaveLength(1);
   });
+
+  it("reserves top inset and drag region for macOS window controls (guards traffic lights overlapping sidebar content)", async () => {
+    const original = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      configurable: true,
+    });
+    try {
+      setup();
+      await sidebar();
+      const header = document.querySelector("[data-slot=sidebar-header]");
+      expect(header).not.toBeNull();
+      expect(header?.className).toContain("pt-12");
+      expect(header?.className).toContain("[-webkit-app-region:drag]");
+      expect(header?.className).toContain("[app-region:drag]");
+      expect(header?.className).toContain("[-webkit-app-region:no-drag]");
+    } finally {
+      Object.defineProperty(navigator, "userAgent", { value: original, configurable: true });
+    }
+  });
 });
