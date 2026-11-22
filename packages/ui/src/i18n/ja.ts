@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * Japanese catalog. Polite です・ます register, natural product Japanese, no machine-literal
@@ -186,6 +187,7 @@ export const ja = {
   "category.newsletters": entry("ニュースレター", []),
   "category.promotions": entry("プロモーション", []),
   "category.placeholder": entry("このカテゴリのメールがここに表示されます。", []),
+  ...notificationMessages.ja,
 
   "devGallery.title": entry("開発ギャラリー", []),
   "devGallery.description": entry("開発用の状態とモーションのプレビューです。", []),
