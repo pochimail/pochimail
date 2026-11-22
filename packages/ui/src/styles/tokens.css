@@ -30,6 +30,14 @@
   --category-notifications: #5A817B;
   --category-newsletters: #C04F72;
   --category-promotions: #9C6E95;
+  --provider-google-yellow: #FBBC05;
+  --provider-google-red: #EA4335;
+  --provider-google-green: #34A853;
+  --provider-google-blue: #4285F4;
+  --provider-microsoft-red: #F25022;
+  --provider-microsoft-green: #7FBA00;
+  --provider-microsoft-blue: #00A4EF;
+  --provider-microsoft-yellow: #FFB900;
 }
 :root {
   --radius-sm: 6px; --radius-control: 10px; --radius: 12px; --radius-card: 16px;
@@ -68,4 +76,12 @@
   --category-notifications: #8DBDB6;
   --category-newsletters: #E58AA7;
   --category-promotions: #C9A3C2;
+  --provider-google-yellow: #FBBC05;
+  --provider-google-red: #EA4335;
+  --provider-google-green: #34A853;
+  --provider-google-blue: #4285F4;
+  --provider-microsoft-red: #F25022;
+  --provider-microsoft-green: #7FBA00;
+  --provider-microsoft-blue: #00A4EF;
+  --provider-microsoft-yellow: #FFB900;
 }
