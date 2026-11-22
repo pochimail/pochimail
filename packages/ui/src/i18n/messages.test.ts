@@ -72,6 +72,17 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
       }
   });
 
+  it("promises local processing, not storage, in the Connect privacy promise", () => {
+    expect(messages["connect.promise.local.title"].text).toBe(
+      "Your email is only processed on this {device}",
+    );
+    expect(fr["connect.promise.local.title"].text).toBe(
+      "Vos emails sont traités uniquement sur votre {device}",
+    );
+    expect(ja["connect.promise.local.title"].text).toBe("メールはこの{device}の中だけで処理します");
+    for (const catalog of catalogs)
+      expect(catalog["connect.promise.local.title"].params).toContain("device");
+  });
   it("keeps screen titles functional and never ships placeholder tokens (guards greeting titles)", () => {
     for (const catalog of catalogs) expect(catalog["overview.title"].params).toEqual([]);
     expect(messages["overview.title"].text).toBe("Overview");
