@@ -33,4 +33,28 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     for (const catalog of catalogs)
       for (const message of Object.values(catalog)) expect(message.text).not.toMatch(/\[[A-Z]\]/u);
   });
+
+  // Guards: the connect promise reverting to permission phrasing or dropping the approval guarantee.
+  it("frames the delete promise as user control in every catalog", () => {
+    expect(messages["connect.promise.delete.title"].text).toBe("You keep the control");
+    expect(fr["connect.promise.delete.title"].text).toBe("Vous gardez le contrôle");
+    expect(ja["connect.promise.delete.title"].text).toBe("主導権はあなたにあります");
+    expect(messages["connect.promise.delete.body"].text).toBe(
+      "Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo.",
+    );
+    expect(fr["connect.promise.delete.body"].text).toBe(
+      "Rien n’est supprimé sans votre accord. Les emails supprimés vont dans la corbeille, et vous pouvez annuler.",
+    );
+    expect(ja["connect.promise.delete.body"].text).toBe(
+      "ご承認なしに削除はしません。削除したメールはゴミ箱に入り、元に戻せます。",
+    );
+  });
+
+  it("explains what Notifications holds, where the mail stays and what appears later (guards a vague empty state)", () => {
+    expect(messages["category.notifications.placeholder"].text).toMatch(/app and social alerts/iu);
+    expect(messages["category.notifications.placeholder"].text).toMatch(/stay in your inbox/iu);
+    expect(messages["category.notifications.placeholder"].text).toMatch(/after that/iu);
+    expect(fr["category.notifications.placeholder"].text).toMatch(/boîte de réception/u);
+    expect(ja["category.notifications.placeholder"].text).toMatch(/受信トレイ/u);
+  });
 });

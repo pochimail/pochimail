@@ -18,7 +18,7 @@ Archiving keeps an inbox tidy but frees no mailbox space. Users want what a disk
   Signals are computed per email by the local classifier ([ADR 0016](0016-fixed-types-and-automatic-topics.md)); when the classifier is unsure, the email is protected.
 - Every deletion is logged with its inverse; **Undo restores from the Trash** while the provider still holds the message.
 - Clean up reports space you can free by deleting separately from email you can archive. Sizes come from the provider (Gmail `sizeEstimate`; the Graph size source must be verified before a figure is shown for Microsoft accounts).
-- The user-facing promise becomes: "Nothing is deleted without your OK. Deleted emails go to the Trash, and you can undo."
+- The user-facing promise becomes: "You keep the control. Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo."
 
 ## Consequences
 - "GB you can free" is a real figure again, tied to deletion only.

@@ -19,7 +19,7 @@ Pochimail is a private assistant that gives you the big picture of your email ac
 - **Autopilot**: only high-confidence, low-risk actions, then a summary with undo. Never deletes, never acts on People.
 
 ## Invariants in every mode
-- Nothing is deleted without your OK. Deleted emails go to the Trash, and you can undo.
+- You keep the control: nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo.
 - Email from real people is never selected for cleanup without approval ([ADR 0012](adr/0012-delete-moves-to-trash-with-approval.md)).
 - Every batch is previewed, every action is logged and undoable. Unsubscribe is the exception and the UI says so first ([ADR 0013](adr/0013-unsubscribe-suggested-user-decides.md)).
 
