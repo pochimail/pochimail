@@ -63,6 +63,15 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     for (const message of Object.values(messages)) expect(message.text).not.toMatch(/\bMac\b/u);
   });
 
+  // Guards: a footnote that only says what is "never cleaned" (issue #184).
+  it("says personal conversations, records and receipts are always kept and why they are absent from the clean-up list in every catalog", () => {
+    expect(messages["overview.clean.never"].text).toMatch(/always keep/u);
+    expect(messages["overview.clean.never"].text).toMatch(/clean-up list above/u);
+    expect(fr["overview.clean.never"].text).toMatch(/garde toujours/u);
+    expect(fr["overview.clean.never"].text).toMatch(/liste de nettoyage/u);
+    expect(ja["overview.clean.never"].text).toContain("必ず残");
+    expect(ja["overview.clean.never"].text).toContain("整理リスト");
+  });
   it("covers every English key with the same placeholders (guards an untranslated string)", () => {
     for (const catalog of catalogs)
       for (const key of Object.keys(messages) as (keyof typeof messages)[]) {
