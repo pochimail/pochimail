@@ -28,10 +28,21 @@ const logger = createLogger({
   },
 });
 
+// A graceful shutdown from main releases the database handle before the worker stops.
+let closeDatabase: (() => void) | undefined;
+let shuttingDown = false;
+const requestShutdown = (): void => {
+  shuttingDown = true;
+  const close = closeDatabase;
+  closeDatabase = undefined;
+  close?.();
+};
+
 // Models run in their own process; main hands this worker a new port every time that process (re)starts.
 const modelHost = createModelHostClient({ timer });
 process.parentPort.on("message", (event) => {
   const type = (event.data as { type?: unknown } | null | undefined)?.type;
+  if (type === "shutdown") requestShutdown();
   if (type === "model-host-unavailable") modelHost.markUnavailable();
   if (type !== "model-port") return;
   const port = event.ports[0];
@@ -120,6 +131,8 @@ const realHandlers = async (): Promise<Handlers> => {
     classifier: modelHost.classifier,
   });
   if (app === undefined) return unavailableHandlers;
+  closeDatabase = app.close;
+  if (shuttingDown) requestShutdown();
   return {
     procedures: { ...emptyHandlers.procedures, ...app.handlers.procedures },
     subscriptions: { ...emptyHandlers.subscriptions, ...app.handlers.subscriptions },
