@@ -44,6 +44,27 @@ describe("Mascot public behavior", () => {
     expect(html).toContain('data-slot="mascot-image"');
   });
 
+  // Guards: closed-eye poses blinking over an already-closed smile or sleeping face.
+  it("renders blink lids only for open-eye poses when animations are enabled", () => {
+    for (const pose of ["happy", "saving", "night"] as const) {
+      const html = renderMarkup(
+        <MotionProvider animations>
+          <Mascot pose={pose} />
+        </MotionProvider>,
+      );
+      expect(html).not.toContain('data-slot="mascot-lids"');
+      expect(html).not.toContain('data-slot="mascot-lid"');
+    }
+    for (const pose of ["default", "reading"] as const) {
+      const html = renderMarkup(
+        <MotionProvider animations>
+          <Mascot pose={pose} />
+        </MotionProvider>,
+      );
+      expect(html.match(/data-slot="mascot-lid"/g)).toHaveLength(2);
+    }
+  });
+
   it("guards missing found reaction by playing the squish-bounce when Pochi finds something", () => {
     const html = renderMarkup(<Mascot reaction="found" />);
     expect(html).toContain("animate-pochi-found");

@@ -24,6 +24,9 @@ const poses = {
 
 export type MascotPose = keyof typeof poses;
 
+/** Only these poses have open eyes; smiles and sleeping faces must never blink. */
+const OPEN_EYE_POSES: ReadonlySet<MascotPose> = new Set<MascotPose>(["default", "reading"]);
+
 /** Timings live in lib/motion.ts (Motion.dc.html is the source of truth). */
 export const MASCOT_BREATHING_DURATION_MS = MOTION.mascotBreathingMs;
 export const MASCOT_BLINK_DURATION_MS = MOTION.mascotBlinkMs;
@@ -91,6 +94,7 @@ function Mascot({
   const [x1, x2] = poses[pose];
   const found = reaction === "found" && animationsEnabled;
   const idle = animationsEnabled;
+  const blinking = idle && OPEN_EYE_POSES.has(pose);
 
   return (
     <span
@@ -120,7 +124,7 @@ function Mascot({
           className="block h-auto w-full"
         />
       </span>
-      {idle ? (
+      {blinking ? (
         <span
           data-slot="mascot-lids"
           aria-hidden="true"
