@@ -122,10 +122,17 @@ describe("overview", () => {
     expect(await screen.findByText("people are waiting on you")).toBeTruthy();
     expect(screen.getByText("The oldest has waited 9 days")).toBeTruthy();
     expect(screen.getByText("Unsubscribe from newsletters")).toBeTruthy();
-    expect(screen.getByText("Archive notifications")).toBeTruthy();
+    expect(screen.getByText("Archive app and social notifications")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+      ),
+    ).toBeTruthy();
     expect(screen.queryByText("Unsubscribe from promotion senders")).toBeNull();
     expect(
-      screen.getByText("Conversations with people, records and receipts are never cleaned."),
+      screen.getByText(
+        "I always keep personal conversations, records and receipts, so they never appear in the clean-up list above.",
+      ),
     ).toBeTruthy();
   });
 
@@ -225,5 +232,27 @@ describe("overview", () => {
     setup({ all: { ...empty, scanned: 40 } });
     expect(await screen.findByText("Nothing needs you right now.")).toBeTruthy();
     expect(screen.getByText("Nothing to clean up right now.")).toBeTruthy();
+  });
+
+  // Guards: both sections stay in one narrow centred column on a wide screen.
+  it("uses a capped two-column grid for the sections at desktop width", async () => {
+    setup({ all: sorted });
+    expect(await screen.findByRole("heading", { level: 1, name: "Overview" })).toBeTruthy();
+    await screen.findByText("people are waiting on you");
+
+    const main = document.querySelector("main");
+    expect(main?.className).toContain("@container");
+    expect(main?.className).toContain("max-w-5xl");
+
+    const catchSection = screen
+      .getByRole("heading", { level: 2, name: "Catch what matters" })
+      .closest("section");
+    const cleanSection = screen
+      .getByRole("heading", { level: 2, name: "Clean up" })
+      .closest("section");
+    const grid = catchSection?.parentElement;
+    expect(grid?.className).toContain("@min-desktop:grid-cols-2");
+    expect(grid).toBe(cleanSection?.parentElement);
+    expect(grid?.querySelectorAll("section")).toHaveLength(2);
   });
 });

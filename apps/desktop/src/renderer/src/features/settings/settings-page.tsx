@@ -1,4 +1,6 @@
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
+import { cn } from "@pochimail/ui/lib/utils";
+import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { LanguageDropdown, ThemeSegments } from "./appearance-controls.tsx";
 
 const ROW =
@@ -9,12 +11,11 @@ export function SettingsPage() {
   const t = useT();
 
   return (
-    <main className="mx-auto max-w-2xl px-8 pt-16">
-      <h1 className="text-4xl">{t("settings.title")}</h1>
-      <p className="mt-4 text-muted-foreground">{t("settings.description")}</p>
+    <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+      <PageHeading title={t("settings.title")} note={t("settings.description")} />
 
-      <section aria-labelledby="settings-appearance" className="mt-10 flex flex-col gap-2">
-        <h2 id="settings-appearance" className="mx-1 text-section">
+      <section aria-labelledby="settings-appearance" className="flex flex-col gap-2">
+        <h2 id="settings-appearance" className={cn("mx-1", SECTION_TITLE_CLASS)}>
           {t("settings.appearance")}
         </h2>
         <ul className="m-0 list-none rounded-2xl border border-border bg-card p-0">

@@ -22,6 +22,7 @@ import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
+import { ScanStatusProvider } from "./lib/scan-status.tsx";
 
 export type RouterContext = {
   getWorkerClient(): Promise<RpcClient>;
@@ -47,12 +48,15 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 });
 
 // Every screen after onboarding shares one frame (sidebar / rail / tabs); it never remounts between them.
-// Routes compose features: the frame renders the controls it is given, so features stay independent.
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "shell",
   component: function ShellRoute() {
-    return <AppFrame frameControls={<AppearanceControls />} pose={useShellPose()} />;
+    return (
+      <ScanStatusProvider>
+        <AppFrame pose={useShellPose()} />
+      </ScanStatusProvider>
+    );
   },
 });
 

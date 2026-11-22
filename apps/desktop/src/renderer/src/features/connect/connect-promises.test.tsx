@@ -50,7 +50,7 @@ describe("Connect promises", () => {
     const bubble = document.querySelector('[data-slot="speech-bubble-body"]');
     expect(bubble).not.toBeNull();
     expect(bubble?.contains(heading)).toBe(true);
-    expect(bubble?.textContent).toContain("Nothing is deleted without your OK");
+    expect(bubble?.textContent).toContain("You keep the control");
 
     const tail = bubble?.querySelector('[data-slot="speech-bubble-tail"]');
     expect(tail?.getAttribute("aria-hidden")).toBe("true");
@@ -65,5 +65,12 @@ describe("Connect promises", () => {
     const list = bubble?.querySelector("ul");
     expect(list?.className.split(" ")).not.toContain("border-b");
     expect(list?.querySelector("li")?.className.split(" ")).toContain("border-t");
+  });
+
+  // Guards: the Connect promise telling people Pochimail keeps their email on the Mac (issue #187).
+  it("shows the local promise as on-device processing, not storage", async () => {
+    renderConnect();
+    expect(await screen.findByText("Your email is only processed on this Mac")).toBeTruthy();
+    expect(screen.queryByText("Your email stays on this Mac")).toBeNull();
   });
 });

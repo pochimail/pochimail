@@ -1,5 +1,6 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * English is the default and the fallback. French and Japanese ship in v1 (P13, decided 2026-11-19);
@@ -75,15 +76,18 @@ export const messages = {
   "overview.clean.keep": entry("Worth keeping", []),
   "overview.clean.free": entry("Can be cleaned", []),
   "overview.clean.never": entry(
-    "Conversations with people, records and receipts are never cleaned.",
+    "I always keep personal conversations, records and receipts, so they never appear in the clean-up list above.",
     [],
   ),
   "overview.rec.newsletters.sentence": entry("Unsubscribe from newsletters", []),
   "overview.rec.newsletters.reason": entry("Regular senders you can leave", []),
   "overview.rec.promotions.sentence": entry("Unsubscribe from promotion senders", []),
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
-  "overview.rec.notifications.sentence": entry("Archive notifications", []),
-  "overview.rec.notifications.reason": entry("App and social alerts", []),
+  "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
+  "overview.rec.notifications.reason": entry(
+    "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+    [],
+  ),
   "overview.rec.signins.sentence": entry("Archive sign-in codes", []),
   "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [
@@ -119,14 +123,12 @@ export const messages = {
   "summary.reviewCount": entry("{count, plural, one {Review # email} other {Review # emails}}", [
     "count",
   ]),
-
+  "sync.progress": entry("Syncing your email", []),
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),
-
   "tray.open": entry("Open Pochimail", []),
   "tray.quit": entry("Quit Pochimail", []),
-
   "welcome.headline": entry("Clean up your email. Keep what matters.", []),
   "welcome.description": entry(
     "Pochimail is a private assistant for the email accounts you already have. It flags what needs you, clears the clutter and saves your documents. Your email never leaves this {device}.",
@@ -135,7 +137,6 @@ export const messages = {
   "welcome.cta": entry("Get started", []),
   "welcome.openSource": entry("Free and open source", []),
   "onboarding.progress": entry("Step {current} of {total}", ["current", "total"]),
-
   ...connectMessages.en,
   "setup.title": entry("Set up", []),
   "setup.description": entry("Choose how Pochi can help.", []),
@@ -214,7 +215,7 @@ export const messages = {
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Emails in this category will appear here.", []),
-
+  ...notificationMessages.en,
   "devGallery.title": entry("Dev gallery", []),
   "devGallery.description": entry("States and motion previews for development.", []),
   "devGallery.dark": entry("Dark theme", []),

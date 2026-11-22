@@ -49,7 +49,7 @@ export function OnboardingLayout({
         {/* Appearance stays reachable during onboarding. Absolute in the header's right spacer so the
             step indicator remains optically centered and the reference geometry is unchanged. */}
         {controls === undefined ? null : (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">{controls}</div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 @phone:right-8">{controls}</div>
         )}
         <ol
           aria-label={t("onboarding.progress", { current, total })}

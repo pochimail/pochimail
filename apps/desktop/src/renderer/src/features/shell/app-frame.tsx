@@ -51,19 +51,22 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react";
-import { type ComponentType, type ReactNode, useEffect } from "react";
+import { type ComponentType, useEffect } from "react";
+import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
+import { ProviderIcon } from "./provider-icon.tsx";
+import { SyncProgress } from "./sync-progress.tsx";
 import { visibleCategories } from "./visible-categories.ts";
 
 const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
-  people: { label: "category.people", icon: UserIcon },
-  records: { label: "category.records", icon: FileTextIcon },
-  "purchases-travel": { label: "category.purchasesTravel", icon: ShoppingBagIcon },
-  "sign-ins-security": { label: "category.signInsSecurity", icon: KeyRoundIcon },
-  notifications: { label: "category.notifications", icon: BellIcon },
-  newsletters: { label: "category.newsletters", icon: NewspaperIcon },
-  promotions: { label: "category.promotions", icon: TagIcon },
+  people: { label: CATEGORY_LABELS.people, icon: UserIcon },
+  records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
+  "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
+  "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
+  notifications: { label: CATEGORY_LABELS.notifications, icon: BellIcon },
+  newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
+  promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
 };
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";
@@ -128,32 +131,22 @@ function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) 
   }, [client, queryClient, key]);
 }
 
-/**
- * The frame of every screen after onboarding: sidebar, icon rail or bottom tabs by container width, with
- * the account switcher. The account selection lives in the router (`?account=`); counts follow it.
- */
-export function AppFrame({
-  frameControls,
-  pose,
-}: {
-  readonly frameControls: ReactNode;
-  /** Pochi's pose for the signed-in context, supplied by the route. */
-  readonly pose: MascotPose;
-}) {
+/** The signed-in shell: sidebar/tabs, account switcher (`?account=`) and counts. */
+export function AppFrame({ pose }: { readonly pose: MascotPose }) {
   const t = useT();
   const locale = useLocale();
   const client = useWorkerClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { account } = useSearch({ strict: false });
-
   const accounts = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: () => client.call("accounts.list"),
   });
   const accountList = accounts.data ?? [];
+  const allAccountIds = accountList.map((a) => a.id);
   const selected = accountList.some((a) => a.id === account) ? (account ?? null) : null;
-  const accountIds = selected === null ? accountList.map((a) => a.id) : [selected];
+  const accountIds = selected === null ? allAccountIds : [selected];
 
   const counts = useQuery({
     queryKey: queryKeys.categoryCounts(accountIds),
@@ -172,11 +165,20 @@ export function AppFrame({
     });
   useRefreshCategoriesWhileScanning(accountList);
 
+  const isMacDesktop = /Macintosh/.test(navigator.userAgent);
+
   return (
     <SidebarProvider>
+      <SyncProgress accountIds={allAccountIds} />
       <SidebarLayout>
         <Sidebar>
-          <SidebarHeader>
+          <SidebarHeader
+            className={
+              isMacDesktop
+                ? "pt-12 [-webkit-app-region:drag] [app-region:drag] [&_a]:[-webkit-app-region:no-drag] [&_a]:[app-region:no-drag] [&_button]:[-webkit-app-region:no-drag] [&_button]:[app-region:no-drag]"
+                : undefined
+            }
+          >
             <SidebarBrand className="flex items-center gap-2">
               <Mascot pose={pose} size="xs" className="w-8" data-hover-pochi="" />
               {t("nav.brand")}
@@ -198,6 +200,7 @@ export function AppFrame({
                   </AccountSwitcherItem>
                   {accountList.map((a) => (
                     <AccountSwitcherItem key={a.id} value={a.id}>
+                      <ProviderIcon provider={a.provider} />
                       {a.displayName}
                     </AccountSwitcherItem>
                   ))}
@@ -209,8 +212,6 @@ export function AppFrame({
                 </DropdownMenuItem>
               </AccountSwitcherContent>
             </AccountSwitcher>
-            {/* Phone top bar: the same controls as the sidebar footer, placed by container width. */}
-            <div className="flex items-center gap-1 @min-phone:hidden">{frameControls}</div>
           </SidebarHeader>
           <SidebarContent aria-label={t("nav.label")}>
             <SidebarGroup>
@@ -285,9 +286,6 @@ export function AppFrame({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
-            <div className="mt-2 border-t border-border pt-2 @max-phone:hidden">
-              {frameControls}
-            </div>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>

@@ -28,7 +28,7 @@ export const connectMessages = {
     "connect.back": { text: "Back", params: [] },
     "connect.promises.heading": { text: "My promises", params: [] },
     "connect.promise.local.title": {
-      text: "Your email stays on this {device}",
+      text: "Your email is only processed on this {device}",
       params: ["device"],
     },
     "connect.promise.local.body": {
@@ -40,9 +40,9 @@ export const connectMessages = {
       text: "Next, you choose whether I only look, suggest, or act on my own.",
       params: [],
     },
-    "connect.promise.delete.title": { text: "Nothing is deleted without your OK", params: [] },
+    "connect.promise.delete.title": { text: "You keep the control", params: [] },
     "connect.promise.delete.body": {
-      text: "Deleted emails go to the Trash, and you can undo.",
+      text: "Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo.",
       params: [],
     },
   },
@@ -86,7 +86,7 @@ export const connectMessages = {
     "connect.back": { text: "Retour", params: [] },
     "connect.promises.heading": { text: "Mes promesses", params: [] },
     "connect.promise.local.title": {
-      text: "Vos emails restent sur ce {device}",
+      text: "Vos emails sont traités uniquement sur votre {device}",
       params: ["device"],
     },
     "connect.promise.local.body": {
@@ -98,9 +98,9 @@ export const connectMessages = {
       text: "Ensuite, vous choisissez si je regarde seulement, si je propose ou si j’agis seul.",
       params: [],
     },
-    "connect.promise.delete.title": { text: "Rien n’est supprimé sans votre accord", params: [] },
+    "connect.promise.delete.title": { text: "Vous gardez le contrôle", params: [] },
     "connect.promise.delete.body": {
-      text: "Les emails supprimés vont dans la corbeille, et vous pouvez annuler.",
+      text: "Rien n’est supprimé sans votre accord. Les emails supprimés vont dans la corbeille, et vous pouvez annuler.",
       params: [],
     },
   },
@@ -141,7 +141,7 @@ export const connectMessages = {
     "connect.back": { text: "戻る", params: [] },
     "connect.promises.heading": { text: "お約束", params: [] },
     "connect.promise.local.title": {
-      text: "メールはこの{device}の中にとどまります",
+      text: "メールはこの{device}の中だけで処理します",
       params: ["device"],
     },
     "connect.promise.local.body": {
@@ -153,9 +153,9 @@ export const connectMessages = {
       text: "次に、見るだけか、提案するか、自分で動くかを選びます。",
       params: [],
     },
-    "connect.promise.delete.title": { text: "ご承認なしに削除はしません", params: [] },
+    "connect.promise.delete.title": { text: "主導権はあなたにあります", params: [] },
     "connect.promise.delete.body": {
-      text: "削除したメールはゴミ箱に入り、元に戻せます。",
+      text: "ご承認なしに削除はしません。削除したメールはゴミ箱に入り、元に戻せます。",
       params: [],
     },
   },

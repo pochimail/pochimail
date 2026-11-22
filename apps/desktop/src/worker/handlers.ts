@@ -61,6 +61,11 @@ const unwrapOrThrow = <T>(result: { ok: true; value: T } | { ok: false; error: E
 
 export function createHandlers(deps: HandlerDeps): Handlers {
   const { workspaceId } = deps;
+  // UI-only events have no domain counterpart: tell every app.events subscriber when a scan is cancelled.
+  const appEventEmitters = new Set<(event: EventOf<"app.events">) => void>();
+  const emitAppEvent = (event: EventOf<"app.events">) => {
+    for (const emit of appEventEmitters) emit(event);
+  };
   return {
     procedures: {
       "app.state": async () => {
@@ -109,7 +114,10 @@ export function createHandlers(deps: HandlerDeps): Handlers {
         unwrapOrThrow(deps.scans.resume(jobId));
       },
       "scan.cancel": ({ jobId }) => {
+        const live = deps.scans.live().find((job) => job.jobId === jobId);
         unwrapOrThrow(deps.scans.cancel(jobId));
+        if (live !== undefined)
+          emitAppEvent({ type: "ScanCancelled", accountId: live.accountId, jobId });
       },
     },
     subscriptions: {
@@ -135,6 +143,7 @@ export function createHandlers(deps: HandlerDeps): Handlers {
         };
       },
       "app.events": (_input, emit) => {
+        appEventEmitters.add(emit);
         const stops = [
           deps.events.subscribe("ActionApplied", (event) =>
             emit({ type: "ActionApplied", actionId: event.payload.actionId }),
@@ -165,6 +174,7 @@ export function createHandlers(deps: HandlerDeps): Handlers {
           ),
         ];
         return () => {
+          appEventEmitters.delete(emit);
           for (const stop of stops) stop();
         };
       },

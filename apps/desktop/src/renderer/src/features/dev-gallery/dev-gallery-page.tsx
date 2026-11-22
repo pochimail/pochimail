@@ -1,7 +1,13 @@
 import { MotionProvider } from "@pochimail/ui/components/motion-provider";
 import { Switch } from "@pochimail/ui/components/switch";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
+import { cn } from "@pochimail/ui/lib/utils";
 import { useState } from "react";
+import {
+  PAGE_MAIN_CLASS,
+  PAGE_TITLE_CLASS,
+  SECTION_TITLE_CLASS,
+} from "../../lib/screen-heading.tsx";
 import { useAppearance } from "../settings/appearance.tsx";
 import { type GalleryEntry, motionEntries, stateEntries } from "./gallery-entries.tsx";
 
@@ -15,8 +21,8 @@ function Section({
   entries: GalleryEntry[];
 }) {
   return (
-    <section aria-labelledby={`gallery-${kind}`} className="mt-10">
-      <h2 id={`gallery-${kind}`} className="font-display text-2xl">
+    <section aria-labelledby={`gallery-${kind}`}>
+      <h2 id={`gallery-${kind}`} className={SECTION_TITLE_CLASS}>
         {title}
       </h2>
       <ul className="m-0 mt-4 list-none p-0">
@@ -45,8 +51,8 @@ export function DevGalleryPage() {
 
   return (
     <MotionProvider animations={!reduceMotion}>
-      <main className="mx-auto max-w-2xl px-8 py-16">
-        <h1 className="text-4xl">{t("devGallery.title")}</h1>
+      <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+        <h1 className={PAGE_TITLE_CLASS}>{t("devGallery.title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("devGallery.description")}</p>
         <div className="mt-6 flex flex-wrap gap-8">
           <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * Japanese catalog. Polite です・ます register, natural product Japanese, no machine-literal
@@ -49,13 +50,19 @@ export const ja = {
   "overview.clean.summary": entry("{total, number}件を整理済み", ["total"]),
   "overview.clean.keep": entry("残すもの", []),
   "overview.clean.free": entry("整理できるもの", []),
-  "overview.clean.never": entry("人とのやり取り、記録、領収書は整理しません。", []),
+  "overview.clean.never": entry(
+    "人とのやり取り、記録、領収書は必ず残すので、上の整理リストには表示されません。",
+    [],
+  ),
   "overview.rec.newsletters.sentence": entry("ニュースレターの配信を停止する", []),
   "overview.rec.newsletters.reason": entry("退会できる定期配信の送信元です", []),
   "overview.rec.promotions.sentence": entry("広告メールの配信を停止する", []),
   "overview.rec.promotions.reason": entry("セールや宣伝のメールです", []),
-  "overview.rec.notifications.sentence": entry("通知をアーカイブする", []),
-  "overview.rec.notifications.reason": entry("アプリやSNSからの通知です", []),
+  "overview.rec.notifications.sentence": entry("アプリやSNSからの通知をアーカイブする", []),
+  "overview.rec.notifications.reason": entry(
+    "自動送信された通知で、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされず、削除もされません。",
+    [],
+  ),
   "overview.rec.signins.sentence": entry("ログイン用コードをアーカイブする", []),
   "overview.rec.signins.reason": entry("ワンタイムコードとログインの通知です", []),
   "overview.scan.progress": entry("{total, number}件中{processed, number}件を整理しました", [
@@ -88,6 +95,7 @@ export const ja = {
   "summary.later": entry("あとで", []),
   "summary.reviewCount": entry("メール{count}件を確認する", ["count"]),
 
+  "sync.progress": entry("メールを同期しています", []),
   "shell.loading": entry("起動しています…", []),
   "shell.error.title": entry("問題が発生しました", []),
   "shell.error.body": entry(
@@ -185,6 +193,7 @@ export const ja = {
   "category.newsletters": entry("ニュースレター", []),
   "category.promotions": entry("プロモーション", []),
   "category.placeholder": entry("このカテゴリのメールがここに表示されます。", []),
+  ...notificationMessages.ja,
 
   "devGallery.title": entry("開発ギャラリー", []),
   "devGallery.description": entry("開発用の状態とモーションのプレビューです。", []),

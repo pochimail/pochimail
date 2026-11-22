@@ -33,7 +33,10 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
   const state = {
     mailboxes: structuredClone(mailboxes),
     emit: (_e: EventOf<"app.events">) => {},
-    progress: (_e: EventOf<"scan.progress">) => {},
+    emitters: [] as ((event: EventOf<"scan.progress">) => void)[],
+    progress: (event: EventOf<"scan.progress">) => {
+      for (const emit of state.emitters) emit(event);
+    },
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
@@ -79,8 +82,10 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
         return undefined;
       },
       "scan.progress": (_input, emit) => {
-        state.progress = emit;
-        return undefined;
+        state.emitters.push(emit);
+        return () => {
+          state.emitters = state.emitters.filter((current) => current !== emit);
+        };
       },
     },
   });
@@ -121,7 +126,48 @@ describe("Pochi in the signed-in shell", () => {
   });
 });
 
+const slotClasses = (name: string): string[] => [
+  ...(document.querySelector(`[data-slot="${name}"]`)?.classList ?? []),
+];
+
+const withViewportHeight = (height: number) => {
+  const original = window.innerHeight;
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+  return () =>
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: original });
+};
+
 describe("app frame", () => {
+  it.each([560, 760])(
+    "keeps the shell inside a %ipx viewport (guards a clipped screen and sidebar)",
+    async (height) => {
+      // Guards: a shell with no definite viewport height, so the main screen or sidebar footer is cut off.
+      const restoreHeight = withViewportHeight(height);
+      try {
+        setup();
+        await sidebar();
+        // jsdom has no layout engine: the guard is the class chain that bounds both scroll containers.
+        expect(slotClasses("app-viewport")).toEqual(
+          expect.arrayContaining(["h-dvh", "min-h-0", "w-full"]),
+        );
+        expect(slotClasses("sidebar-provider")).toEqual(
+          expect.arrayContaining(["h-full", "min-h-0"]),
+        );
+        expect(slotClasses("sidebar-layout")).toEqual(
+          expect.arrayContaining(["h-full", "min-h-0"]),
+        );
+        expect(slotClasses("sidebar-content")).toEqual(
+          expect.arrayContaining(["min-h-0", "overflow-y-auto"]),
+        );
+        expect(slotClasses("sidebar-inset")).toEqual(
+          expect.arrayContaining(["min-h-0", "overflow-y-auto"]),
+        );
+      } finally {
+        restoreHeight();
+      }
+    },
+  );
+
   it("hides a category with no email and shows it once it gets mail (guards D5: empty categories listed)", async () => {
     const state = setup();
     const nav = await sidebar();
@@ -155,6 +201,26 @@ describe("app frame", () => {
     expect(screen.getByRole("main")).toBe(main);
   });
 
+  it("shows each account's provider icon beside its email, leaving All accounts unchanged (guards missing source marks)", async () => {
+    setup();
+    await sidebar();
+    await userEvent.click(screen.getByRole("button", { name: /Account: All accounts/ }));
+
+    const google = await screen.findByRole("menuitemradio", { name: "ann@example.test" });
+    const microsoft = await screen.findByRole("menuitemradio", { name: "ann@work.example.test" });
+    expect(
+      google.querySelector('[data-slot="provider-icon"][data-provider="google"]'),
+    ).not.toBeNull();
+    expect(
+      microsoft.querySelector('[data-slot="provider-icon"][data-provider="microsoft"]'),
+    ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("menuitemradio", { name: "All accounts" })
+        .querySelector("[data-slot=provider-icon]"),
+    ).toBeNull();
+  });
+
   it("marks only the current screen with aria-current (guards a wrong or missing active item)", async () => {
     setup("/documents");
     const nav = await sidebar();
@@ -178,18 +244,18 @@ describe("app frame", () => {
     const state = setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
-    await waitFor(() => expect(state.progress).not.toBe(undefined));
+    await waitFor(() => expect(state.emitters.length).toBeGreaterThan(0));
     state.mailboxes.a1 = { ...zero, people: 10, newsletters: 5, promotions: 4 };
     state.progress({ accountId: "a1", phase: "classifying", processed: 4, total: 100 });
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
   });
 
-  it("tabs through the switcher, the compact controls, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
+  it("tabs through the switcher, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
     setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
     const focused: string[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.tab();
       focused.push(
         document.activeElement?.getAttribute("aria-label") ??
@@ -198,9 +264,40 @@ describe("app frame", () => {
       );
     }
     expect(focused[0]).toMatch(/^Account:/);
-    expect(focused.slice(1, 3)).toEqual(["System", "Language"]);
-    expect(focused[3]).toBe("Overview");
-    expect(focused[4]).toMatch(/^People/);
-    expect(focused[5]).toMatch(/^Records/);
+    expect(focused[1]).toBe("Overview");
+    expect(focused[2]).toMatch(/^People/);
+    expect(focused[3]).toMatch(/^Records/);
+  });
+
+  it("keeps theme and language out of the sidebar, with the only controls on Settings (guards pickers in the frame)", async () => {
+    setup("/settings");
+    await sidebar();
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
+
+    const frame = screen.getByRole("complementary");
+    expect(within(frame).queryByRole("radiogroup", { name: "Theme" })).toBeNull();
+    expect(within(frame).queryByRole("button", { name: "Language" })).toBeNull();
+    expect(screen.getAllByRole("radiogroup", { name: "Theme" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Language" })).toHaveLength(1);
+  });
+
+  it("reserves top inset and drag region for macOS window controls (guards traffic lights overlapping sidebar content)", async () => {
+    const original = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      configurable: true,
+    });
+    try {
+      setup();
+      await sidebar();
+      const header = document.querySelector("[data-slot=sidebar-header]");
+      expect(header).not.toBeNull();
+      expect(header?.className).toContain("pt-12");
+      expect(header?.className).toContain("[-webkit-app-region:drag]");
+      expect(header?.className).toContain("[app-region:drag]");
+      expect(header?.className).toContain("[-webkit-app-region:no-drag]");
+    } finally {
+      Object.defineProperty(navigator, "userAgent", { value: original, configurable: true });
+    }
   });
 });

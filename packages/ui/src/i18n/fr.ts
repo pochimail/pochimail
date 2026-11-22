@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * French catalog. Typed against the English keys: a missing key or a renamed placeholder fails
@@ -55,16 +56,19 @@ export const fr = {
   "overview.clean.keep": entry("À garder", []),
   "overview.clean.free": entry("À nettoyer", []),
   "overview.clean.never": entry(
-    "Les conversations avec des personnes, les documents et les reçus ne sont jamais nettoyés.",
+    "Je garde toujours les conversations personnelles, les documents officiels et les reçus : c’est pourquoi ils ne figurent jamais dans la liste de nettoyage ci-dessus.",
     [],
   ),
   "overview.rec.newsletters.sentence": entry("Se désabonner des newsletters", []),
   "overview.rec.newsletters.reason": entry("Des expéditeurs réguliers que vous pouvez quitter", []),
   "overview.rec.promotions.sentence": entry("Se désabonner des promotions", []),
   "overview.rec.promotions.reason": entry("Des emails de ventes et de marketing", []),
-  "overview.rec.notifications.sentence": entry("Archiver les notifications", []),
+  "overview.rec.notifications.sentence": entry(
+    "Archiver les notifications d’applications et de réseaux sociaux",
+    [],
+  ),
   "overview.rec.notifications.reason": entry(
-    "Des alertes d’applications et de réseaux sociaux",
+    "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord, et rien n’est supprimé.",
     [],
   ),
   "overview.rec.signins.sentence": entry("Archiver les codes de connexion", []),
@@ -106,6 +110,7 @@ export const fr = {
     ["count"],
   ),
 
+  "sync.progress": entry("Synchronisation de vos emails", []),
   "shell.loading": entry("Démarrage…", []),
   "shell.error.title": entry("Un problème est survenu", []),
   "shell.error.body": entry(
@@ -215,6 +220,7 @@ export const fr = {
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Les emails de cette catégorie apparaîtront ici.", []),
+  ...notificationMessages.fr,
 
   "devGallery.title": entry("Galerie de développement", []),
   "devGallery.description": entry("Aperçus des états et des animations pour le développement.", []),
