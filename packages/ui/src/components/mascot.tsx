@@ -32,6 +32,51 @@ export const MASCOT_BREATHING_DURATION_MS = MOTION.mascotBreathingMs;
 export const MASCOT_BLINK_DURATION_MS = MOTION.mascotBlinkMs;
 export const MASCOT_FOUND_DURATION_MS = MOTION.mascotFoundMs;
 
+const idlePoses = ["glance", "nod", "tilt"] as const;
+const [firstIdlePose] = idlePoses;
+type MascotIdlePose = (typeof idlePoses)[number];
+const idlePoseClasses: Record<MascotIdlePose, string> = {
+  glance: "animate-pochi-glance",
+  nod: "animate-pochi-nod",
+  tilt: "animate-pochi-tilt",
+};
+
+/** One subtle flourish at a time, then a long randomized pause. No timers at all while disabled or hidden. */
+function useMascotIdle(enabled: boolean): MascotIdlePose | null {
+  const [pose, setPose] = React.useState<MascotIdlePose | null>(null);
+
+  React.useEffect(() => {
+    if (!enabled) {
+      setPose(null);
+      return;
+    }
+
+    let next: ReturnType<typeof setTimeout> | undefined;
+    let reset: ReturnType<typeof setTimeout> | undefined;
+
+    const schedule = () => {
+      const gap =
+        MOTION.mascotIdleMinGapMs +
+        Math.random() * (MOTION.mascotIdleMaxGapMs - MOTION.mascotIdleMinGapMs);
+      next = setTimeout(() => {
+        setPose(idlePoses[Math.floor(Math.random() * idlePoses.length)] ?? firstIdlePose);
+        reset = setTimeout(() => {
+          setPose(null);
+          schedule();
+        }, MOTION.mascotIdleMs);
+      }, gap);
+    };
+
+    schedule();
+    return () => {
+      if (next !== undefined) clearTimeout(next);
+      if (reset !== undefined) clearTimeout(reset);
+    };
+  }, [enabled]);
+
+  return pose;
+}
+
 const ShowPochiContext = React.createContext(true);
 
 /** "Show Pochi" setting. The Animations setting comes from MotionProvider (one writer); Pochi reads it through useMotionEnabled. */
@@ -78,6 +123,7 @@ function Mascot({
 }: MascotProps) {
   const showPochi = React.use(ShowPochiContext);
   const animationsEnabled = useMotionEnabled(animations);
+  const idle = useMascotIdle(animationsEnabled && show && showPochi);
 
   if (!show || !showPochi) {
     return (
@@ -93,14 +139,13 @@ function Mascot({
 
   const [x1, x2] = poses[pose];
   const found = reaction === "found" && animationsEnabled;
-  const idle = animationsEnabled;
-  const blinking = idle && OPEN_EYE_POSES.has(pose);
+  const blinking = animationsEnabled && OPEN_EYE_POSES.has(pose);
 
   return (
     <span
       data-slot="mascot"
       data-pose={pose}
-      data-animated={idle ? "true" : "false"}
+      data-animated={animationsEnabled ? "true" : "false"}
       data-reaction={found ? "found" : undefined}
       className={cn(
         mascotVariants({ size }),
@@ -112,34 +157,42 @@ function Mascot({
       {...props}
     >
       <span
-        data-slot="mascot-breathe"
-        className={cn("block", idle && "animate-pochi-breathe")}
-        style={{ transformOrigin: "50% 92%" }}
+        data-slot="mascot-idle"
+        data-idle={idle ?? undefined}
+        className={cn("relative block", idle && idlePoseClasses[idle])}
+        style={{ transformOrigin: "50% 82%" }}
       >
-        <img
-          data-slot="mascot-image"
-          src={x1}
-          srcSet={`${x1} 1x, ${x2} 2x`}
-          alt={alt}
-          className="block h-auto w-full"
-        />
-      </span>
-      {blinking ? (
+
         <span
-          data-slot="mascot-lids"
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
+          data-slot="mascot-breathe"
+          className={cn("block", animationsEnabled && "animate-pochi-breathe")}
+          style={{ transformOrigin: "50% 92%" }}
         >
-          {["35%", "58%"].map((left) => (
-            <span
-              key={left}
-              data-slot="mascot-lid"
-              className="absolute rounded-full bg-[var(--mascot-lid)]"
-              style={{ left, top: "55.9%", width: "7%", height: "11.8%" }}
-            />
-          ))}
+          <img
+            data-slot="mascot-image"
+            src={x1}
+            srcSet={`${x1} 1x, ${x2} 2x`}
+            alt={alt}
+            className="block h-auto w-full"
+          />
         </span>
-      ) : null}
+        {blinking ? (
+          <span
+            data-slot="mascot-lids"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+          >
+            {["35%", "58%"].map((left) => (
+              <span
+                key={left}
+                data-slot="mascot-lid"
+                className="absolute rounded-full bg-[var(--mascot-lid)]"
+                style={{ left, top: "55.9%", width: "7%", height: "11.8%" }}
+              />
+            ))}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
 }

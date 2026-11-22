@@ -1,6 +1,7 @@
 /**
  * Motion catalog timings (docs/design/screens/source/Motion.dc.html is the source of truth; docs/design.md › Motion catalog).
- * motion.test.ts fails when a value here stops matching that file. One easing everywhere; nothing loops except Pochi's idle breathing.
+ * motion.test.ts fails when a board-sourced value here stops matching that file. One easing everywhere; only Pochi's
+ * breathing and blink may loop. The one-shot idle flourishes are JS-triggered and live only here, not in the board.
  */
 export const MOTION = {
   /** Press, hover, checkbox ring, small feedback. */
@@ -31,6 +32,11 @@ export const MOTION = {
   mascotBreathingMs: 4200,
   mascotBlinkMs: 5300,
   mascotFoundMs: 620,
+  /** One-shot idle flourishes (glance/nod/tilt). */
+  mascotIdleMs: 800,
+  /** Infrequent, randomized gap between idle flourishes. */
+  mascotIdleMinGapMs: 9000,
+  mascotIdleMaxGapMs: 18000,
 } as const;
 
 /** Opacity-only fades (row fade, reduced-motion cross-fade). */

@@ -10,11 +10,15 @@
 @source "../";
 @source "../../../../apps/desktop/src";
 
-/* Pochi motion (docs/design/screens/source/Motion.dc.html = source of truth): breathing 4.2s, blink 5.3s, found 620ms. */
+/* Pochi motion (docs/design/screens/source/Motion.dc.html = source of truth): breathing 4.2s, blink 5.3s, found 620ms.
+   Glance/nod/tilt are one-shot idle flourishes triggered by JS at infrequent intervals; they never loop. */
 @theme {
   --animate-pochi-breathe: pochi-breathe 4.2s ease-in-out infinite;
   --animate-pochi-blink: pochi-blink 5.3s infinite;
   --animate-pochi-found: pochi-found 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pochi-glance: pochi-glance 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pochi-nod: pochi-nod 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pochi-tilt: pochi-tilt 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes pochi-breathe {
     0%, 100% { transform: scale(1, 1); }
@@ -32,6 +36,23 @@
     50% { transform: scale(0.95, 1.07) translateY(-14px); }
     75% { transform: scale(1.03, 0.97); }
     100% { transform: none; }
+  }
+
+  @keyframes pochi-glance {
+    0%, 100% { transform: translateX(0); }
+    40%, 60% { transform: translateX(2.5%); }
+  }
+
+  @keyframes pochi-nod {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    45% { transform: translateY(1.5%) rotate(1deg); }
+    75% { transform: translateY(-0.5%) rotate(-0.5deg); }
+  }
+
+  @keyframes pochi-tilt {
+    0%, 100% { transform: rotate(0deg); }
+    35% { transform: rotate(-2.5deg); }
+    70% { transform: rotate(1.5deg); }
   }
 }
 
