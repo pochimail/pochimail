@@ -134,6 +134,26 @@ describe("app frame", () => {
     expect(screen.getByRole("main")).toBe(main);
   });
 
+  it("shows each account's provider icon beside its email, leaving All accounts unchanged (guards missing source marks)", async () => {
+    setup();
+    await sidebar();
+    await userEvent.click(screen.getByRole("button", { name: /Account: All accounts/ }));
+
+    const google = await screen.findByRole("menuitemradio", { name: "ann@example.test" });
+    const microsoft = await screen.findByRole("menuitemradio", { name: "ann@work.example.test" });
+    expect(
+      google.querySelector('[data-slot="provider-icon"][data-provider="google"]'),
+    ).not.toBeNull();
+    expect(
+      microsoft.querySelector('[data-slot="provider-icon"][data-provider="microsoft"]'),
+    ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("menuitemradio", { name: "All accounts" })
+        .querySelector("[data-slot=provider-icon]"),
+    ).toBeNull();
+  });
+
   it("marks only the current screen with aria-current (guards a wrong or missing active item)", async () => {
     setup("/documents");
     const nav = await sidebar();
