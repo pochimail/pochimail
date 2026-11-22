@@ -191,6 +191,7 @@ const subscriptions = {
         accountId,
         reason: z.enum(["offline", "rate-limited", "auth-expired", "unknown"]),
       }),
+      z.object({ type: z.literal("ScanCancelled"), accountId, jobId }),
       z.object({ type: z.literal("DigestReady"), itemCount: z.number().int().nonnegative() }),
       // Required-state triggers (M4-16). M2/M3/M8 emit the real events; fixtures emit them until then.
       z.object({ type: z.literal("Offline") }),

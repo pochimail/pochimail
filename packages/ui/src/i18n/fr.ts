@@ -106,6 +106,7 @@ export const fr = {
     ["count"],
   ),
 
+  "sync.progress": entry("Synchronisation de vos emails", []),
   "shell.loading": entry("Démarrage…", []),
   "shell.error.title": entry("Un problème est survenu", []),
   "shell.error.body": entry(

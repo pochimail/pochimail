@@ -33,7 +33,10 @@ const setup = (initialPath = "/overview") => {
   const state = {
     mailboxes: structuredClone(mailboxes),
     emit: (_e: EventOf<"app.events">) => {},
-    progress: (_e: EventOf<"scan.progress">) => {},
+    emitters: [] as ((event: EventOf<"scan.progress">) => void)[],
+    progress: (event: EventOf<"scan.progress">) => {
+      for (const emit of state.emitters) emit(event);
+    },
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
@@ -78,8 +81,10 @@ const setup = (initialPath = "/overview") => {
         return undefined;
       },
       "scan.progress": (_input, emit) => {
-        state.progress = emit;
-        return undefined;
+        state.emitters.push(emit);
+        return () => {
+          state.emitters = state.emitters.filter((current) => current !== emit);
+        };
       },
     },
   });
@@ -152,7 +157,7 @@ describe("app frame", () => {
     const state = setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
-    await waitFor(() => expect(state.progress).not.toBe(undefined));
+    await waitFor(() => expect(state.emitters.length).toBeGreaterThan(0));
     state.mailboxes.a1 = { ...zero, people: 10, newsletters: 5, promotions: 4 };
     state.progress({ accountId: "a1", phase: "classifying", processed: 4, total: 100 });
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
