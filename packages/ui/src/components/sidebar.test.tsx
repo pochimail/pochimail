@@ -118,6 +118,16 @@ it("steps full sidebar, rail, edge-to-edge rail, tabs at 960/760/560 without rem
   }
 });
 
+it("insets the content panel evenly above tablet width (guards a panel stuck to the sidebar)", () => {
+  const { container } = render(<Frame />);
+  const inset = container.querySelector("[data-slot=sidebar-inset]");
+  expect(inset?.className).toContain("@min-tablet:m-2");
+  expect(inset?.className).not.toContain("ms-0");
+  expect(inset?.className).toContain("@min-tablet:rounded-2xl");
+  expect(inset?.className).toContain("@max-phone:row-start-2");
+  expect(inset?.className).toContain("overflow-y-auto");
+});
+
 it("sets aria-current only on the active item (guards a tab bar that cannot tell where you are)", () => {
   render(<Frame />);
   expect(screen.getByRole("link", { name: "Alpha" }).getAttribute("aria-current")).toBe("page");

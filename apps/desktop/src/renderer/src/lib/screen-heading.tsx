@@ -7,7 +7,7 @@ export const PAGE_TITLE_CLASS = "text-balance text-title leading-heading";
 export const SECTION_TITLE_CLASS = "text-section font-semibold";
 
 /** One inset and vertical rhythm for every screen in the shell (Scan.html / Settings.html `.main`). */
-export const PAGE_MAIN_CLASS = "mx-auto flex w-full flex-col gap-8 px-8 pt-8 pb-16";
+export const PAGE_MAIN_CLASS = "flex w-full flex-col gap-8 px-8 pt-8 pb-16";
 
 /**
  * The one h1 placement on a screen: the title first, with an optional translated note on its baseline

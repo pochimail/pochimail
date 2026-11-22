@@ -60,7 +60,7 @@ export function OverviewPage() {
     data === undefined ? { cleanable: 0, keep: 0 } : cleanSplit(data);
 
   return (
-    <main className={cn(PAGE_MAIN_CLASS, "@container max-w-5xl")}>
+    <main className={cn(PAGE_MAIN_CLASS, "@container")}>
       {scan.active ? (
         <StatusStrip
           progress={scan.percent}
