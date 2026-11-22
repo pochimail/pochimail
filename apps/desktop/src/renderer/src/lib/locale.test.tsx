@@ -22,13 +22,13 @@ function Root() {
 it("re-renders a mounted screen when the OS language changes", () => {
   const languages = vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
   render(<Root />);
-  const heading = screen.getByRole("heading");
+  const heading = screen.getByRole("heading", { level: 1 });
   expect(heading.textContent).toBe("Activity");
 
   languages.mockReturnValue(["fr-FR"]);
   act(() => {
     window.dispatchEvent(new Event("languagechange"));
   });
-  expect(screen.getByRole("heading")).toBe(heading);
+  expect(screen.getByRole("heading", { level: 1 })).toBe(heading);
   expect(heading.textContent).toBe("Activité");
 });

@@ -2,14 +2,10 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 
-/**
- * English is the default and the fallback. French and Japanese ship in v1 (P13, decided 2026-11-19);
- * every user-facing string lives in a catalog so more languages need no code changes.
- */
+/** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
 export const USER_LOCALES = ["en", "fr", "ja"] as const;
 
 export type UserLocale = (typeof USER_LOCALES)[number];
-
 /** `pseudo` is a dev-only layout probe: never user-selectable, never shipped as a choice. */
 export type Locale = UserLocale | "pseudo";
 
@@ -188,15 +184,11 @@ export const messages = {
   "setup.retry": entry("Try again", []),
   "setup.start": entry("Start sorting", []),
   "setup.error": entry("I couldn't start sorting. Please try again.", []),
-
   "documents.title": entry("Documents", []),
-
   "activity.title": entry("Activity", []),
-
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
   ...appearanceMessages.en,
-
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),
@@ -264,12 +256,21 @@ export const messages = {
     [],
   ),
   "state.emptyDocuments.title": entry("Nothing saved yet", []),
-  "state.emptyDocuments.body": entry("Documents I save for you will appear here, on this device.", []),
+  "state.emptyDocuments.body": entry(
+    "Documents I save for you will appear here, on this device.",
+    [],
+  ),
   "state.emptyCategory.title": entry("Nothing to clean here", []),
-  "state.emptyCategory.body": entry("This category is already tidy. I’ll let you know when that changes.", []),
+  "state.emptyCategory.body": entry(
+    "This category is already tidy. I’ll let you know when that changes.",
+    [],
+  ),
   "state.emptyCategory.action": entry("Back to overview", []),
   "state.nothingToDo.title": entry("All caught up", []),
-  "state.nothingToDo.body": entry("Nothing needs you right now. I’ll tell you when that changes.", []),
+  "state.nothingToDo.body": entry(
+    "Nothing needs you right now. I’ll tell you when that changes.",
+    [],
+  ),
   "state.nothingToDo.action": entry("Back to overview", []),
   "state.updateReady.title": entry("A new version is ready", []),
   "state.updateReady.body": entry(
@@ -279,9 +280,7 @@ export const messages = {
   "state.updateReady.restart": entry("Restart now", []),
   "state.updateReady.whatsNew": entry("What’s new", []),
 } as const;
-
 export type MessageKey = keyof typeof messages;
-
 /** Params are derived from the catalog entry, so a renamed placeholder breaks the call site. */
 export type MessageValues<K extends MessageKey> = {
   readonly [Param in (typeof messages)[K]["params"][number]]: string | number;
