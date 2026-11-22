@@ -260,7 +260,7 @@ describe("Connect screen", () => {
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/setup"));
   });
 
-  // Guards: the add-account exit competing with the title as a large, bordered button.
+  // Guards: the add-account exit competing with the title as a large, bordered or full-width button.
   it("add-account Back is a quiet, arrow-led control above the title and still leaves", async () => {
     const h = harness([], 1);
     const back = await screen.findByRole("button", { name: "Back" });
@@ -268,6 +268,8 @@ describe("Connect screen", () => {
     expect(title.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     expect(back.getAttribute("data-variant")).toBe("ghost");
     expect(back.getAttribute("data-size")).toBe("sm");
+    expect(back.className).toContain("self-start");
+    expect(back.className).not.toContain("w-full");
     expect(back.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     await userEvent.click(back);
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/settings"));
