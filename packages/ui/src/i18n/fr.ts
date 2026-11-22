@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * French catalog. Typed against the English keys: a missing key or a renamed placeholder fails
@@ -109,6 +110,7 @@ export const fr = {
     ["count"],
   ),
 
+  "sync.progress": entry("Synchronisation de vos emails", []),
   "shell.loading": entry("Démarrage…", []),
   "shell.error.title": entry("Un problème est survenu", []),
   "shell.error.body": entry(
@@ -218,6 +220,7 @@ export const fr = {
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Les emails de cette catégorie apparaîtront ici.", []),
+  ...notificationMessages.fr,
 
   "devGallery.title": entry("Galerie de développement", []),
   "devGallery.description": entry("Aperçus des états et des animations pour le développement.", []),

@@ -11,9 +11,9 @@ import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { cleanSplit, overviewView, RECOMMENDATION_COPY } from "./overview-figures.ts";
-import { type ScanStatus, useScanStatus } from "./use-scan-status.ts";
 
 const scanStatusLine = (scan: ScanStatus, t: T): string => {
   if (scan.paused) return t("overview.scan.paused");
@@ -58,7 +58,7 @@ export function OverviewPage() {
     data === undefined ? { cleanable: 0, keep: 0 } : cleanSplit(data);
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-8 pt-8 pb-16">
+    <main className="@container mx-auto flex max-w-5xl flex-col gap-8 px-8 pt-8 pb-16">
       {scan.active ? (
         <StatusStrip
           progress={scan.percent}
@@ -104,7 +104,7 @@ export function OverviewPage() {
         />
       )}
       {view === "content" && data !== undefined && (
-        <>
+        <div className="grid gap-8 @min-desktop:grid-cols-2 @min-desktop:gap-x-12">
           <section aria-labelledby="catch-title" className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline gap-x-3">
               <h2 id="catch-title" className="text-xl font-semibold">
@@ -209,7 +209,7 @@ export function OverviewPage() {
             )}
             <p className="text-ui text-muted-foreground">{t("overview.clean.never")}</p>
           </section>
-        </>
+        </div>
       )}
     </main>
   );

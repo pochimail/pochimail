@@ -1,5 +1,6 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
+import { notificationMessages } from "./notification-messages.ts";
 
 /**
  * English is the default and the fallback. French and Japanese ship in v1 (P13, decided 2026-11-19);
@@ -122,7 +123,7 @@ export const messages = {
   "summary.reviewCount": entry("{count, plural, one {Review # email} other {Review # emails}}", [
     "count",
   ]),
-
+  "sync.progress": entry("Syncing your email", []),
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),
@@ -217,7 +218,7 @@ export const messages = {
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Emails in this category will appear here.", []),
-
+  ...notificationMessages.en,
   "devGallery.title": entry("Dev gallery", []),
   "devGallery.description": entry("States and motion previews for development.", []),
   "devGallery.dark": entry("Dark theme", []),

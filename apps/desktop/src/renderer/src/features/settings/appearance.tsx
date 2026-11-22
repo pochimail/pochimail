@@ -87,7 +87,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }
 
-/** The saved appearance choices and their setters; the only state the frame and Settings screen share. */
+/** The saved appearance choices and their setters; the state onboarding and Settings share. */
 export function useAppearance(): Appearance {
   const value = useContext(AppearanceContext);
   if (value === undefined) throw new Error("appearance controller is not mounted");

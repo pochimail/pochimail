@@ -39,8 +39,9 @@ export type AppProps = {
 
 /**
  * Renderer application shell: providers, one appearance controller, query client, worker connection,
- * event bridge and router. Accepts injectable dependencies so behaviour can be tested through this
- * public entry point with fake IPC.
+ * event bridge and router. The viewport wrapper gives the shell a definite height, so the sidebar and
+ * main screen scroll inside it instead of being clipped at the minimum window height. Accepts injectable
+ * dependencies so behaviour can be tested through this public entry point with fake IPC.
  */
 export function App(props: AppProps = {}) {
   const osLocale = useAppLocale();
@@ -57,21 +58,23 @@ export function App(props: AppProps = {}) {
   }, [props.router, workerClient]);
 
   return (
-    <I18nProvider locale={osLocale}>
-      <AppErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <OptimisticActionProvider registry={registry}>
-            <WorkerClientProvider client={workerClient}>
-              <AppearanceProvider>
-                <AppearanceI18n>
-                  <AppShell router={router} />
-                  <Toaster />
-                </AppearanceI18n>
-              </AppearanceProvider>
-            </WorkerClientProvider>
-          </OptimisticActionProvider>
-        </QueryClientProvider>
-      </AppErrorBoundary>
-    </I18nProvider>
+    <div data-slot="app-viewport" className="h-dvh min-h-0 w-full">
+      <I18nProvider locale={osLocale}>
+        <AppErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <OptimisticActionProvider registry={registry}>
+              <WorkerClientProvider client={workerClient}>
+                <AppearanceProvider>
+                  <AppearanceI18n>
+                    <AppShell router={router} />
+                    <Toaster />
+                  </AppearanceI18n>
+                </AppearanceProvider>
+              </WorkerClientProvider>
+            </OptimisticActionProvider>
+          </QueryClientProvider>
+        </AppErrorBoundary>
+      </I18nProvider>
+    </div>
   );
 }
