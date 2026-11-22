@@ -133,4 +133,23 @@ describe("first-run redirect from app.state", () => {
     expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
     fake.close();
   });
+
+  // Guards: the controls drifting back to the screen edge while main content keeps its inset.
+  it("insets the onboarding appearance controls like the main content", async () => {
+    const fake = createFakeAppClient(false);
+    render(<App workerClient={fake.client} />);
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy());
+
+    const inset = document.querySelector('[data-slot="appearance-controls"]')?.parentElement;
+    const main = inset?.parentElement?.nextElementSibling;
+    expect(inset?.classList.contains("absolute")).toBe(true);
+    expect(inset?.classList.contains("top-1/2")).toBe(true);
+    expect(inset?.classList.contains("-translate-y-1/2")).toBe(true);
+    expect(inset?.classList.contains("right-4")).toBe(true);
+    expect(inset?.classList.contains("@phone:right-8")).toBe(true);
+    expect(main?.tagName).toBe("MAIN");
+    expect(main?.classList.contains("px-4")).toBe(true);
+    expect(main?.classList.contains("@phone:px-8")).toBe(true);
+    fake.close();
+  });
 });
