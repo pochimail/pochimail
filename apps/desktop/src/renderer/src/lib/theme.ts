@@ -1,22 +1,26 @@
 import type { Theme } from "#shared/settings.ts";
 
+const darkScheme = "(prefers-color-scheme: dark)";
+
+const prefersDark = (): boolean =>
+  typeof window.matchMedia === "function" && window.matchMedia(darkScheme).matches;
+
+/** The single synchronous writer of the root `.dark` class; safe to call inside a click handler. */
+export const applyTheme = (theme: Theme): void => {
+  document.documentElement.classList.toggle(
+    "dark",
+    theme === "dark" || (theme === "system" && prefersDark()),
+  );
+};
+
 /**
- * The only writer of the root `.dark` class. Called without an argument it mirrors the OS (its original
- * contract); with a saved preference it mirrors the OS only for "system" and pins Light/Dark otherwise.
- * The stop function lets the caller replace the listener when the preference changes.
+ * Mirrors the OS for "system" and pins Light/Dark otherwise. The stop function lets the caller replace
+ * the listener when the preference changes; applying the class is never deferred to the OS event.
  */
 export const followSystemTheme = (theme: Theme = "system"): (() => void) => {
-  const query =
-    typeof window.matchMedia === "function"
-      ? window.matchMedia("(prefers-color-scheme: dark)")
-      : undefined;
-  const apply = (): void => {
-    document.documentElement.classList.toggle(
-      "dark",
-      theme === "dark" || (theme === "system" && query?.matches === true),
-    );
-  };
-  apply();
-  query?.addEventListener("change", apply);
-  return () => query?.removeEventListener("change", apply);
+  applyTheme(theme);
+  const query = typeof window.matchMedia === "function" ? window.matchMedia(darkScheme) : undefined;
+  const onChange = (): void => applyTheme(theme);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
 };

@@ -219,3 +219,4 @@ export const WelcomeDark = {
 
 export const Connect = { render: () => <Onboarding path="/connect" /> };
 export const Setup = { render: () => <Onboarding path="/setup" /> };
+export const Settings = { render: () => <Onboarding path="/settings" /> };

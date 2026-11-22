@@ -4,9 +4,15 @@ import { createBrowserOpener } from "../shared/ipc/open-browser.ts";
 import { createSecretsClient, type ProtectionState } from "../shared/ipc/secrets.ts";
 import type { Transport } from "../shared/ipc/transport.ts";
 
-const startSchema = z.object({ type: z.literal("start"), databaseKeyHex: z.string().optional() });
+const startSchema = z.object({
+  type: z.literal("start"),
+  /** The per-user database file, chosen by main from Electron's userData (never read from the ambient environment). */
+  databasePath: z.string().min(1),
+  databaseKeyHex: z.string().optional(),
+});
 
 export type WorkerStart = {
+  readonly databasePath: string;
   /** Undefined when main could not protect a key; the worker must not open the database then. */
   databaseKey: Buffer | undefined;
   secrets: SecretStore & { protection: () => Promise<ProtectionState> };
@@ -49,6 +55,7 @@ export const acceptStart = (
     };
     port.start();
     onStart({
+      databasePath: parsed.data.databasePath,
       databaseKey:
         parsed.data.databaseKeyHex === undefined
           ? undefined

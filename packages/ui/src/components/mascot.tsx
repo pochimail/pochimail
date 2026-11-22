@@ -44,7 +44,7 @@ function MascotProvider({
 
 const mascotVariants = cva("block h-auto select-none", {
   variants: {
-    size: { sm: "w-16", md: "w-32", lg: "w-60" },
+    size: { xs: "w-10", sm: "w-16", md: "w-32", lg: "w-45" },
   },
   defaultVariants: { size: "md" },
 });
@@ -107,8 +107,6 @@ function Mascot({
       style={{ transformOrigin: found ? "50% 95%" : "50% 92%", ...style }}
       {...props}
     >
-      {/* The placeholder is a flat PNG: only breathing can play on it. Motion.dc.html's blink targets eye
-          groups in the source artwork, so scaling the whole image would squash Pochi (and is omitted here). */}
       <span
         data-slot="mascot-breathe"
         className={cn("block", idle && "animate-pochi-breathe")}
@@ -122,6 +120,22 @@ function Mascot({
           className="block h-auto w-full"
         />
       </span>
+      {idle ? (
+        <span
+          data-slot="mascot-lids"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          {["35%", "58%"].map((left) => (
+            <span
+              key={left}
+              data-slot="mascot-lid"
+              className="absolute rounded-full bg-[var(--mascot-lid)]"
+              style={{ left, top: "55.9%", width: "7%", height: "11.8%" }}
+            />
+          ))}
+        </span>
+      ) : null}
     </span>
   );
 }

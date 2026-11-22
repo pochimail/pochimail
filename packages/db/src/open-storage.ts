@@ -3,7 +3,7 @@ import { closeSync, openSync, readSync } from "node:fs";
 import { StorageError } from "@pochimail/kernel/errors";
 import { err, ok, type Result } from "@pochimail/kernel/result";
 import Database from "better-sqlite3-multiple-ciphers";
-import { loadMigrations, type Migration, migrate } from "./migrator.ts";
+import { migrate } from "./migrator.ts";
 
 /**
  * One encrypted database file: a single writer connection and a read-only one (ADR 0005).
@@ -40,10 +40,6 @@ export function exclusiveResult<T, E>(
   return storage.exclusive(fn);
 }
 
-export interface OpenStorageOptions {
-  readonly migrations?: readonly Migration[];
-}
-
 const CACHE_KIB = 32 * 1024;
 const MMAP_BYTES = 256 * 1024 * 1024;
 
@@ -71,11 +67,7 @@ function connect(path: string, key: Uint8Array, readonly: boolean): Database.Dat
  * migrates it. Wrong key, unreadable file or a newer database all come back as `StorageError`;
  * the message never carries the key or any path content beyond the failure kind.
  */
-export function openStorage(
-  path: string,
-  key: Uint8Array,
-  options: OpenStorageOptions = {},
-): Result<Storage, StorageError> {
+export function openStorage(path: string, key: Uint8Array): Result<Storage, StorageError> {
   if (key.length !== 32) return err(new StorageError("The database key must be 32 bytes"));
   let writer: Database.Database | undefined;
   let reader: Database.Database | undefined;
@@ -83,7 +75,7 @@ export function openStorage(
     writer = connect(path, key, false);
     writer.pragma("journal_mode = wal");
     writer.pragma("synchronous = normal");
-    const migrated = migrate(writer, options.migrations ?? loadMigrations());
+    const migrated = migrate(writer);
     if (!migrated.ok) {
       writer.close();
       return migrated;

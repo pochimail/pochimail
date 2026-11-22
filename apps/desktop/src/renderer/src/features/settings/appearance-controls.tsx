@@ -2,20 +2,19 @@ import { Button } from "@pochimail/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@pochimail/ui/components/dropdown-menu";
+import { RadioGroup, SegmentedRadioItem } from "@pochimail/ui/components/radio-group";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey, UserLocale } from "@pochimail/ui/i18n/messages.ts";
-import { LanguagesIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
-import type { ComponentType } from "react";
+import { cn } from "@pochimail/ui/lib/utils";
+import { ChevronDownIcon, type LucideIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { SETTINGS_LOCALES, THEMES, type Theme } from "#shared/settings.ts";
 import { useAppearance } from "./appearance.tsx";
 
-const THEME_ICONS: Record<Theme, ComponentType> = {
+const THEME_ICONS: Record<Theme, LucideIcon> = {
   system: MonitorIcon,
   light: SunIcon,
   dark: MoonIcon,
@@ -26,111 +25,83 @@ const LOCALE_LABELS: Record<UserLocale, MessageKey> = {
   ja: "appearance.locale.ja",
 };
 
-/** Menus are shared by the frame's icon buttons and the labeled Settings row: one way to choose. */
-function ThemeChoices() {
+// Settings.html's Theme control: 3px inset, 2px gaps, control-radius group, 30px text choices.
+// No popover and no menu — the choices are always visible and clickable. Radii use theme tokens.
+const GROUP = "flex shrink-0 gap-0.5 rounded-md bg-muted p-0.75";
+
+/** Theme choices, shared by the compact frame control and the labeled Settings row. */
+export function ThemeSegments({ compact = false }: { compact?: boolean }) {
   const { theme, selectTheme } = useAppearance();
   const t = useT();
   return (
-    <DropdownMenuRadioGroup
+    <RadioGroup
       value={theme}
+      aria-label={t("appearance.theme")}
       onValueChange={(value) => {
         const next = THEMES.find((item) => item === value);
         if (next !== undefined) void selectTheme(next);
       }}
+      className={GROUP}
     >
-      {THEMES.map((value) => (
-        <DropdownMenuRadioItem key={value} value={value}>
-          {t(`appearance.theme.${value}`)}
-        </DropdownMenuRadioItem>
-      ))}
-    </DropdownMenuRadioGroup>
+      {THEMES.map((value) => {
+        const label = t(`appearance.theme.${value}`);
+        const Icon = THEME_ICONS[value];
+        return (
+          <SegmentedRadioItem
+            key={value}
+            value={value}
+            aria-label={label}
+            title={label}
+            className={cn(compact && "px-2")}
+          >
+            {compact ? <Icon aria-hidden="true" className="size-3.5" /> : label}
+          </SegmentedRadioItem>
+        );
+      })}
+    </RadioGroup>
   );
 }
 
-function LanguageChoices() {
+/**
+ * Language choices: one compact trigger showing the current locale, with a menu of the shipped
+ * locales. Shared by the frame and the Settings row so there is a single way to choose a language.
+ */
+export function LanguageDropdown() {
   const { locale, selectLocale } = useAppearance();
-  const t = useT();
-  return (
-    <DropdownMenuRadioGroup
-      value={locale}
-      onValueChange={(value) => {
-        const next = SETTINGS_LOCALES.find((item) => item === value);
-        if (next !== undefined) void selectLocale(next);
-      }}
-    >
-      {SETTINGS_LOCALES.map((value) => (
-        <DropdownMenuRadioItem key={value} value={value}>
-          {t(LOCALE_LABELS[value])}
-        </DropdownMenuRadioItem>
-      ))}
-    </DropdownMenuRadioGroup>
-  );
-}
-
-function ThemeButton() {
-  const { theme } = useAppearance();
-  const t = useT();
-  const Icon = THEME_ICONS[theme];
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={t("appearance.theme")}>
-          <Icon aria-hidden="true" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{t("appearance.theme")}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <ThemeChoices />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function LanguageButton() {
-  const t = useT();
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={t("appearance.language")}>
-          <LanguagesIcon aria-hidden="true" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{t("appearance.language")}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <LanguageChoices />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** Compact theme and language controls for the app frame: icon buttons, real menus, visible focus. */
-export function AppearanceControls() {
-  return (
-    <div data-slot="appearance-controls" className="flex items-center gap-1">
-      <ThemeButton />
-      <LanguageButton />
-    </div>
-  );
-}
-
-/** The Settings row's labeled language control; shares the same menu and controller as the icon button. */
-export function LanguageSelect() {
-  const { locale } = useAppearance();
   const t = useT();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="secondary" size="sm" aria-label={t("appearance.language")}>
           {t(LOCALE_LABELS[locale])}
+          <ChevronDownIcon aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{t("appearance.language")}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <LanguageChoices />
+        <DropdownMenuRadioGroup
+          value={locale}
+          onValueChange={(value) => {
+            const next = SETTINGS_LOCALES.find((item) => item === value);
+            if (next !== undefined) void selectLocale(next);
+          }}
+        >
+          {SETTINGS_LOCALES.map((value) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {t(LOCALE_LABELS[value])}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Compact theme segments and the language dropdown for the frame and onboarding header. */
+export function AppearanceControls() {
+  return (
+    <div data-slot="appearance-controls" className="flex items-center gap-1.5">
+      <ThemeSegments compact />
+      <LanguageDropdown />
+    </div>
   );
 }

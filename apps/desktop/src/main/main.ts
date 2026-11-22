@@ -21,6 +21,7 @@ import {
   utilityProcess,
 } from "electron";
 import { demoScale } from "../shared/demo.ts";
+import { databasePathFor } from "./database-path.ts";
 import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
@@ -77,8 +78,6 @@ const logger = createLogger({
       ),
   },
 });
-const DATABASE_FILE = "pochimail.db";
-
 // One vault per process: every window's worker shares its write queue, so concurrent updates never lose an entry.
 let secretVault: SecretVault | undefined;
 const processSecretVault = (): SecretVault => {
@@ -114,10 +113,9 @@ const demoEnv: Record<string, string> = {
   POCHIMAIL_DEMO: demo ?? "",
 };
 
-// The worker alone gets the sign-in configuration and the database location; the secret is read only in the token call.
+// The worker alone gets the sign-in configuration; the database path travels in its start message.
 const workerEnv = (): Record<string, string> => ({
   ...demoEnv,
-  POCHIMAIL_DATABASE_PATH: join(app.getPath("userData"), DATABASE_FILE),
   ...Object.fromEntries(
     ["POCHIMAIL_GOOGLE_CLIENT_ID", "POCHIMAIL_GOOGLE_CLIENT_SECRET"].flatMap((name) => {
       const value = process.env[name];
@@ -150,15 +148,17 @@ const connectWorker = (window: BrowserWindow): void => {
   });
   linkWorkerOnEveryLoad(window.webContents, worker, () => new MessageChannelMain());
   const userData = app.getPath("userData");
+  const databasePath = databasePathFor(userData);
   void bootWorker({
     worker,
     secrets: processSecretVault(),
+    databasePath,
     loadKey: () =>
       loadOrCreateDatabaseKey(
         safeStorage,
         join(userData, "db.key"),
         process.platform,
-        join(userData, DATABASE_FILE),
+        databasePath,
       ),
     createChannel: () => new MessageChannelMain(),
     // Sign-in consent opens in the user's browser, never in an app window (ADR 0007).

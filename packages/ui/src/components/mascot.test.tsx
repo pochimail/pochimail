@@ -32,14 +32,15 @@ describe("Mascot public behavior", () => {
     expect(html).not.toContain("animate-pochi-found");
   });
 
-  it("guards whole-image blink that squashes the flat placeholder PNG", () => {
+  it("blinks with eye lids instead of squashing the flat placeholder PNG", () => {
     const html = renderMarkup(
       <MotionProvider animations>
         <Mascot pose="default" />
       </MotionProvider>,
     );
+    // The board's blink scales eye groups, never the whole flat image.
     expect(html).not.toContain("animate-pochi-blink");
-    expect(html).not.toContain('data-slot="mascot-blink"');
+    expect(html.match(/data-slot="mascot-lid"/g)).toHaveLength(2);
     expect(html).toContain('data-slot="mascot-image"');
   });
 
@@ -75,6 +76,7 @@ describe("Mascot public behavior", () => {
     try {
       const html = renderMarkup(<Mascot pose="default" />);
       expect(html).not.toMatch(/animate-pochi-(breathe|blink|found)/);
+      expect(html).not.toContain('data-slot="mascot-lid"');
       expect(html).toContain('data-animated="false"');
     } finally {
       window.matchMedia = original;

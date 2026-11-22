@@ -109,12 +109,10 @@ const withDemoConnect = (demo: Handlers): Handlers => ({
   },
 });
 
-/** The real app over the empty answers; with no database key they stay empty. */
+/** The real app over the empty answers; with no database key or an unopenable file they stay empty. */
 const realHandlers = async (): Promise<Handlers> => {
-  const databasePath = process.env.POCHIMAIL_DATABASE_PATH;
-  if (databasePath === undefined) return unavailableHandlers;
-  const app = createAccountsRuntime(await started, {
-    databasePath,
+  const start = await started;
+  const app = createAccountsRuntime(start, {
     env: process.env,
     timer,
     logger,
