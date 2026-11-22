@@ -127,10 +127,8 @@ export const messages = {
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),
-
   "tray.open": entry("Open Pochimail", []),
   "tray.quit": entry("Quit Pochimail", []),
-
   "welcome.headline": entry("Clean up your email. Keep what matters.", []),
   "welcome.description": entry(
     "Pochimail is a private assistant for the email accounts you already have. It flags what needs you, clears the clutter and saves your documents. Your email never leaves this {device}.",
@@ -139,7 +137,6 @@ export const messages = {
   "welcome.cta": entry("Get started", []),
   "welcome.openSource": entry("Free and open source", []),
   "onboarding.progress": entry("Step {current} of {total}", ["current", "total"]),
-
   ...connectMessages.en,
   "setup.title": entry("Set up", []),
   "setup.description": entry("Choose how Pochi can help.", []),
