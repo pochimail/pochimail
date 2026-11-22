@@ -51,6 +51,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
+import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ProviderIcon } from "./provider-icon.tsx";
@@ -58,13 +59,13 @@ import { SyncProgress } from "./sync-progress.tsx";
 import { visibleCategories } from "./visible-categories.ts";
 
 const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
-  people: { label: "category.people", icon: UserIcon },
-  records: { label: "category.records", icon: FileTextIcon },
-  "purchases-travel": { label: "category.purchasesTravel", icon: ShoppingBagIcon },
-  "sign-ins-security": { label: "category.signInsSecurity", icon: KeyRoundIcon },
-  notifications: { label: "category.notifications", icon: BellIcon },
-  newsletters: { label: "category.newsletters", icon: NewspaperIcon },
-  promotions: { label: "category.promotions", icon: TagIcon },
+  people: { label: CATEGORY_LABELS.people, icon: UserIcon },
+  records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
+  "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
+  "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
+  notifications: { label: CATEGORY_LABELS.notifications, icon: BellIcon },
+  newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
+  promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
 };
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";

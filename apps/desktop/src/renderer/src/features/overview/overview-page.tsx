@@ -8,10 +8,12 @@ import { StatusStrip } from "@pochimail/ui/components/status-strip";
 import { StorageBar } from "@pochimail/ui/components/storage-bar";
 import { type T, useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
+import { cn } from "@pochimail/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
+import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { cleanSplit, overviewView, RECOMMENDATION_COPY } from "./overview-figures.ts";
 
@@ -58,7 +60,7 @@ export function OverviewPage() {
     data === undefined ? { cleanable: 0, keep: 0 } : cleanSplit(data);
 
   return (
-    <main className="@container mx-auto flex max-w-5xl flex-col gap-8 px-8 pt-8 pb-16">
+    <main className={cn(PAGE_MAIN_CLASS, "@container max-w-5xl")}>
       {scan.active ? (
         <StatusStrip
           progress={scan.percent}
@@ -71,14 +73,10 @@ export function OverviewPage() {
         </StatusStrip>
       ) : null}
 
-      <header className="flex flex-wrap items-baseline gap-x-4">
-        <h1 className="text-4xl">{t("overview.title")}</h1>
-        {accounts.data ? (
-          <span className="text-muted-foreground">
-            {t("overview.accounts", { count: scopedAccounts.length })}
-          </span>
-        ) : null}
-      </header>
+      <PageHeading
+        title={t("overview.title")}
+        note={accounts.data ? t("overview.accounts", { count: scopedAccounts.length }) : undefined}
+      />
 
       {view === "loading" && (
         <div role="status" aria-label={t("overview.loading")} className="flex flex-col gap-3">
@@ -107,7 +105,7 @@ export function OverviewPage() {
         <div className="grid gap-8 @min-desktop:grid-cols-2 @min-desktop:gap-x-12">
           <section aria-labelledby="catch-title" className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline gap-x-3">
-              <h2 id="catch-title" className="text-xl font-semibold">
+              <h2 id="catch-title" className={SECTION_TITLE_CLASS}>
                 {t("overview.catch.title")}
               </h2>
               <span className="text-ui text-muted-foreground">{t("overview.catch.note")}</span>
@@ -153,7 +151,7 @@ export function OverviewPage() {
 
           <section aria-labelledby="clean-title" className="flex flex-col gap-4">
             <div className="flex flex-wrap items-baseline gap-x-3">
-              <h2 id="clean-title" className="text-xl font-semibold">
+              <h2 id="clean-title" className={SECTION_TITLE_CLASS}>
                 {t("overview.clean.title")}
               </h2>
               <span className="text-ui text-muted-foreground">{t("overview.clean.note")}</span>

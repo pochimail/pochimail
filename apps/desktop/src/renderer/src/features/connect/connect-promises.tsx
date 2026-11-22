@@ -1,6 +1,8 @@
 import { Mascot } from "@pochimail/ui/components/mascot";
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
+import { cn } from "@pochimail/ui/lib/utils";
+import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 
 const PROMISES = ["local", "control", "delete"] as const;
 
@@ -24,7 +26,7 @@ export function ConnectPromises({ device }: { device: string }) {
             data-slot="speech-bubble-tail"
             className="absolute top-5 -left-1.5 size-2.75 rotate-45 bg-card shadow-[-1px_1px_0_var(--border)]"
           />
-          <h2 id="connect-promises" className="m-0 font-sans text-section font-semibold">
+          <h2 id="connect-promises" className={cn("m-0 font-sans", SECTION_TITLE_CLASS)}>
             {t("connect.promises.heading")}
           </h2>
           <ul className="m-0 mt-1.5 list-none p-0">
