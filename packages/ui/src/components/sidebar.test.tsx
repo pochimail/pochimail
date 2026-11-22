@@ -9,6 +9,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarInset,
   SidebarLayout,
@@ -132,6 +133,36 @@ it("shows the item name as a tooltip only in the rail (guards an icon-only rail 
   resizeTo(859);
   await userEvent.hover(screen.getByRole("link", { name: "Beta" }));
   expect((await screen.findByRole("tooltip")).textContent).toBe("Beta");
+});
+
+it("keeps the sidebar and its header/footer inside their column at every width (guards a wide control spilling over the rail)", () => {
+  const { container } = render(
+    <SidebarProvider>
+      <SidebarLayout>
+        <Sidebar>
+          <SidebarHeader>
+            <button type="button">Wide header control</button>
+          </SidebarHeader>
+          <SidebarContent aria-label="Main" />
+          <SidebarFooter>
+            <button type="button">Wide footer control</button>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+          <main>content</main>
+        </SidebarInset>
+      </SidebarLayout>
+    </SidebarProvider>,
+  );
+  const part = (slot: string) => container.querySelector(`[data-slot="${slot}"]`);
+  for (const slot of ["sidebar", "sidebar-header", "sidebar-footer"])
+    expect(part(slot)?.className, slot).toContain("min-w-0");
+  for (const slot of ["sidebar-header", "sidebar-footer"])
+    expect(part(slot)?.className, slot).toContain("shrink-0");
+
+  resizeTo(600);
+  expect(part("sidebar-provider")?.getAttribute("data-layout")).toBe("compact");
+  expect(part("sidebar")?.className).toContain("min-w-0");
 });
 
 it("reports the account id and All accounts from the composed switcher (guards a switcher that cannot go back to all)", async () => {

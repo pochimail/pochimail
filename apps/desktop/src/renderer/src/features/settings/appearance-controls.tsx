@@ -27,7 +27,7 @@ const LOCALE_LABELS: Record<UserLocale, MessageKey> = {
 
 // Settings.html's Theme control: 3px inset, 2px gaps, control-radius group, 30px text choices.
 // No popover and no menu — the choices are always visible and clickable. Radii use theme tokens.
-const GROUP = "flex shrink-0 gap-0.5 rounded-md bg-muted p-0.75";
+const GROUP = "flex max-w-full flex-wrap gap-0.5 rounded-md bg-muted p-0.75";
 
 /** Theme choices, shared by the compact frame control and the labeled Settings row. */
 export function ThemeSegments({ compact = false }: { compact?: boolean }) {
@@ -72,8 +72,13 @@ export function LanguageDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" aria-label={t("appearance.language")}>
-          {t(LOCALE_LABELS[locale])}
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={t("appearance.language")}
+          className="min-w-0 max-w-full shrink gap-1"
+        >
+          <span className="min-w-0 truncate">{t(LOCALE_LABELS[locale])}</span>
           <ChevronDownIcon aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
@@ -99,7 +104,10 @@ export function LanguageDropdown() {
 /** Compact theme segments and the language dropdown for the frame and onboarding header. */
 export function AppearanceControls() {
   return (
-    <div data-slot="appearance-controls" className="flex items-center gap-1.5">
+    <div
+      data-slot="appearance-controls"
+      className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5"
+    >
       <ThemeSegments compact />
       <LanguageDropdown />
     </div>

@@ -81,7 +81,7 @@ function Sidebar({ className, ...props }: React.ComponentProps<"aside">) {
     <aside
       data-slot="sidebar"
       className={cn(
-        "flex min-h-0 flex-col bg-sidebar text-sidebar-foreground border-e border-border @max-phone:contents",
+        "flex min-h-0 min-w-0 flex-col bg-sidebar text-sidebar-foreground border-e border-border @max-phone:contents",
         className,
       )}
       {...props}
@@ -94,7 +94,7 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       className={cn(
-        "flex flex-col gap-3 p-3 @max-phone:row-start-1 @max-phone:flex-row @max-phone:items-center @max-phone:justify-between @max-phone:border-b @max-phone:border-border @max-phone:bg-sidebar",
+        "flex min-w-0 shrink-0 flex-col gap-3 p-3 @max-phone:row-start-1 @max-phone:flex-row @max-phone:items-center @max-phone:justify-between @max-phone:border-b @max-phone:border-border @max-phone:bg-sidebar",
         className,
       )}
       {...props}
@@ -129,7 +129,11 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"nav">) {
 
 function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="sidebar-footer" className={cn("p-3 @max-phone:hidden", className)} {...props} />
+    <div
+      data-slot="sidebar-footer"
+      className={cn("min-w-0 shrink-0 p-3 @max-phone:hidden", className)}
+      {...props}
+    />
   );
 }
 

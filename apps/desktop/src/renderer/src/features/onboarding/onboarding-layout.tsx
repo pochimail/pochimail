@@ -38,12 +38,10 @@ export function OnboardingLayout({ controls }: { controls?: ReactNode }) {
 
   return (
     <div className="@container flex min-h-screen flex-col">
-      <header className="relative flex h-11 items-center justify-center">
-        {/* Appearance stays reachable during onboarding. Absolute in the header's right spacer so the
-            step indicator remains optically centered and the reference geometry is unchanged. */}
-        {controls === undefined ? null : (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">{controls}</div>
-        )}
+      {/* Three columns keep the step indicator centred while controls occupy the right spacer; below the
+          narrow breakpoint the two rows stack, so neither can ever overlay the other. */}
+      <header className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-4 @max-narrow:flex @max-narrow:flex-col @max-narrow:justify-center @max-narrow:gap-1.5 @max-narrow:py-2">
+        <span aria-hidden="true" />
         <ol
           aria-label={t("onboarding.progress", { current, total })}
           className="m-0 flex list-none items-center gap-1.5 p-0"
@@ -59,6 +57,16 @@ export function OnboardingLayout({ controls }: { controls?: ReactNode }) {
             />
           ))}
         </ol>
+        {controls === undefined ? (
+          <span aria-hidden="true" />
+        ) : (
+          <div
+            data-slot="onboarding-controls"
+            className="min-w-0 max-w-full justify-self-end @max-narrow:justify-self-center"
+          >
+            {controls}
+          </div>
+        )}
       </header>
       <main
         className={cn(
