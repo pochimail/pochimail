@@ -33,4 +33,12 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     for (const catalog of catalogs)
       for (const message of Object.values(catalog)) expect(message.text).not.toMatch(/\[[A-Z]\]/u);
   });
+
+  it("explains what Notifications holds, where the mail stays and what appears later (guards a vague empty state)", () => {
+    expect(messages["category.notifications.placeholder"].text).toMatch(/app and social alerts/iu);
+    expect(messages["category.notifications.placeholder"].text).toMatch(/stay in your inbox/iu);
+    expect(messages["category.notifications.placeholder"].text).toMatch(/after that/iu);
+    expect(fr["category.notifications.placeholder"].text).toMatch(/boîte de réception/u);
+    expect(ja["category.notifications.placeholder"].text).toMatch(/受信トレイ/u);
+  });
 });
