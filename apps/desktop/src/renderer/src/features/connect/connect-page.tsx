@@ -3,7 +3,7 @@ import type { MascotPose } from "@pochimail/ui/components/mascot";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronRightIcon } from "lucide-react";
+import { ArrowLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { OutputOf } from "#shared/ipc/contract.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { PAGE_TITLE_CLASS } from "../../lib/screen-heading.tsx";
@@ -160,6 +160,12 @@ export function ConnectPage({ pose }: { pose: MascotPose }) {
   return (
     <div className="flex w-full flex-wrap items-center justify-center gap-16">
       <div className="flex flex-1 basis-85 flex-col gap-4 text-left">
+        {addingAccount && !waiting && key === undefined ? (
+          <Button variant="ghost" size="sm" onClick={leave}>
+            <ArrowLeftIcon aria-hidden="true" />
+            {t("connect.back")}
+          </Button>
+        ) : null}
         <h1 className={PAGE_TITLE_CLASS}>{t("connect.title")}</h1>
         <p className="text-body leading-relaxed text-muted-foreground">
           {t("connect.description")}
@@ -172,11 +178,6 @@ export function ConnectPage({ pose }: { pose: MascotPose }) {
         )}
         {key !== undefined && <ProblemState problem={key} onRetry={retry} onBack={back} />}
         {!waiting && key === undefined && <SignInState onStart={retry} />}
-        {addingAccount && !waiting && key === undefined ? (
-          <Button variant="secondary" size="lg" onClick={leave}>
-            {t("connect.back")}
-          </Button>
-        ) : null}
       </div>
       <ConnectPromises device={deviceName.data ?? "device"} pose={mascotPose} />
     </div>

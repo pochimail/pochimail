@@ -260,6 +260,19 @@ describe("Connect screen", () => {
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/setup"));
   });
 
+  // Guards: the add-account exit competing with the title as a large, bordered button.
+  it("add-account Back is a quiet, arrow-led control above the title and still leaves", async () => {
+    const h = harness([], 1);
+    const back = await screen.findByRole("button", { name: "Back" });
+    const title = screen.getByRole("heading", { name: "Connect an email account" });
+    expect(title.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(back.getAttribute("data-variant")).toBe("ghost");
+    expect(back.getAttribute("data-size")).toBe("sm");
+    expect(back.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    await userEvent.click(back);
+    await waitFor(() => expect(h.router.state.location.pathname).toBe("/settings"));
+  });
+
   // Guards: the add-account redirect losing the app frame and leaving no way back to Settings.
   it("Back from the add-account redirect returns through history to the previous screen", async () => {
     const h = harness([], 1, false, false, false, ["/settings"]);
