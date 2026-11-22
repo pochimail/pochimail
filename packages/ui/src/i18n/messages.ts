@@ -29,6 +29,7 @@ export const entry = <const Params extends readonly string[]>(text: string, para
 export const messages = {
   "action.close": entry("Close", []),
   "action.undo": entry("Undo", []),
+  "action.backToOverview": entry("Back to overview", []),
   "overview.title": entry("Overview", []),
   "overview.privacy": entry("Everything stays on this device. Nothing is sent anywhere.", []),
   "overview.promise.device": entry("Your email never leaves this {device}.", ["device"]),
@@ -189,10 +190,8 @@ export const messages = {
   "setup.error": entry("I couldn't start sorting. Please try again.", []),
 
   "documents.title": entry("Documents", []),
-  "documents.description": entry("Saved documents will appear here.", []),
 
   "activity.title": entry("Activity", []),
-  "activity.description": entry("Recent actions and undo history will appear here.", []),
 
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
@@ -259,17 +258,18 @@ export const messages = {
     ["provider", "minutes"],
   ),
   "state.rateLimit.dismiss": entry("Got it", []),
-  "state.emptyCategory.title": entry("Nothing to clean here", []),
-  "state.emptyCategory.body": entry(
-    "This category is already tidy. I’ll let you know when that changes.",
+  "state.emptyActivity.title": entry("Nothing yet", []),
+  "state.emptyActivity.body": entry(
+    "When I archive, delete or unsubscribe for you, it shows up here with an Undo where one is possible.",
     [],
   ),
+  "state.emptyDocuments.title": entry("Nothing saved yet", []),
+  "state.emptyDocuments.body": entry("Documents I save for you will appear here, on this device.", []),
+  "state.emptyCategory.title": entry("Nothing to clean here", []),
+  "state.emptyCategory.body": entry("This category is already tidy. I’ll let you know when that changes.", []),
   "state.emptyCategory.action": entry("Back to overview", []),
   "state.nothingToDo.title": entry("All caught up", []),
-  "state.nothingToDo.body": entry(
-    "Nothing needs you right now. I’ll tell you when that changes.",
-    [],
-  ),
+  "state.nothingToDo.body": entry("Nothing needs you right now. I’ll tell you when that changes.", []),
   "state.nothingToDo.action": entry("Back to overview", []),
   "state.updateReady.title": entry("A new version is ready", []),
   "state.updateReady.body": entry(
