@@ -29,7 +29,7 @@ const LOCALE_LABELS: Record<UserLocale, MessageKey> = {
 // No popover and no menu — the choices are always visible and clickable. Radii use theme tokens.
 const GROUP = "flex shrink-0 gap-0.5 rounded-md bg-muted p-0.75";
 
-/** Theme choices, shared by the compact frame control and the labeled Settings row. */
+/** Theme choices, shared by the compact onboarding control and the labeled Settings row. */
 export function ThemeSegments({ compact = false }: { compact?: boolean }) {
   const { theme, selectTheme } = useAppearance();
   const t = useT();
@@ -64,7 +64,7 @@ export function ThemeSegments({ compact = false }: { compact?: boolean }) {
 
 /**
  * Language choices: one compact trigger showing the current locale, with a menu of the shipped
- * locales. Shared by the frame and the Settings row so there is a single way to choose a language.
+ * locales. Shared by the onboarding header and the Settings row so there is one way to choose a language.
  */
 export function LanguageDropdown() {
   const { locale, selectLocale } = useAppearance();
@@ -96,7 +96,7 @@ export function LanguageDropdown() {
   );
 }
 
-/** Compact theme segments and the language dropdown for the frame and onboarding header. */
+/** Compact theme segments and the language dropdown for the sidebar-less onboarding header. */
 export function AppearanceControls() {
   return (
     <div data-slot="appearance-controls" className="flex items-center gap-1.5">

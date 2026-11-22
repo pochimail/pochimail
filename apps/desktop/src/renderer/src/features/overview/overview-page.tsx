@@ -58,7 +58,7 @@ export function OverviewPage() {
     data === undefined ? { cleanable: 0, keep: 0 } : cleanSplit(data);
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-8 pt-8 pb-16">
+    <main className="@container mx-auto flex max-w-5xl flex-col gap-8 px-8 pt-8 pb-16">
       {scan.active ? (
         <StatusStrip
           progress={scan.percent}
@@ -104,7 +104,7 @@ export function OverviewPage() {
         />
       )}
       {view === "content" && data !== undefined && (
-        <>
+        <div className="grid gap-8 @min-desktop:grid-cols-2 @min-desktop:gap-x-12">
           <section aria-labelledby="catch-title" className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline gap-x-3">
               <h2 id="catch-title" className="text-xl font-semibold">
@@ -209,7 +209,7 @@ export function OverviewPage() {
             )}
             <p className="text-ui text-muted-foreground">{t("overview.clean.never")}</p>
           </section>
-        </>
+        </div>
       )}
     </main>
   );

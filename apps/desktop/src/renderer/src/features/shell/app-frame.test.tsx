@@ -163,12 +163,12 @@ describe("app frame", () => {
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
   });
 
-  it("tabs through the switcher, the compact controls, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
+  it("tabs through the switcher, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
     setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
     const focused: string[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       await userEvent.tab();
       focused.push(
         document.activeElement?.getAttribute("aria-label") ??
@@ -177,9 +177,40 @@ describe("app frame", () => {
       );
     }
     expect(focused[0]).toMatch(/^Account:/);
-    expect(focused.slice(1, 3)).toEqual(["System", "Language"]);
-    expect(focused[3]).toBe("Overview");
-    expect(focused[4]).toMatch(/^People/);
-    expect(focused[5]).toMatch(/^Records/);
+    expect(focused[1]).toBe("Overview");
+    expect(focused[2]).toMatch(/^People/);
+    expect(focused[3]).toMatch(/^Records/);
+  });
+
+  it("keeps theme and language out of the sidebar, with the only controls on Settings (guards pickers in the frame)", async () => {
+    setup("/settings");
+    await sidebar();
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
+
+    const frame = screen.getByRole("complementary");
+    expect(within(frame).queryByRole("radiogroup", { name: "Theme" })).toBeNull();
+    expect(within(frame).queryByRole("button", { name: "Language" })).toBeNull();
+    expect(screen.getAllByRole("radiogroup", { name: "Theme" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Language" })).toHaveLength(1);
+  });
+
+  it("reserves top inset and drag region for macOS window controls (guards traffic lights overlapping sidebar content)", async () => {
+    const original = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      configurable: true,
+    });
+    try {
+      setup();
+      await sidebar();
+      const header = document.querySelector("[data-slot=sidebar-header]");
+      expect(header).not.toBeNull();
+      expect(header?.className).toContain("pt-12");
+      expect(header?.className).toContain("[-webkit-app-region:drag]");
+      expect(header?.className).toContain("[app-region:drag]");
+      expect(header?.className).toContain("[-webkit-app-region:no-drag]");
+    } finally {
+      Object.defineProperty(navigator, "userAgent", { value: original, configurable: true });
+    }
   });
 });

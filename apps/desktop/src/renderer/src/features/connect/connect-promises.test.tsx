@@ -50,7 +50,7 @@ describe("Connect promises", () => {
     const bubble = document.querySelector('[data-slot="speech-bubble-body"]');
     expect(bubble).not.toBeNull();
     expect(bubble?.contains(heading)).toBe(true);
-    expect(bubble?.textContent).toContain("Nothing is deleted without your OK");
+    expect(bubble?.textContent).toContain("You keep the control");
 
     const tail = bubble?.querySelector('[data-slot="speech-bubble-tail"]');
     expect(tail?.getAttribute("aria-hidden")).toBe("true");
