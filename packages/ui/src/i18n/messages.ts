@@ -120,7 +120,6 @@ export const messages = {
   "summary.reviewCount": entry("{count, plural, one {Review # email} other {Review # emails}}", [
     "count",
   ]),
-
   "sync.progress": entry("Syncing your email", []),
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
