@@ -5,7 +5,10 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { params } = vi.hoisted(() => ({ params: { categoryId: "notifications" } }));
-vi.mock("@tanstack/react-router", () => ({ useParams: () => params }));
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => () => undefined,
+  useParams: () => params,
+}));
 
 import { CategoryPage } from "./category-page.tsx";
 
@@ -26,6 +29,6 @@ describe("category page", () => {
   it("keeps the generic copy for other categories (guards Notifications copy leaking everywhere)", () => {
     params.categoryId = "people";
     render(<CategoryPage />);
-    expect(screen.getByText("Emails in this category will appear here.")).toBeTruthy();
+    expect(screen.getByText(/already tidy/iu)).toBeTruthy();
   });
 });

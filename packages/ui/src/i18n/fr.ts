@@ -191,13 +191,8 @@ export const fr = {
   "setup.error": entry("Je n'ai pas pu lancer le tri. Veuillez réessayer.", []),
 
   "documents.title": entry("Documents", []),
-  "documents.description": entry("Les documents enregistrés apparaîtront ici.", []),
 
   "activity.title": entry("Activité", []),
-  "activity.description": entry(
-    "Les actions récentes et l’historique d’annulation apparaîtront ici.",
-    [],
-  ),
 
   "settings.title": entry("Réglages", []),
   "settings.description": entry("Les préférences et les réglages du compte apparaîtront ici.", []),
@@ -230,6 +225,7 @@ export const fr = {
   "devGallery.motion": entry("Animations", []),
   "action.close": entry("Fermer", []),
   "action.undo": entry("Annuler", []),
+  "action.backToOverview": entry("Retour à la vue d’ensemble", []),
   "storageBar.description": entry("{summary} : {items}", ["summary", "items"]),
   "storageBar.descriptionItem": entry("{size} {label}", ["size", "label"]),
   "storageBar.itemSeparator": entry(", ", []),
@@ -267,6 +263,16 @@ export const fr = {
     ["provider", "minutes"],
   ),
   "state.rateLimit.dismiss": entry("Compris", []),
+  "state.emptyActivity.title": entry("Rien pour l’instant", []),
+  "state.emptyActivity.body": entry(
+    "Quand j’archive, je supprime ou je me désabonne pour vous, l’action apparaît ici avec un Annuler lorsque c’est possible.",
+    [],
+  ),
+  "state.emptyDocuments.title": entry("Rien d’enregistré pour l’instant", []),
+  "state.emptyDocuments.body": entry(
+    "Les documents que je vous enregistre apparaîtront ici, sur cet appareil.",
+    [],
+  ),
   "state.emptyCategory.title": entry("Rien à nettoyer ici", []),
   "state.emptyCategory.body": entry(
     "Cette catégorie est déjà en ordre. Je vous préviendrai si cela change.",
