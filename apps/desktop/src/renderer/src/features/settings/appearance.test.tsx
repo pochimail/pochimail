@@ -81,8 +81,10 @@ function osAppearance(initial: boolean) {
 const openSettings = (fake: ReturnType<typeof fakeApp>) =>
   render(<App workerClient={fake.client} router={fake.router} />);
 
+// The frame and Settings both render the same segmented choices; the Settings row is last in the DOM.
 const chooseTheme = async (label: "System" | "Light" | "Dark") => {
-  await userEvent.click(screen.getByRole("radio", { name: label }));
+  const choices = screen.getAllByRole("radio", { name: label });
+  await userEvent.click(choices[choices.length - 1] ?? document.body);
 };
 
 describe("appearance controller", () => {
@@ -94,8 +96,7 @@ describe("appearance controller", () => {
     await screen.findByRole("heading", { level: 1, name: "Settings" });
     expect(document.documentElement.classList.contains("dark")).toBe(false);
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Theme" })[0] ?? document.body);
-    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
+    await chooseTheme("Dark");
 
     await waitFor(() => expect(document.documentElement.classList.contains("dark")).toBe(true));
     expect(fake.updates).toContainEqual({ theme: "dark" });
@@ -107,7 +108,7 @@ describe("appearance controller", () => {
     const changeOS = osAppearance(false);
     const fake = fakeApp({ theme: "system", locale: "en" });
     openSettings(fake);
-    await screen.findByRole("radio", { name: "System" });
+    await screen.findAllByRole("radio", { name: "System" });
 
     await chooseTheme("Dark");
     await waitFor(() => expect(document.documentElement.classList.contains("dark")).toBe(true));
@@ -136,17 +137,17 @@ describe("appearance controller", () => {
   });
 
   // Guards: compact frame controls that are reachable by mouse but not by keyboard or name.
-  it("opens the frame theme menu with the keyboard and writes the choice", async () => {
+  it("changes the frame theme with the keyboard and writes the choice", async () => {
     osAppearance(false);
     const fake = fakeApp({ theme: "system", locale: "en" });
     openSettings(fake);
     await screen.findByRole("heading", { level: 1, name: "Settings" });
 
-    await userEvent.tab(); // account switcher
-    await userEvent.tab(); // frame theme button
-    expect(document.activeElement?.getAttribute("aria-label")).toBe("Theme");
-    await userEvent.keyboard("{Enter}");
-    await userEvent.click(await screen.findByRole("menuitemradio", { name: "Dark" }));
+    const frameTheme = screen.getAllByRole("radio", { name: "Dark" })[0];
+    expect(frameTheme).toBeDefined();
+    frameTheme?.focus();
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Dark");
+    await userEvent.keyboard(" "); // Radios activate with Space (arrow keys move between them).
 
     await waitFor(() => expect(document.documentElement.classList.contains("dark")).toBe(true));
     expect(fake.updates).toContainEqual({ theme: "dark" });

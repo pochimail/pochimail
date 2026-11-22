@@ -13,6 +13,7 @@ const setup = () => {
     posted,
     killed: () => killed,
     options: {
+      databasePath: "/dev-data/pochimail.db",
       worker: {
         postMessage: (m: unknown) => void posted.push(m),
         kill: () => {
@@ -66,6 +67,8 @@ describe("worker boot", () => {
     expect(await bootWorker({ ...t.options, loadKey: async () => ok(Buffer.alloc(32, 1)) })).toBe(
       true,
     );
-    expect(t.posted).toEqual([{ type: "start", databaseKeyHex: "01".repeat(32) }]);
+    expect(t.posted).toEqual([
+      { type: "start", databasePath: "/dev-data/pochimail.db", databaseKeyHex: "01".repeat(32) },
+    ]);
   });
 });

@@ -34,7 +34,6 @@ import type { WorkerStart } from "./start.ts";
 const LOCAL_WORKSPACE = unwrap(WorkspaceId("wsp_00000000-0000-4000-8000-000000000001"));
 
 export interface AccountsRuntimeOptions {
-  readonly databasePath: string;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly timer: Timer;
   readonly logger: Logger;
@@ -58,7 +57,7 @@ export const createAccountsRuntime = (
   options: AccountsRuntimeOptions,
 ): (WorkerApp & { readonly close: () => void }) | undefined => {
   if (start.databaseKey === undefined) return undefined;
-  const storage = openStorage(options.databasePath, start.databaseKey);
+  const storage = openStorage(start.databasePath, start.databaseKey);
   if (!storage.ok) return undefined;
   const clock = { now: () => new Date() };
   const { uow, outboxStore } = createSqliteUnitOfWork(storage.value, clock);

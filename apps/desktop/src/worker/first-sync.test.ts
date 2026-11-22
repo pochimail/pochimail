@@ -48,6 +48,7 @@ it("connecting starts the first scan on the real database, tells the renderer an
   const secrets = createInMemorySecretStore();
   const runtime = createAccountsRuntime(
     {
+      databasePath,
       databaseKey: key,
       secrets: Object.assign(secrets, {
         protection: async () => ({ level: "os-keychain" as const, backend: "test" }),
@@ -59,7 +60,6 @@ it("connecting starts the first scan on the real database, tells the renderer an
       },
     },
     {
-      databasePath,
       env: { POCHIMAIL_GOOGLE_CLIENT_ID: "test-client" },
       timer: {
         set: (fn, ms) => {

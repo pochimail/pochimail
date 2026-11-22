@@ -39,4 +39,24 @@ function RadioGroupItem({
   );
 }
 
-export { RadioGroup, RadioGroupItem };
+/** A segment of the Settings.html Theme control: the whole item is the hit area, no radio circle. */
+function SegmentedRadioItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+  return (
+    <RadioGroupPrimitive.Item
+      data-slot="segmented-radio-item"
+      className={cn(
+        "inline-flex h-7.5 cursor-pointer items-center justify-center rounded-md border-0 px-3 text-caption font-medium whitespace-nowrap text-muted-foreground outline-none transition-[color,background-color,box-shadow,transform] duration-(--duration-press) ease-(--ease-out) hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:bg-secondary active:scale-[0.98] data-[state=checked]:bg-card data-[state=checked]:text-foreground data-[state=checked]:shadow-sm motion-reduce:transition-none motion-reduce:active:scale-100",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </RadioGroupPrimitive.Item>
+  );
+}
+
+export { RadioGroup, RadioGroupItem, SegmentedRadioItem };

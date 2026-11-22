@@ -1,10 +1,19 @@
 import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { type AppSettings, DEFAULT_APP_SETTINGS, type Theme } from "#shared/settings.ts";
 import { useAppLocale } from "../../lib/locale.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
-import { followSystemTheme } from "../../lib/theme.ts";
+import { applyTheme, followSystemTheme } from "../../lib/theme.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 // Named aliases keep this .tsx free of type-only generics; the copy guard scans raw source as JSX.
@@ -12,6 +21,8 @@ type Persist = Promise<void>;
 type ThemePatch = { readonly theme: Theme };
 type LocalePatch = { readonly locale: UserLocale };
 type SettingsPatch = ThemePatch | LocalePatch;
+/** A choice is visible immediately, even while the first settings read is still in flight. */
+type PendingAppearance = Partial<Pick<AppSettings, "theme" | "locale">>;
 
 type Appearance = {
   readonly theme: Theme;
@@ -34,20 +45,30 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     queryFn: () => client.call("settings.get"),
   });
   const systemLocale = useAppLocale();
-  const theme = settings.data?.theme ?? DEFAULT_APP_SETTINGS.theme;
-  const locale = settings.data?.locale ?? systemLocale;
+  const [pending, setPending] = useState<PendingAppearance>({});
+  const theme = pending.theme ?? settings.data?.theme ?? DEFAULT_APP_SETTINGS.theme;
+  const locale = pending.locale ?? settings.data?.locale ?? systemLocale;
 
-  useEffect(() => followSystemTheme(theme), [theme]);
+  // Before paint: a saved choice arriving later and an OS switch must repaint in the same frame too.
+  useLayoutEffect(() => followSystemTheme(theme), [theme]);
+  // Once the authoritative settings arrive, the optimistic overlay is no longer needed.
+  useEffect(() => {
+    if (settings.data !== undefined) setPending({});
+  }, [settings.data]);
 
   const select = useCallback(
     async (patch: SettingsPatch) => {
+      // The click frame owns the repaint; the write can be slow without making the choice feel slow.
+      if ("theme" in patch) applyTheme(patch.theme);
+      setPending((current) => ({ ...current, ...patch }));
+      queryClient.setQueryData(queryKeys.settings(), (current: AppSettings | undefined) => ({
+        ...(current ?? DEFAULT_APP_SETTINGS),
+        ...patch,
+      }));
       try {
         await client.call("settings.update", patch);
-        queryClient.setQueryData(queryKeys.settings(), (current: AppSettings | undefined) =>
-          current === undefined ? current : { ...current, ...patch },
-        );
       } catch {
-        // Keep the OS-driven value until the write is possible again.
+        // Keep the visible choice: a failed write must not silently snap the control back.
       }
     },
     [client, queryClient],

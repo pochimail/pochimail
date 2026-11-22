@@ -43,6 +43,8 @@ describe("motion catalog timings", () => {
     expect(Number(anim("screen-in"))).toBe(MOTION.screenMs);
     expect(Number(anim("finding-in"))).toBe(MOTION.panelMs);
     expect(Number(anim("pochi-found"))).toBe(MOTION.mascotFoundMs);
+    // The flat-PNG eyelids use the board's blink cadence without adding a second looping token.
+    expect(css).toContain(`animation: pochi-lid ${MOTION.mascotBlinkMs / 1000}s infinite`);
     expect(css).toMatch(new RegExp(`\\[data-sonner-toast\\][^}]*${MOTION.toastMs}ms`));
   });
 

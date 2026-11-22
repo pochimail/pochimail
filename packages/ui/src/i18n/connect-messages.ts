@@ -6,8 +6,7 @@ export const connectMessages = {
       text: "Sign in with your provider. Pochimail never sees your password, and you can add more accounts later.",
       params: [],
     },
-    "connect.google": { text: "Continue with Google", params: [] },
-    "connect.imap": { text: "Other providers (IMAP) are coming in version 1.1.", params: [] },
+    "connect.gmail": { text: "Continue with Gmail", params: [] },
     "connect.waiting": { text: "Waiting for you to sign in in your browser…", params: [] },
     "connect.cancelled": { text: "Sign-in was cancelled. Nothing was connected.", params: [] },
     "connect.failed": { text: "I couldn’t connect your account. Nothing was changed.", params: [] },
@@ -53,11 +52,7 @@ export const connectMessages = {
       text: "Connectez-vous auprès de votre fournisseur. Pochimail ne voit jamais votre mot de passe, et vous pourrez ajouter d’autres comptes plus tard.",
       params: [],
     },
-    "connect.google": { text: "Continuer avec Google", params: [] },
-    "connect.imap": {
-      text: "Les autres fournisseurs (IMAP) arrivent dans la version 1.1.",
-      params: [],
-    },
+    "connect.gmail": { text: "Continuer avec Gmail", params: [] },
     "connect.waiting": {
       text: "J’attends que vous vous connectiez dans votre navigateur…",
       params: [],
@@ -115,11 +110,7 @@ export const connectMessages = {
       text: "ご利用のプロバイダでサインインしてください。Pochimailがパスワードを見ることはなく、アカウントは後から追加できます。",
       params: [],
     },
-    "connect.google": { text: "Googleで続行", params: [] },
-    "connect.imap": {
-      text: "その他のプロバイダ（IMAP）はバージョン1.1で対応予定です。",
-      params: [],
-    },
+    "connect.gmail": { text: "Gmailで続行", params: [] },
     "connect.waiting": { text: "ブラウザでのサインインをお待ちしています…", params: [] },
     "connect.cancelled": {
       text: "サインインはキャンセルされました。アカウントは接続されていません。",

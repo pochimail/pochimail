@@ -1,7 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
 import { StorageError } from "@pochimail/kernel/errors";
 import { err, ok, type Result } from "@pochimail/kernel/result";
 import type { Database } from "better-sqlite3-multiple-ciphers";
+import coreSql from "./migrations/0001_core.sql?raw";
+import mailSql from "./migrations/0002_mail_repositories.sql?raw";
+import scopesSql from "./migrations/0003_account_granted_scopes.sql?raw";
+import sizeSql from "./migrations/0004_message_size.sql?raw";
 
 export interface Migration {
   /** 1, 2, 3…: the value `PRAGMA user_version` holds once it has run. */
@@ -9,25 +12,16 @@ export interface Migration {
   readonly sql: string;
 }
 
-const FILE_NAME = /^(\d{4})_[a-z0-9_]+\.sql$/;
-
-/** Reads the versioned `NNNN_name.sql` files of a directory, sorted, with no gaps from 1. */
-export function loadMigrations(
-  dir: URL = new URL("./migrations/", import.meta.url),
-): readonly Migration[] {
-  const migrations = readdirSync(dir)
-    .map((name) => ({ name, match: FILE_NAME.exec(name) }))
-    .filter((f) => f.match !== null)
-    .map((f) => ({
-      version: Number(f.match?.[1]),
-      sql: readFileSync(new URL(f.name, dir), "utf8"),
-    }))
-    .sort((a, b) => a.version - b.version);
-  migrations.forEach((m, i) => {
-    if (m.version !== i + 1) throw new Error(`Migration numbering has a gap before ${m.version}`);
-  });
-  return migrations;
-}
+/**
+ * The SQL files are imported into the bundle: the worker runs from a built file with no `migrations/` next to it,
+ * so reading them from disk at runtime would make every database open fail there (ADR 0005).
+ */
+export const MIGRATIONS: readonly Migration[] = [
+  { version: 1, sql: coreSql },
+  { version: 2, sql: mailSql },
+  { version: 3, sql: scopesSql },
+  { version: 4, sql: sizeSql },
+];
 
 /**
  * Brings the database to the newest version. Each migration runs in its own transaction and bumps
@@ -36,7 +30,7 @@ export function loadMigrations(
  */
 export function migrate(
   db: Database,
-  migrations: readonly Migration[] = loadMigrations(),
+  migrations: readonly Migration[] = MIGRATIONS,
 ): Result<{ from: number; to: number }, StorageError> {
   const latest = migrations.at(-1)?.version ?? 0;
   try {

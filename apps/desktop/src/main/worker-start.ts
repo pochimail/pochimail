@@ -7,14 +7,15 @@ import type { SecretVault } from "./secret-vault.ts";
 import type { DatabaseKeyError } from "./storage-key.ts";
 
 /**
- * Hands the worker what only main can produce: the database key and a private port to the keychain service
- * and to the system browser. The port goes to the worker alone, never to a WebContents. Without a key (no
- * keychain, no user choice yet) the worker starts without one and must not open the database.
+ * Hands the worker what only main can produce: the database path, its key and a private port to the keychain
+ * service and to the system browser. The port goes to the worker alone, never to a WebContents. Without a key
+ * (no keychain, no user choice yet) the worker starts without one and must not open the database.
  */
 export const startWorker = (
   worker: { postMessage: (message: unknown, transfer: MessagePortMain[]) => void },
   secrets: SecretVault,
   databaseKey: Buffer | undefined,
+  databasePath: string,
   createChannel: () => Pick<MessageChannelMain, "port1" | "port2">,
   openExternal: (url: string) => Promise<void> = async () => {
     throw new Error("no system browser");
@@ -32,6 +33,7 @@ export const startWorker = (
   worker.postMessage(
     {
       type: "start",
+      databasePath,
       ...(databaseKey === undefined ? {} : { databaseKeyHex: databaseKey.toString("hex") }),
     },
     [port2],
@@ -48,6 +50,8 @@ export const bootWorker = async (options: {
     kill: () => void;
   };
   secrets: SecretVault;
+  /** Resolved once from Electron's per-user userData directory; never an ambient environment variable. */
+  databasePath: string;
   loadKey: () => Promise<Result<Buffer | undefined, DatabaseKeyError>>;
   createChannel: () => Pick<MessageChannelMain, "port1" | "port2">;
   /** Main opens the system browser for sign-in; the worker only ever asks for a consent URL. */
@@ -66,6 +70,13 @@ export const bootWorker = async (options: {
     worker.kill();
     return false;
   }
-  startWorker(worker, secrets, key.value, createChannel, options.openExternal);
+  startWorker(
+    worker,
+    secrets,
+    key.value,
+    options.databasePath,
+    createChannel,
+    options.openExternal,
+  );
   return true;
 };

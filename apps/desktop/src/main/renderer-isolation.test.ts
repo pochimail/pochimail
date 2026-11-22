@@ -77,7 +77,13 @@ describe("renderer isolation", () => {
       worker,
       () => new MessageChannel() as never,
     );
-    startWorker(worker, vault, undefined, () => new MessageChannel() as never);
+    startWorker(
+      worker,
+      vault,
+      undefined,
+      join(path, "pochimail.db"),
+      () => new MessageChannel() as never,
+    );
     loads.emit("did-finish-load");
 
     expect(workerStarts).toHaveLength(1); // the worker holds the secrets client

@@ -7,9 +7,11 @@ import type { OutputOf } from "#shared/ipc/contract.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ConnectPromises } from "./connect-promises.tsx";
-import googleLogo from "./google.svg";
+import gmailLogo from "./gmail.svg";
 
-const providerButton = "h-13 w-full justify-start gap-3.5 rounded-xl bg-card px-4 text-body";
+// The reference provider row: 52px tall, 26px logo well, 14px gaps, 12px control radius, hairline inset.
+const providerButton =
+  "h-13 w-full cursor-pointer justify-start gap-3.5 rounded-lg border-0 bg-card px-4 text-body text-foreground shadow-[inset_0_0_0_1px_var(--color-border)] transition-[color,background-color,box-shadow,transform] duration-(--duration-press) ease-(--ease-out) hover:bg-accent active:bg-secondary";
 
 type Outcome = OutputOf<"accounts.connect">;
 
@@ -33,9 +35,11 @@ const SignInState = ({ onStart }: { onStart: () => void }) => {
   return (
     <div className="flex flex-col gap-2.5">
       <Button variant="secondary" size="lg" className={providerButton} onClick={onStart}>
-        <img src={googleLogo} alt="" width={20} height={20} />
-        {t("connect.google")}
-        <ChevronRightIcon className="ml-auto text-foreground-tertiary" aria-hidden="true" />
+        <span aria-hidden="true" className="flex size-6.5 shrink-0 items-center justify-center">
+          <img src={gmailLogo} alt="" width={20} height={20} className="block size-5" />
+        </span>
+        <span className="min-w-0 flex-1 text-left">{t("connect.gmail")}</span>
+        <ChevronRightIcon className="size-4 shrink-0 text-foreground-tertiary" aria-hidden="true" />
       </Button>
     </div>
   );
@@ -152,9 +156,6 @@ export function ConnectPage() {
         )}
         {key !== undefined && <ProblemState problem={key} onRetry={retry} onBack={back} />}
         {!waiting && key === undefined && <SignInState onStart={retry} />}
-        <div className="flex min-h-8 items-center">
-          <p className="text-caption text-foreground-tertiary">{t("connect.imap")}</p>
-        </div>
       </div>
       <ConnectPromises device={deviceName.data ?? "device"} />
     </div>

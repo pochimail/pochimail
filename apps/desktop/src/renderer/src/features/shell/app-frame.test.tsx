@@ -172,7 +172,7 @@ describe("app frame", () => {
       );
     }
     expect(focused[0]).toMatch(/^Account:/);
-    expect(focused.slice(1, 3)).toEqual(["Theme", "Language"]);
+    expect(focused.slice(1, 3)).toEqual(["System", "Language"]);
     expect(focused[3]).toBe("Overview");
     expect(focused[4]).toMatch(/^People/);
     expect(focused[5]).toMatch(/^Records/);
