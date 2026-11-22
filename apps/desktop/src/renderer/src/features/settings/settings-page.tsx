@@ -11,7 +11,7 @@ export function SettingsPage() {
   const t = useT();
 
   return (
-    <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+    <main className={PAGE_MAIN_CLASS}>
       <PageHeading title={t("settings.title")} note={t("settings.description")} />
 
       <section aria-labelledby="settings-appearance" className="flex flex-col gap-2">

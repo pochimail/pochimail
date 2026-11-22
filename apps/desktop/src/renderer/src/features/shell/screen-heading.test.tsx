@@ -80,6 +80,9 @@ describe("screen titles", () => {
     expect(main?.firstElementChild).toBe(heading.parentElement);
     expect(main?.className).toContain("px-8");
     expect(main?.className).toContain("pt-8");
+    expect(main?.className).toContain("w-full");
+    expect(main?.className).not.toContain("max-w-");
+    expect(main?.className).not.toContain("mx-auto");
     expect(heading.tagName).toBe("H1");
     expect(heading.className).toContain("text-title");
     expect(heading.className).toContain("leading-heading");

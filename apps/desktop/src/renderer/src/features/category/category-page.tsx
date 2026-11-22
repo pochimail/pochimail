@@ -1,7 +1,6 @@
 import { EmptyState } from "@pochimail/ui/components/empty-state";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
-import { cn } from "@pochimail/ui/lib/utils";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { categoryLabelKey } from "../../lib/category-labels.ts";
 import { PAGE_MAIN_CLASS, PageHeading } from "../../lib/screen-heading.tsx";
@@ -17,7 +16,7 @@ export function CategoryPage() {
   const { categoryId } = useParams({ from: "/shell/category/$categoryId" });
   const label = categoryLabelKey(categoryId);
   return (
-    <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+    <main className={PAGE_MAIN_CLASS}>
       <PageHeading title={label === undefined ? categoryId : t(label)} />
       <EmptyState
         className="mt-4"

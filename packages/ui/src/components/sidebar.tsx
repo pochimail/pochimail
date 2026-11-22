@@ -277,7 +277,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-inset"
       className={cn(
         // >= 760px the content sits in a rounded panel; below it, it runs edge to edge.
-        "min-h-0 min-w-0 overflow-y-auto @min-tablet:m-2 @min-tablet:ms-0 @min-tablet:rounded-2xl @min-tablet:bg-card @max-phone:row-start-2",
+        "min-h-0 min-w-0 overflow-y-auto @min-tablet:m-2 @min-tablet:rounded-2xl @min-tablet:bg-card @max-phone:row-start-2",
         className,
       )}
       {...props}

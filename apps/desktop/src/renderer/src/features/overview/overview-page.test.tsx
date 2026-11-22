@@ -234,15 +234,16 @@ describe("overview", () => {
     expect(screen.getByText("Nothing to clean up right now.")).toBeTruthy();
   });
 
-  // Guards: both sections stay in one narrow centred column on a wide screen.
-  it("uses a capped two-column grid for the sections at desktop width", async () => {
+  // Guards: both sections share one full-width two-column grid on a wide screen.
+  it("uses a full-width two-column grid for the sections at desktop width", async () => {
     setup({ all: sorted });
     expect(await screen.findByRole("heading", { level: 1, name: "Overview" })).toBeTruthy();
     await screen.findByText("people are waiting on you");
 
     const main = document.querySelector("main");
     expect(main?.className).toContain("@container");
-    expect(main?.className).toContain("max-w-5xl");
+    expect(main?.className).toContain("w-full");
+    expect(main?.className).not.toContain("max-w-");
 
     const catchSection = screen
       .getByRole("heading", { level: 2, name: "Catch what matters" })

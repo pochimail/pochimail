@@ -1,7 +1,6 @@
 import { MotionProvider } from "@pochimail/ui/components/motion-provider";
 import { Switch } from "@pochimail/ui/components/switch";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
-import { cn } from "@pochimail/ui/lib/utils";
 import { useState } from "react";
 import {
   PAGE_MAIN_CLASS,
@@ -51,7 +50,7 @@ export function DevGalleryPage() {
 
   return (
     <MotionProvider animations={!reduceMotion}>
-      <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+      <main className={PAGE_MAIN_CLASS}>
         <h1 className={PAGE_TITLE_CLASS}>{t("devGallery.title")}</h1>
         <p className="mt-4 text-muted-foreground">{t("devGallery.description")}</p>
         <div className="mt-6 flex flex-wrap gap-8">
