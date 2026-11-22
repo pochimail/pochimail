@@ -28,7 +28,7 @@ export const connectMessages = {
     "connect.back": { text: "Back", params: [] },
     "connect.promises.heading": { text: "My promises", params: [] },
     "connect.promise.local.title": {
-      text: "Your email stays on this {device}",
+      text: "Your email is only processed on this {device}",
       params: ["device"],
     },
     "connect.promise.local.body": {
@@ -86,7 +86,7 @@ export const connectMessages = {
     "connect.back": { text: "Retour", params: [] },
     "connect.promises.heading": { text: "Mes promesses", params: [] },
     "connect.promise.local.title": {
-      text: "Vos emails restent sur ce {device}",
+      text: "Vos emails sont traités uniquement sur votre {device}",
       params: ["device"],
     },
     "connect.promise.local.body": {
@@ -141,7 +141,7 @@ export const connectMessages = {
     "connect.back": { text: "戻る", params: [] },
     "connect.promises.heading": { text: "お約束", params: [] },
     "connect.promise.local.title": {
-      text: "メールはこの{device}の中にとどまります",
+      text: "メールはこの{device}の中だけで処理します",
       params: ["device"],
     },
     "connect.promise.local.body": {

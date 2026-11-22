@@ -66,4 +66,11 @@ describe("Connect promises", () => {
     expect(list?.className.split(" ")).not.toContain("border-b");
     expect(list?.querySelector("li")?.className.split(" ")).toContain("border-t");
   });
+
+  // Guards: the Connect promise telling people Pochimail keeps their email on the Mac (issue #187).
+  it("shows the local promise as on-device processing, not storage", async () => {
+    renderConnect();
+    expect(await screen.findByText("Your email is only processed on this Mac")).toBeTruthy();
+    expect(screen.queryByText("Your email stays on this Mac")).toBeNull();
+  });
 });
