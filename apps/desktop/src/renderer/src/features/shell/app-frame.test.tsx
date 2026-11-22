@@ -100,7 +100,48 @@ const setup = (initialPath = "/overview") => {
 const sidebar = async () =>
   within(await screen.findByRole("navigation", { name: "Main navigation" }));
 
+const slotClasses = (name: string): string[] => [
+  ...(document.querySelector(`[data-slot="${name}"]`)?.classList ?? []),
+];
+
+const withViewportHeight = (height: number) => {
+  const original = window.innerHeight;
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+  return () =>
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: original });
+};
+
 describe("app frame", () => {
+  it.each([560, 760])(
+    "keeps the shell inside a %ipx viewport (guards a clipped screen and sidebar)",
+    async (height) => {
+      // Guards: a shell with no definite viewport height, so the main screen or sidebar footer is cut off.
+      const restoreHeight = withViewportHeight(height);
+      try {
+        setup();
+        await sidebar();
+        // jsdom has no layout engine: the guard is the class chain that bounds both scroll containers.
+        expect(slotClasses("app-viewport")).toEqual(
+          expect.arrayContaining(["h-dvh", "min-h-0", "w-full"]),
+        );
+        expect(slotClasses("sidebar-provider")).toEqual(
+          expect.arrayContaining(["h-full", "min-h-0"]),
+        );
+        expect(slotClasses("sidebar-layout")).toEqual(
+          expect.arrayContaining(["h-full", "min-h-0"]),
+        );
+        expect(slotClasses("sidebar-content")).toEqual(
+          expect.arrayContaining(["min-h-0", "overflow-y-auto"]),
+        );
+        expect(slotClasses("sidebar-inset")).toEqual(
+          expect.arrayContaining(["min-h-0", "overflow-y-auto"]),
+        );
+      } finally {
+        restoreHeight();
+      }
+    },
+  );
+
   it("hides a category with no email and shows it once it gets mail (guards D5: empty categories listed)", async () => {
     const state = setup();
     const nav = await sidebar();
