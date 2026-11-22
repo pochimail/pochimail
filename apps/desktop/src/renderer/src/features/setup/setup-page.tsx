@@ -19,6 +19,7 @@ import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 type Choice = Pick<AppSettings, "autonomy" | "capabilities">;
+type Phase = "saving" | "reading";
 
 /** Setup: two plain questions and one button (brief §2, §7 item 3). The answers are saved, then the first scan starts. */
 export function SetupPage({ pose }: { pose: MascotPose }) {
@@ -57,7 +58,7 @@ function SetupForm({ initial, idlePose }: { initial: Choice; idlePose: MascotPos
   const navigate = useNavigate();
   const [capabilities, setCapabilities] = useState(initial.capabilities);
   const [autonomy, setAutonomy] = useState(initial.autonomy);
-  const [phase, setPhase] = useState<"saving" | "reading" | null>(null);
+  const [phase, setPhase] = useState(null as Phase | null);
 
   // Accounts whose scan already runs: a retry after a partial failure must not start them twice.
   const started = useRef(new Set<string>());
