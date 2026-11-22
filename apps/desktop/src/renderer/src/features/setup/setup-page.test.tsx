@@ -33,11 +33,26 @@ type Options = {
   failScanOnce?: string[];
   /** settings.get fails this many times before answering. */
   settingsFailures?: number;
+  /** Hold the real save/scan calls so the pose can be observed mid-flight. */
+  holdSave?: boolean;
+  holdScan?: boolean;
 };
 
 const harness = (opts: Options = {}) => {
   let settingsFailures = opts.settingsFailures ?? 0;
   const failScan = new Set(opts.failScanOnce ?? []);
+  let releaseSave = () => {};
+  let releaseScan = () => {};
+  const saveGate = opts.holdSave
+    ? new Promise<void>((resolve) => {
+        releaseSave = resolve;
+      })
+    : Promise.resolve();
+  const scanGate = opts.holdScan
+    ? new Promise<void>((resolve) => {
+        releaseScan = resolve;
+      })
+    : Promise.resolve();
   const calls: string[] = [];
   let saved: Saved = {
     autonomy: "suggest",
@@ -85,7 +100,8 @@ const harness = (opts: Options = {}) => {
         }
         return { ...saved, notifications: true };
       },
-      "settings.update": (patch) => {
+      "settings.update": async (patch) => {
+        await saveGate;
         if (opts.failSave) throw new Error("disk full");
         calls.push("settings.update");
         saved = {
@@ -94,7 +110,8 @@ const harness = (opts: Options = {}) => {
         };
         return undefined;
       },
-      "scan.start": ({ accountId }) => {
+      "scan.start": async ({ accountId }) => {
+        await scanGate;
         calls.push(`scan.start:${accountId}`);
         if (failScan.delete(accountId)) throw new Error("provider down");
         return { jobId: "job-1" };
@@ -108,7 +125,12 @@ const harness = (opts: Options = {}) => {
     { initialEntries: ["/setup"] },
   );
   render(<App workerClient={client} router={router} />);
-  return { calls, saved: () => saved };
+  return {
+    calls,
+    saved: () => saved,
+    releaseSave: () => releaseSave(),
+    releaseScan: () => releaseScan(),
+  };
 };
 
 describe("Setup screen", () => {
@@ -132,6 +154,17 @@ describe("Setup screen", () => {
     expect(h.calls).toEqual(["settings.update", "scan.start:acc-1", "scan.start:acc-2"]);
     expect(h.saved().autonomy).toBe("just-look");
     expect(h.saved().capabilities.declutter).toBe(false);
+  });
+
+  it("shows saving, then reading while the real save and scan-start calls run (guards unused poses)", async () => {
+    const h = harness({ holdSave: true, holdScan: true });
+    const pose = () => document.querySelector('[data-slot="mascot"]')?.getAttribute("data-pose");
+    fireEvent.click(await screen.findByRole("button", { name: "Start sorting" }));
+    await waitFor(() => expect(pose()).toBe("saving"));
+    h.releaseSave();
+    await waitFor(() => expect(pose()).toBe("reading"));
+    h.releaseScan();
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Overview" })).toBeTruthy());
   });
 
   it("a double click on Start sorting starts each scan once (guards duplicate scans)", async () => {

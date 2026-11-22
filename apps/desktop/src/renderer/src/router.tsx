@@ -1,3 +1,4 @@
+import type { MascotPose } from "@pochimail/ui/components/mascot";
 import {
   createMemoryHistory,
   createRootRouteWithContext,
@@ -6,6 +7,7 @@ import {
   lazyRouteComponent,
   Outlet,
   redirect,
+  useRouterState,
 } from "@tanstack/react-router";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { ActivityPage } from "./features/activity/activity-page.tsx";
@@ -14,6 +16,7 @@ import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
 import { OverviewPage } from "./features/overview/overview-page.tsx";
+import { useAppearance } from "./features/settings/appearance.tsx";
 import { AppearanceControls } from "./features/settings/appearance-controls.tsx";
 import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
@@ -24,6 +27,18 @@ import { ScanStatusProvider } from "./lib/scan-status.tsx";
 export type RouterContext = {
   getWorkerClient(): Promise<RpcClient>;
 };
+
+/** Pochi's resting pose follows the real theme; active poses are chosen by the screen. */
+function useIdlePose(): MascotPose {
+  const { theme } = useAppearance();
+  return theme === "dark" ? "night" : "default";
+}
+
+function useShellPose(): MascotPose {
+  const idle = useIdlePose();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return pathname === "/documents" ? "reading" : idle;
+}
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
@@ -36,11 +51,13 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "shell",
-  component: () => (
-    <ScanStatusProvider>
-      <AppFrame />
-    </ScanStatusProvider>
-  ),
+  component: function ShellRoute() {
+    return (
+      <ScanStatusProvider>
+        <AppFrame pose={useShellPose()} />
+      </ScanStatusProvider>
+    );
+  },
 });
 
 const indexRoute = createRoute({
@@ -57,7 +74,9 @@ const indexRoute = createRoute({
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "onboarding",
-  component: () => <OnboardingLayout controls={<AppearanceControls />} />,
+  component: function OnboardingRoute() {
+    return <OnboardingLayout controls={<AppearanceControls />} pose={useIdlePose()} />;
+  },
 });
 
 const welcomeRoute = createRoute({
@@ -69,13 +88,17 @@ const welcomeRoute = createRoute({
 const connectRoute = createRoute({
   getParentRoute: () => onboardingRoute,
   path: "/connect",
-  component: ConnectPage,
+  component: function ConnectRoute() {
+    return <ConnectPage pose={useIdlePose()} />;
+  },
 });
 
 const setupRoute = createRoute({
   getParentRoute: () => onboardingRoute,
   path: "/setup",
-  component: SetupPage,
+  component: function SetupRoute() {
+    return <SetupPage pose={useIdlePose()} />;
+  },
 });
 
 const overviewRoute = createRoute({

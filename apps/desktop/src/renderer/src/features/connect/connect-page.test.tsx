@@ -133,6 +133,26 @@ describe("Connect screen", () => {
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/overview"));
   });
 
+  it("shows the happy pose on a successful connect before moving on (guards a success with no Pochi reaction)", async () => {
+    const h = harness([{ status: "connected", accountId: "acc-1" }]);
+    const navigate = h.router.navigate;
+    let releaseNavigate = () => {};
+    h.router.navigate = ((options: Parameters<typeof navigate>[0]) => {
+      releaseNavigate = () => void navigate(options);
+      return Promise.resolve();
+    }) as typeof navigate;
+
+    fireEvent.click(await screen.findByRole("button", { name: /Continue with Gmail/ }));
+    await waitFor(() =>
+      expect(document.querySelector('[data-slot="mascot"]')?.getAttribute("data-pose")).toBe(
+        "happy",
+      ),
+    );
+    expect(h.router.state.location.pathname).toBe("/connect");
+    releaseNavigate();
+    await waitFor(() => expect(h.router.state.location.pathname).toBe("/setup"));
+  });
+
   it("a cancelled sign-in offers retry and Back instead of a dead end", async () => {
     const h = harness([{ status: "cancelled" }, { status: "connected", accountId: "acc-1" }]);
     fireEvent.click(await screen.findByRole("button", { name: /Continue with Gmail/ }));

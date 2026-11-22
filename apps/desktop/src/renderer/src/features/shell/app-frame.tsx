@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@pochimail/ui/components/dropdown-menu";
+import { Mascot, type MascotPose } from "@pochimail/ui/components/mascot";
 import {
   Sidebar,
   SidebarBrand,
@@ -130,18 +131,14 @@ function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) 
   }, [client, queryClient, key]);
 }
 
-/**
- * The frame of every screen after onboarding: sidebar, icon rail or bottom tabs by container width, with
- * the account switcher. The account selection lives in the router (`?account=`); counts follow it.
- */
-export function AppFrame() {
+/** The signed-in shell: sidebar/tabs, account switcher (`?account=`) and counts. */
+export function AppFrame({ pose }: { readonly pose: MascotPose }) {
   const t = useT();
   const locale = useLocale();
   const client = useWorkerClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { account } = useSearch({ strict: false });
-
   const accounts = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: () => client.call("accounts.list"),
@@ -182,7 +179,10 @@ export function AppFrame() {
                 : undefined
             }
           >
-            <SidebarBrand>{t("nav.brand")}</SidebarBrand>
+            <SidebarBrand className="flex items-center gap-2">
+              <Mascot pose={pose} size="xs" className="w-8" data-hover-pochi="" />
+              {t("nav.brand")}
+            </SidebarBrand>
             <AccountSwitcher>
               <AccountSwitcherTrigger aria-label={`${t("switcher.menu")}: ${currentLabel}`}>
                 <UsersIcon aria-hidden="true" />

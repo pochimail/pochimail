@@ -4,6 +4,7 @@ import {
 } from "@pochimail/actions/policies/autonomy";
 import { Button } from "@pochimail/ui/components/button";
 import { CheckboxCard } from "@pochimail/ui/components/checkbox-card";
+import type { MascotPose } from "@pochimail/ui/components/mascot";
 import { RadioCard } from "@pochimail/ui/components/radio-card";
 import { RadioGroup } from "@pochimail/ui/components/radio-group";
 import { SpeechBubble } from "@pochimail/ui/components/speech-bubble";
@@ -18,9 +19,10 @@ import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 type Choice = Pick<AppSettings, "autonomy" | "capabilities">;
+type Phase = "saving" | "reading";
 
 /** Setup: two plain questions and one button (brief §2, §7 item 3). The answers are saved, then the first scan starts. */
-export function SetupPage() {
+export function SetupPage({ pose }: { pose: MascotPose }) {
   const t = useT();
   const client = useWorkerClient();
   const settings = useQuery({
@@ -34,7 +36,7 @@ export function SetupPage() {
       <h1 className="sr-only rounded-md focus:not-sr-only focus:self-center focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         {t("setup.title")}
       </h1>
-      {settings.data ? <SetupForm initial={settings.data} /> : null}
+      {settings.data ? <SetupForm initial={settings.data} idlePose={pose} /> : null}
       {settings.isError ? (
         <div className="flex flex-col items-center gap-3">
           <p role="alert" className="text-ui text-destructive">
@@ -49,13 +51,14 @@ export function SetupPage() {
   );
 }
 
-function SetupForm({ initial }: { initial: Choice }) {
+function SetupForm({ initial, idlePose }: { initial: Choice; idlePose: MascotPose }) {
   const t = useT();
   const client = useWorkerClient();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [capabilities, setCapabilities] = useState(initial.capabilities);
   const [autonomy, setAutonomy] = useState(initial.autonomy);
+  const [phase, setPhase] = useState(null as Phase | null);
 
   // Accounts whose scan already runs: a retry after a partial failure must not start them twice.
   const started = useRef(new Set<string>());
@@ -65,8 +68,10 @@ function SetupForm({ initial }: { initial: Choice }) {
 
   const start = useMutation({
     mutationFn: async () => {
+      setPhase("saving");
       await client.call("settings.update", { autonomy, capabilities });
       const accounts = await client.call("accounts.list");
+      setPhase("reading");
       // The scans run in the background; progress arrives on the Overview.
       const pending = accounts.filter(({ id }) => !started.current.has(id));
       const results = await Promise.allSettled(
@@ -79,6 +84,7 @@ function SetupForm({ initial }: { initial: Choice }) {
     },
     onSettled: () => {
       inFlight.current = false;
+      setPhase(null);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.settings() });
@@ -99,7 +105,7 @@ function SetupForm({ initial }: { initial: Choice }) {
         start.mutate();
       }}
     >
-      <SpeechBubble>{t("setup.bubble")}</SpeechBubble>
+      <SpeechBubble pose={phase ?? idlePose}>{t("setup.bubble")}</SpeechBubble>
 
       <section aria-labelledby="setup-capabilities" className="flex flex-col gap-3">
         <h2 id="setup-capabilities" className={SECTION_TITLE_CLASS}>

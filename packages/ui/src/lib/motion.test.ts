@@ -45,6 +45,10 @@ describe("motion catalog timings", () => {
     expect(Number(anim("pochi-found"))).toBe(MOTION.mascotFoundMs);
     // The flat-PNG eyelids use the board's blink cadence without adding a second looping token.
     expect(css).toContain(`animation: pochi-lid ${MOTION.mascotBlinkMs / 1000}s infinite`);
+    // Guards: the hover response invents a keyframe or fires when motion is disabled.
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?:root:not\(\[data-animations="off"\]\) \[data-hover-pochi\]:hover \{[\s\S]*?animation: var\(--animate-pochi-found\);/,
+    );
     expect(css).toMatch(new RegExp(`\\[data-sonner-toast\\][^}]*${MOTION.toastMs}ms`));
   });
 

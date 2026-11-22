@@ -1,4 +1,5 @@
 import { Button } from "@pochimail/ui/components/button";
+import type { MascotPose } from "@pochimail/ui/components/mascot";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
@@ -94,7 +95,7 @@ const ProblemState = ({
 };
 
 /** Connect: sign in with Google in the system browser. Only the outcome crosses IPC, never a token. */
-export function ConnectPage() {
+export function ConnectPage({ pose }: { pose: MascotPose }) {
   const t = useT();
   const client = useWorkerClient();
   const queryClient = useQueryClient();
@@ -139,6 +140,8 @@ export function ConnectPage() {
   const key = waiting
     ? undefined
     : problemKey(connect.isError ? undefined : connect.data?.outcome, connect.isError);
+  const mascotPose =
+    connect.isSuccess && connect.data?.outcome.status === "connected" ? "happy" : pose;
   // Retry starts from a clean mutation, so a stale error cannot linger behind the waiting state.
   const retry = () => {
     connect.reset();
@@ -175,7 +178,7 @@ export function ConnectPage() {
           </Button>
         ) : null}
       </div>
-      <ConnectPromises device={deviceName.data ?? "device"} />
+      <ConnectPromises device={deviceName.data ?? "device"} pose={mascotPose} />
     </div>
   );
 }
