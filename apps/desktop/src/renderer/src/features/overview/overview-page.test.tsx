@@ -122,7 +122,12 @@ describe("overview", () => {
     expect(await screen.findByText("people are waiting on you")).toBeTruthy();
     expect(screen.getByText("The oldest has waited 9 days")).toBeTruthy();
     expect(screen.getByText("Unsubscribe from newsletters")).toBeTruthy();
-    expect(screen.getByText("Archive notifications")).toBeTruthy();
+    expect(screen.getByText("Archive app and social notifications")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+      ),
+    ).toBeTruthy();
     expect(screen.queryByText("Unsubscribe from promotion senders")).toBeNull();
     expect(
       screen.getByText("Conversations with people, records and receipts are never cleaned."),

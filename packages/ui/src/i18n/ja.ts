@@ -54,8 +54,11 @@ export const ja = {
   "overview.rec.newsletters.reason": entry("退会できる定期配信の送信元です", []),
   "overview.rec.promotions.sentence": entry("広告メールの配信を停止する", []),
   "overview.rec.promotions.reason": entry("セールや宣伝のメールです", []),
-  "overview.rec.notifications.sentence": entry("通知をアーカイブする", []),
-  "overview.rec.notifications.reason": entry("アプリやSNSからの通知です", []),
+  "overview.rec.notifications.sentence": entry("アプリやSNSからの通知をアーカイブする", []),
+  "overview.rec.notifications.reason": entry(
+    "自動送信された通知で、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされず、削除もされません。",
+    [],
+  ),
   "overview.rec.signins.sentence": entry("ログイン用コードをアーカイブする", []),
   "overview.rec.signins.reason": entry("ワンタイムコードとログインの通知です", []),
   "overview.scan.progress": entry("{total, number}件中{processed, number}件を整理しました", [

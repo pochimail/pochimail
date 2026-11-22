@@ -82,8 +82,11 @@ export const messages = {
   "overview.rec.newsletters.reason": entry("Regular senders you can leave", []),
   "overview.rec.promotions.sentence": entry("Unsubscribe from promotion senders", []),
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
-  "overview.rec.notifications.sentence": entry("Archive notifications", []),
-  "overview.rec.notifications.reason": entry("App and social alerts", []),
+  "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
+  "overview.rec.notifications.reason": entry(
+    "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+    [],
+  ),
   "overview.rec.signins.sentence": entry("Archive sign-in codes", []),
   "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [

@@ -12,6 +12,50 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     expect(messages["overview.email.count"].text).toMatch(/\bemails\b/);
   });
 
+  it("explains the archive-notifications card in every locale", () => {
+    const cases = [
+      {
+        catalog: messages,
+        sentence: /app and social notifications/i,
+        reason: [
+          /automated alerts/i,
+          /not emails from people/i,
+          /review opens the list/i,
+          /nothing is archived until you approve/i,
+          /nothing is deleted/i,
+        ],
+      },
+      {
+        catalog: fr,
+        sentence: /notifications d’applications et de réseaux sociaux/i,
+        reason: [
+          /alertes automatiques/i,
+          /pas des emails de personnes/i,
+          /examiner ouvre la liste/i,
+          /rien n’est archivé avant votre accord/i,
+          /rien n’est supprimé/i,
+        ],
+      },
+      {
+        catalog: ja,
+        sentence: /アプリやSNSからの通知/,
+        reason: [
+          /自動送信された通知/,
+          /個人からのメールではありません/,
+          /確認する.*一覧が開き/,
+          /承認するまで何もアーカイブされず/,
+          /削除もされません/,
+        ],
+      },
+    ];
+    for (const { catalog, sentence, reason } of cases) {
+      expect(catalog["overview.rec.notifications.sentence"].text).toMatch(sentence);
+      const detail = catalog["overview.rec.notifications.reason"].text;
+      for (const pattern of reason) expect(detail).toMatch(pattern);
+      // The explanation names the button the card actually shows.
+      expect(detail).toContain(catalog["overview.review"].text);
+    }
+  });
   it("uses {device} for the host instead of a literal Mac (guards copy that breaks on Windows)", () => {
     for (const catalog of catalogs)
       expect(catalog["overview.promise.device"].params).toContain("device");
@@ -33,4 +77,7 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     for (const catalog of catalogs)
       for (const message of Object.values(catalog)) expect(message.text).not.toMatch(/\[[A-Z]\]/u);
   });
+
+  // Guards: the archive-notifications card must say which emails, why, and what Review does (#183).
+
 });
