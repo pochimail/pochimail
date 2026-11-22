@@ -121,6 +121,7 @@ export const messages = {
     "count",
   ]),
 
+  "sync.progress": entry("Syncing your email", []),
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),

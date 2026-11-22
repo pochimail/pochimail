@@ -53,6 +53,7 @@ import {
 import { type ComponentType, useEffect } from "react";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
+import { SyncProgress } from "./sync-progress.tsx";
 import { visibleCategories } from "./visible-categories.ts";
 
 const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
@@ -144,8 +145,9 @@ export function AppFrame() {
     queryFn: () => client.call("accounts.list"),
   });
   const accountList = accounts.data ?? [];
+  const allAccountIds = accountList.map((a) => a.id);
   const selected = accountList.some((a) => a.id === account) ? (account ?? null) : null;
-  const accountIds = selected === null ? accountList.map((a) => a.id) : [selected];
+  const accountIds = selected === null ? allAccountIds : [selected];
 
   const counts = useQuery({
     queryKey: queryKeys.categoryCounts(accountIds),
@@ -168,6 +170,7 @@ export function AppFrame() {
 
   return (
     <SidebarProvider>
+      <SyncProgress accountIds={allAccountIds} />
       <SidebarLayout>
         <Sidebar>
           <SidebarHeader
