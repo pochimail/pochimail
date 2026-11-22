@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { openStorage } from "@pochimail/db/open-storage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient } from "../shared/ipc/client.ts";
@@ -39,13 +40,31 @@ beforeEach(() => {
   delete process.env.POCHIMAIL_GOOGLE_CLIENT_ID;
 });
 
-afterEach(() => {
+/** Windows keeps the handed database's handle until it is reaped; retry its release, but fail on a real cleanup bug. */
+const removeTempDir = async (dir: string): Promise<void> => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      const transient =
+        attempt < 19 &&
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "EPERM" || error.code === "EBUSY");
+      if (!transient) throw error;
+      await delay(100);
+    }
+  }
+};
+
+afterEach(async () => {
   process.parentPort = originalParentPort;
   for (const [name, value] of Object.entries(originalEnv)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  await Promise.all(dirs.splice(0).map(removeTempDir));
 });
 
 /** The real worker module over its real IPC layer, started exactly as main starts it. */
