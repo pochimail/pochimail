@@ -1,7 +1,7 @@
 import { Button } from "@pochimail/ui/components/button";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { ChevronRightIcon } from "lucide-react";
 import type { OutputOf } from "#shared/ipc/contract.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
@@ -98,10 +98,17 @@ export function ConnectPage() {
   const client = useWorkerClient();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
   const deviceName = useQuery({
     queryKey: queryKeys.deviceName(),
     queryFn: () => client.call("device.name"),
   });
+  const accounts = useQuery({
+    queryKey: queryKeys.accounts(),
+    queryFn: () => client.call("accounts.list"),
+  });
+  // Only an account being added to an existing setup needs a way out: first-run Connect keeps its reference layout.
+  const addingAccount = (accounts.data?.length ?? 0) > 0;
 
   const connect = useMutation({
     mutationFn: async () => {
@@ -141,6 +148,11 @@ export function ConnectPage() {
     connect.reset();
     cancel.reset();
   };
+  // The redirect out of the app frame has no sidebar to return through: go back in history, or to Settings if opened cold.
+  const leave = () => {
+    if (router.history.canGoBack()) router.history.back();
+    else void navigate({ to: "/settings" });
+  };
   return (
     <div className="flex w-full flex-wrap items-center justify-center gap-16">
       <div className="flex flex-1 basis-85 flex-col gap-4 text-left">
@@ -156,6 +168,11 @@ export function ConnectPage() {
         )}
         {key !== undefined && <ProblemState problem={key} onRetry={retry} onBack={back} />}
         {!waiting && key === undefined && <SignInState onStart={retry} />}
+        {addingAccount && !waiting && key === undefined ? (
+          <Button variant="secondary" size="lg" onClick={leave}>
+            {t("connect.back")}
+          </Button>
+        ) : null}
       </div>
       <ConnectPromises device={deviceName.data ?? "device"} />
     </div>

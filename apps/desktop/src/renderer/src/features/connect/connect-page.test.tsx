@@ -3,6 +3,7 @@
 // account, shows Setup again when adding one, or leaves Pochi out of the promises.
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
 import type { OutputOf } from "#shared/ipc/contract.ts";
@@ -19,17 +20,20 @@ const harness = (
   hang = false,
   listFails = false,
   throwFirst = false,
+  initialEntries = ["/connect"],
 ) => {
   let release: (() => void) | undefined;
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
   let connects = 0;
+  let lists = 0;
   serveRpc(fromDomPort(port2), {
     procedures: {
       "app.state": () => ({ status: "ready" as const, hasConnectedAccount: existing > 0 }),
       "device.name": () => "Mac" as const,
       "accounts.list": () => {
+        lists += 1;
         if (listFails) throw new Error("list failed");
         return Array.from({ length: existing }, (_, n) => ({
           id: `acc-${n}`,
@@ -56,16 +60,36 @@ const harness = (
         },
         notifications: true,
       }),
+      "mailbox.categories": () => ({
+        people: 0,
+        records: 0,
+        "purchases-travel": 0,
+        "sign-ins-security": 0,
+        notifications: 0,
+        newsletters: 0,
+        promotions: 0,
+      }),
+      "overview.get": () => ({
+        scanned: 0,
+        toReview: 0,
+        waiting: 0,
+        deadlines: 0,
+        important: 0,
+        oldestWaitingDays: 0,
+        cleanable: [],
+      }),
+      "scan.status": () => [],
+      "digest.get": () => ({ ready: false, itemCount: 0 }),
     },
     subscriptions: { "app.events": () => undefined, "scan.progress": () => undefined },
   });
   const client = createRpcClient(fromDomPort(port1));
   const router = createAppRouter(
     { getWorkerClient: () => Promise.resolve(client) },
-    { initialEntries: ["/connect"] },
+    { initialEntries },
   );
   render(<App workerClient={client} router={router} />);
-  return { router, connects: () => connects };
+  return { router, connects: () => connects, lists: () => lists };
 };
 
 const gmail = () => screen.getByRole("button", { name: /Continue with Gmail/ });
@@ -214,5 +238,33 @@ describe("Connect screen", () => {
     expect(await screen.findByText(/Sign-in was cancelled/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/setup"));
+  });
+
+  // Guards: the add-account redirect losing the app frame and leaving no way back to Settings.
+  it("Back from the add-account redirect returns through history to the previous screen", async () => {
+    const h = harness([], 1, false, false, false, ["/settings"]);
+    await userEvent.click(await screen.findByRole("button", { name: /Account:/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Add another account" }));
+    await waitFor(() => expect(h.router.state.location.pathname).toBe("/connect"));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Back" }));
+    await waitFor(() => expect(h.router.state.location.pathname).toBe("/settings"));
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+  });
+
+  // Guards: a cold /connect with an existing account offering no escape from the onboarding frame.
+  it("Back falls back to Settings when the redirect has no history", async () => {
+    const h = harness([], 1);
+    await userEvent.click(await screen.findByRole("button", { name: "Back" }));
+    await waitFor(() => expect(h.router.state.location.pathname).toBe("/settings"));
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy();
+  });
+
+  // Guards: first-run Connect keeping its two-column reference without an extra exit.
+  it("first-run Connect has no Back control", async () => {
+    const h = harness([]);
+    await screen.findByRole("button", { name: /Continue with Gmail/ });
+    await waitFor(() => expect(h.lists()).toBeGreaterThan(0));
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
   });
 });
