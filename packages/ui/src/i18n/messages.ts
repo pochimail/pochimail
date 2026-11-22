@@ -83,8 +83,11 @@ export const messages = {
   "overview.rec.newsletters.reason": entry("Regular senders you can leave", []),
   "overview.rec.promotions.sentence": entry("Unsubscribe from promotion senders", []),
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
-  "overview.rec.notifications.sentence": entry("Archive notifications", []),
-  "overview.rec.notifications.reason": entry("App and social alerts", []),
+  "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
+  "overview.rec.notifications.reason": entry(
+    "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+    [],
+  ),
   "overview.rec.signins.sentence": entry("Archive sign-in codes", []),
   "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [
@@ -124,10 +127,8 @@ export const messages = {
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),
-
   "tray.open": entry("Open Pochimail", []),
   "tray.quit": entry("Quit Pochimail", []),
-
   "welcome.headline": entry("Clean up your email. Keep what matters.", []),
   "welcome.description": entry(
     "Pochimail is a private assistant for the email accounts you already have. It flags what needs you, clears the clutter and saves your documents. Your email never leaves this {device}.",
@@ -136,7 +137,6 @@ export const messages = {
   "welcome.cta": entry("Get started", []),
   "welcome.openSource": entry("Free and open source", []),
   "onboarding.progress": entry("Step {current} of {total}", ["current", "total"]),
-
   ...connectMessages.en,
   "setup.title": entry("Set up", []),
   "setup.description": entry("Choose how Pochi can help.", []),

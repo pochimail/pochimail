@@ -63,9 +63,12 @@ export const fr = {
   "overview.rec.newsletters.reason": entry("Des expéditeurs réguliers que vous pouvez quitter", []),
   "overview.rec.promotions.sentence": entry("Se désabonner des promotions", []),
   "overview.rec.promotions.reason": entry("Des emails de ventes et de marketing", []),
-  "overview.rec.notifications.sentence": entry("Archiver les notifications", []),
+  "overview.rec.notifications.sentence": entry(
+    "Archiver les notifications d’applications et de réseaux sociaux",
+    [],
+  ),
   "overview.rec.notifications.reason": entry(
-    "Des alertes d’applications et de réseaux sociaux",
+    "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord, et rien n’est supprimé.",
     [],
   ),
   "overview.rec.signins.sentence": entry("Archiver les codes de connexion", []),
