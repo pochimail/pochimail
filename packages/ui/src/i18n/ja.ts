@@ -167,10 +167,8 @@ export const ja = {
   "setup.error": entry("整理を開始できませんでした。もう一度お試しください。", []),
 
   "documents.title": entry("ドキュメント", []),
-  "documents.description": entry("保存したドキュメントがここに表示されます。", []),
 
   "activity.title": entry("アクティビティ", []),
-  "activity.description": entry("最近の操作と取り消し履歴がここに表示されます。", []),
 
   "settings.title": entry("設定", []),
   "settings.description": entry("環境設定とアカウント設定がここに表示されます。", []),
@@ -203,6 +201,7 @@ export const ja = {
   "devGallery.motion": entry("モーション", []),
   "action.close": entry("閉じる", []),
   "action.undo": entry("元に戻す", []),
+  "action.backToOverview": entry("概要に戻る", []),
   "storageBar.description": entry("{summary}：{items}", ["summary", "items"]),
   "storageBar.descriptionItem": entry("{label} {size}", ["size", "label"]),
   "storageBar.itemSeparator": entry("、", []),
@@ -240,6 +239,16 @@ export const ja = {
     ["provider", "minutes"],
   ),
   "state.rateLimit.dismiss": entry("OK", []),
+  "state.emptyActivity.title": entry("まだ何もありません", []),
+  "state.emptyActivity.body": entry(
+    "アーカイブ、削除、登録解除をしたときに、取り消せる場合は「元に戻す」と一緒にここに表示されます。",
+    [],
+  ),
+  "state.emptyDocuments.title": entry("まだ保存されたものはありません", []),
+  "state.emptyDocuments.body": entry(
+    "あなたのために保存したドキュメントが、この端末に表示されます。",
+    [],
+  ),
   "state.emptyCategory.title": entry("ここに整理するものはありません", []),
   "state.emptyCategory.body": entry(
     "このカテゴリはすでにきれいです。変わったらお知らせします。",

@@ -2,14 +2,10 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 
-/**
- * English is the default and the fallback. French and Japanese ship in v1 (P13, decided 2026-11-19);
- * every user-facing string lives in a catalog so more languages need no code changes.
- */
+/** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
 export const USER_LOCALES = ["en", "fr", "ja"] as const;
 
 export type UserLocale = (typeof USER_LOCALES)[number];
-
 /** `pseudo` is a dev-only layout probe: never user-selectable, never shipped as a choice. */
 export type Locale = UserLocale | "pseudo";
 
@@ -29,6 +25,7 @@ export const entry = <const Params extends readonly string[]>(text: string, para
 export const messages = {
   "action.close": entry("Close", []),
   "action.undo": entry("Undo", []),
+  "action.backToOverview": entry("Back to overview", []),
   "overview.title": entry("Overview", []),
   "overview.privacy": entry("Everything stays on this device. Nothing is sent anywhere.", []),
   "overview.promise.device": entry("Your email never leaves this {device}.", ["device"]),
@@ -187,17 +184,11 @@ export const messages = {
   "setup.retry": entry("Try again", []),
   "setup.start": entry("Start sorting", []),
   "setup.error": entry("I couldn't start sorting. Please try again.", []),
-
   "documents.title": entry("Documents", []),
-  "documents.description": entry("Saved documents will appear here.", []),
-
   "activity.title": entry("Activity", []),
-  "activity.description": entry("Recent actions and undo history will appear here.", []),
-
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
   ...appearanceMessages.en,
-
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),
@@ -259,6 +250,16 @@ export const messages = {
     ["provider", "minutes"],
   ),
   "state.rateLimit.dismiss": entry("Got it", []),
+  "state.emptyActivity.title": entry("Nothing yet", []),
+  "state.emptyActivity.body": entry(
+    "When I archive, delete or unsubscribe for you, it shows up here with an Undo where one is possible.",
+    [],
+  ),
+  "state.emptyDocuments.title": entry("Nothing saved yet", []),
+  "state.emptyDocuments.body": entry(
+    "Documents I save for you will appear here, on this device.",
+    [],
+  ),
   "state.emptyCategory.title": entry("Nothing to clean here", []),
   "state.emptyCategory.body": entry(
     "This category is already tidy. I’ll let you know when that changes.",
@@ -279,9 +280,7 @@ export const messages = {
   "state.updateReady.restart": entry("Restart now", []),
   "state.updateReady.whatsNew": entry("What’s new", []),
 } as const;
-
 export type MessageKey = keyof typeof messages;
-
 /** Params are derived from the catalog entry, so a renamed placeholder breaks the call site. */
 export type MessageValues<K extends MessageKey> = {
   readonly [Param in (typeof messages)[K]["params"][number]]: string | number;
