@@ -1,0 +1,31 @@
+// @vitest-environment jsdom
+// Guards: the Notifications category explains itself instead of saying “will appear here”.
+import { setLocale } from "@pochimail/ui/i18n/format.ts";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { params } = vi.hoisted(() => ({ params: { categoryId: "notifications" } }));
+vi.mock("@tanstack/react-router", () => ({ useParams: () => params }));
+
+import { CategoryPage } from "./category-page.tsx";
+
+afterEach(() => {
+  cleanup();
+  setLocale("en");
+});
+
+describe("category page", () => {
+  it("explains Notifications: what belongs there, where the mail stays and what appears after approval", () => {
+    params.categoryId = "notifications";
+    render(<CategoryPage />);
+    expect(screen.getByText(/app and social alerts/iu)).toBeTruthy();
+    expect(screen.getByText(/stay in your inbox/iu)).toBeTruthy();
+    expect(screen.getByText(/after that/iu)).toBeTruthy();
+  });
+
+  it("keeps the generic copy for other categories (guards Notifications copy leaking everywhere)", () => {
+    params.categoryId = "people";
+    render(<CategoryPage />);
+    expect(screen.getByText("Emails in this category will appear here.")).toBeTruthy();
+  });
+});
