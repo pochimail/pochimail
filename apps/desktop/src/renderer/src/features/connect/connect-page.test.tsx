@@ -93,7 +93,7 @@ describe("Connect screen", () => {
     expect(provider.className).not.toContain("rounded-xl");
     expect(screen.getByRole("heading", { name: "My promises" })).toBeTruthy();
     expect(document.querySelector('[data-slot="mascot"]')).toBeTruthy();
-    expect(screen.getByText("Nothing is deleted without your OK")).toBeTruthy();
+    expect(screen.getByText("You keep the control")).toBeTruthy();
     expect(screen.getByText(/add more accounts later/)).toBeTruthy();
   });
 
