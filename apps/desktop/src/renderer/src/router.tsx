@@ -32,11 +32,10 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 });
 
 // Every screen after onboarding shares one frame (sidebar / rail / tabs); it never remounts between them.
-// Routes compose features: the frame renders the controls it is given, so features stay independent.
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "shell",
-  component: () => <AppFrame frameControls={<AppearanceControls />} />,
+  component: () => <AppFrame />,
 });
 
 const indexRoute = createRoute({

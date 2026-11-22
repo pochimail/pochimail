@@ -50,19 +50,13 @@ function renderSettings() {
   return { updates };
 }
 
-/** The frame renders the same control twice (phone bar and sidebar footer); the Settings row is last. */
-const settingsLanguageTrigger = () => {
-  const triggers = screen.getAllByRole("button", { name: "Language" });
-  return triggers[triggers.length - 1];
-};
-
 describe("Settings language control", () => {
   // Guards: a language segmented radio group instead of a dropdown showing the current locale.
   it("is a compact dropdown that names the current locale and marks it selected", async () => {
     renderSettings();
     await screen.findByRole("heading", { level: 1, name: "Settings" });
 
-    const trigger = settingsLanguageTrigger();
+    const trigger = screen.getByRole("button", { name: "Language" });
     expect(trigger?.textContent).toContain("English");
     expect(screen.queryAllByRole("radio", { name: "Français" })).toHaveLength(0);
 
@@ -82,7 +76,7 @@ describe("Settings language control", () => {
   it("selects a language with the keyboard, updating the label, the screen and settings", async () => {
     const { updates } = renderSettings();
     const heading = await screen.findByRole("heading", { level: 1, name: "Settings" });
-    const trigger = settingsLanguageTrigger();
+    const trigger = screen.getByRole("button", { name: "Language" });
 
     trigger?.focus();
     await userEvent.keyboard("{ArrowDown}");
