@@ -1,11 +1,12 @@
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
+import { cn } from "@pochimail/ui/lib/utils";
+import { PAGE_MAIN_CLASS, PageHeading } from "../../lib/screen-heading.tsx";
 
 export function ActivityPage() {
   const t = useT();
   return (
-    <main className="mx-auto max-w-2xl px-8 pt-16">
-      <h1 className="text-4xl">{t("activity.title")}</h1>
-      <p className="mt-4 text-muted-foreground">{t("activity.description")}</p>
+    <main className={cn(PAGE_MAIN_CLASS, "max-w-2xl")}>
+      <PageHeading title={t("activity.title")} note={t("activity.description")} />
     </main>
   );
 }

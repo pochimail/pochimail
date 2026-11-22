@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronRightIcon } from "lucide-react";
 import type { OutputOf } from "#shared/ipc/contract.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { PAGE_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ConnectPromises } from "./connect-promises.tsx";
 import gmailLogo from "./gmail.svg";
@@ -144,7 +145,7 @@ export function ConnectPage() {
   return (
     <div className="flex w-full flex-wrap items-center justify-center gap-16">
       <div className="flex flex-1 basis-85 flex-col gap-4 text-left">
-        <h1 className="text-balance text-title leading-tight">{t("connect.title")}</h1>
+        <h1 className={PAGE_TITLE_CLASS}>{t("connect.title")}</h1>
         <p className="text-body leading-relaxed text-muted-foreground">
           {t("connect.description")}
         </p>

@@ -14,6 +14,7 @@ import { LockIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { type AppSettings, CAPABILITIES, type Capability } from "#shared/settings.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 type Choice = Pick<AppSettings, "autonomy" | "capabilities">;
@@ -101,7 +102,7 @@ function SetupForm({ initial }: { initial: Choice }) {
       <SpeechBubble>{t("setup.bubble")}</SpeechBubble>
 
       <section aria-labelledby="setup-capabilities" className="flex flex-col gap-3">
-        <h2 id="setup-capabilities" className="text-xl">
+        <h2 id="setup-capabilities" className={SECTION_TITLE_CLASS}>
           {t("setup.capabilities.heading")}{" "}
           <span className="font-sans text-ui font-normal text-muted-foreground">
             {t("setup.capabilities.hint")}
@@ -121,7 +122,7 @@ function SetupForm({ initial }: { initial: Choice }) {
       </section>
 
       <section aria-labelledby="setup-autonomy" className="flex flex-col gap-3">
-        <h2 id="setup-autonomy" className="text-xl">
+        <h2 id="setup-autonomy" className={SECTION_TITLE_CLASS}>
           {t("setup.autonomy.heading")}
         </h2>
         <RadioGroup
