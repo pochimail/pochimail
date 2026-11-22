@@ -128,6 +128,40 @@ describe("worker app over the real IPC layer", () => {
     close();
   });
 
+  it("cancelling a live scan tells the renderer and removes the job (guards a progress bar that outlives the scan)", async () => {
+    // Guards: cancellation with no app.events signal, so the renderer cannot clear the indicator.
+    const real = groundTruth();
+    let calls = 0;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const classifier: Classifier = {
+      classify: async (messages, signal) => {
+        calls += 1;
+        if (calls === 2) await gate;
+        return real.classify(messages, signal);
+      },
+    };
+    const { client, app, appEvents, close } = await connect({ classifier });
+    const { jobId } = await client.call("scan.start", { accountId: FIRST_ACCOUNT });
+    await vi.waitFor(() => expect(calls).toBeGreaterThanOrEqual(2));
+
+    await client.call("scan.cancel", { jobId });
+    release();
+    await app.idle();
+
+    await vi.waitFor(() =>
+      expect(appEvents).toContainEqual({
+        type: "ScanCancelled",
+        accountId: FIRST_ACCOUNT,
+        jobId,
+      }),
+    );
+    expect(await client.call("scan.status", { accountIds: [FIRST_ACCOUNT] })).toEqual([]);
+    close();
+  });
+
   it("the overview counts every email of the scanned fixture and lists both accounts (guards a scan that drops mail or an account)", async () => {
     const { client, app, close } = await connect();
     for (const account of mailbox.accounts)

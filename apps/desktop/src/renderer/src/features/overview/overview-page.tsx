@@ -11,9 +11,9 @@ import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { cleanSplit, overviewView, RECOMMENDATION_COPY } from "./overview-figures.ts";
-import { type ScanStatus, useScanStatus } from "./use-scan-status.ts";
 
 const scanStatusLine = (scan: ScanStatus, t: T): string => {
   if (scan.paused) return t("overview.scan.paused");
