@@ -24,7 +24,7 @@ function SignalRow({
     <li
       data-slot="signal-row"
       className={cn(
-        "@container grid list-none grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-4 py-3.5 @narrow:grid-cols-[4.5rem_minmax(0,1fr)_auto]",
+        "@container grid list-none grid-cols-[minmax(3rem,auto)_minmax(0,1fr)_auto] items-center gap-x-4 py-3.5 @narrow:grid-cols-[minmax(4.5rem,auto)_minmax(0,1fr)_auto]",
         className,
       )}
       {...props}
