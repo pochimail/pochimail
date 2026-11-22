@@ -88,6 +88,7 @@ export const ja = {
   "summary.later": entry("あとで", []),
   "summary.reviewCount": entry("メール{count}件を確認する", ["count"]),
 
+  "sync.progress": entry("メールを同期しています", []),
   "shell.loading": entry("起動しています…", []),
   "shell.error.title": entry("問題が発生しました", []),
   "shell.error.body": entry(
