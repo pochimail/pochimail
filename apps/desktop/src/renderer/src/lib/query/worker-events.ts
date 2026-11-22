@@ -12,6 +12,8 @@ export const subscribeAppEvents = (
   onScanFailed: () => void = () => {},
   /** Emails were scanned or moved: counts derived from the mailbox are stale. */
   onMailboxChanged: () => void = () => {},
+  /** A scan ended without completing: the shell's progress state must be re-read. */
+  onScanEnded: () => void = () => {},
 ): (() => void) => {
   let closed = false;
   let currentUnsubscribe: (() => void) | undefined;
@@ -31,7 +33,10 @@ export const subscribeAppEvents = (
             onMailboxChanged();
           } else if (event.type === "ScanCompleted") onMailboxChanged();
           else if (event.type === "ActionFailed") registry.fail(event.actionId);
-          else if (event.type === "ScanFailed") onScanFailed();
+          else if (event.type === "ScanFailed") {
+            onScanFailed();
+            onScanEnded();
+          } else if (event.type === "ScanCancelled") onScanEnded();
         },
         (error) => {
           console.error("[app.events]", error.code);

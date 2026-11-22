@@ -119,4 +119,18 @@ describe("first-run redirect from app.state", () => {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     fake.close();
   });
+
+  // Guards: the compact pickers vanishing from sidebar-less screens when the sidebar is cleaned up.
+  it("keeps one compact theme and language control on Welcome and Connect", async () => {
+    const fake = createFakeAppClient(false);
+    render(<App workerClient={fake.client} />);
+    await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("link", { name: "Get started" }));
+    await screen.findByRole("heading", { name: "Connect an email account" });
+    expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Language" })).toBeTruthy();
+    fake.close();
+  });
 });

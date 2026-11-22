@@ -82,8 +82,7 @@ function lightOS(): void {
   vi.stubGlobal("matchMedia", () => query);
 }
 
-const darkRadio = (): HTMLElement =>
-  screen.getAllByRole("radio", { name: "Dark" })[0] ?? document.body;
+const darkRadio = (): HTMLElement => screen.getByRole("radio", { name: "Dark" });
 
 const openSettings = (fake: ReturnType<typeof fakeApp>) =>
   render(<App workerClient={fake.client} router={fake.router} />);

@@ -164,4 +164,35 @@ describe("query-from-events", () => {
     unsubscribe();
     close();
   });
+
+  it("re-reads scan status when a scan fails or is cancelled (guards a progress indicator stuck after the scan stopped)", async () => {
+    // Guards: failure and cancellation leaving the shell's scan state stale.
+    let emitEvent: ((event: EventOf<"app.events">) => void) | undefined;
+    const { client, server, close } = createFakeIpc();
+    serveRpc(server, {
+      procedures: {},
+      subscriptions: {
+        "app.events": (_input, push) => {
+          emitEvent = push;
+          return undefined;
+        },
+      },
+    });
+    const onScanEnded = vi.fn();
+    const unsubscribe = subscribeAppEvents(
+      client,
+      createOptimisticActionRegistry(),
+      undefined,
+      undefined,
+      onScanEnded,
+    );
+
+    await vi.waitFor(() => expect(emitEvent).toBeTypeOf("function"));
+    emitEvent?.({ type: "ScanFailed", accountId: "acc-1", reason: "offline" });
+    emitEvent?.({ type: "ScanCancelled", accountId: "acc-1", jobId: "job-1" });
+
+    await vi.waitFor(() => expect(onScanEnded).toHaveBeenCalledTimes(2));
+    unsubscribe();
+    close();
+  });
 });
