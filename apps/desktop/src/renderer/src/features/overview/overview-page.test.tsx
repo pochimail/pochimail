@@ -130,7 +130,9 @@ describe("overview", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Unsubscribe from promotion senders")).toBeNull();
     expect(
-      screen.getByText("Conversations with people, records and receipts are never cleaned."),
+      screen.getByText(
+        "I always keep personal conversations, records and receipts, so they never appear in the clean-up list above.",
+      ),
     ).toBeTruthy();
   });
 

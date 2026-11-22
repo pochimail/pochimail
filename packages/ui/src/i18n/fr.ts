@@ -56,7 +56,7 @@ export const fr = {
   "overview.clean.keep": entry("À garder", []),
   "overview.clean.free": entry("À nettoyer", []),
   "overview.clean.never": entry(
-    "Les conversations avec des personnes, les documents et les reçus ne sont jamais nettoyés.",
+    "Je garde toujours les conversations personnelles, les documents officiels et les reçus : c’est pourquoi ils ne figurent jamais dans la liste de nettoyage ci-dessus.",
     [],
   ),
   "overview.rec.newsletters.sentence": entry("Se désabonner des newsletters", []),

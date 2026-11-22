@@ -76,7 +76,7 @@ export const messages = {
   "overview.clean.keep": entry("Worth keeping", []),
   "overview.clean.free": entry("Can be cleaned", []),
   "overview.clean.never": entry(
-    "Conversations with people, records and receipts are never cleaned.",
+    "I always keep personal conversations, records and receipts, so they never appear in the clean-up list above.",
     [],
   ),
   "overview.rec.newsletters.sentence": entry("Unsubscribe from newsletters", []),
