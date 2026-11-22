@@ -161,7 +161,7 @@ export function ConnectPage({ pose }: { pose: MascotPose }) {
     <div className="flex w-full flex-wrap items-center justify-center gap-16">
       <div className="flex flex-1 basis-85 flex-col gap-4 text-left">
         {addingAccount && !waiting && key === undefined ? (
-          <Button variant="ghost" size="sm" onClick={leave}>
+          <Button variant="ghost" size="sm" className="self-start" onClick={leave}>
             <ArrowLeftIcon aria-hidden="true" />
             {t("connect.back")}
           </Button>
