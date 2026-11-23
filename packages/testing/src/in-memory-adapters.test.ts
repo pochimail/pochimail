@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createFakeClock } from "./fake-clock.ts";
 import { createFakeMailProvider } from "./fake-mail-provider.ts";
 import { createFakePowerMonitor } from "./fake-power-monitor.ts";
+import { createFakeWindowActivity } from "./fake-window-activity.ts";
 import { createInMemoryJobQueue } from "./in-memory-job-queue.ts";
 import { createInMemoryNotifier } from "./in-memory-notifier.ts";
 import { createFakeScheduler } from "./in-memory-scheduler.ts";
@@ -18,6 +19,7 @@ import { powerMonitorContract } from "./power-monitor-contract.ts";
 import { repositoriesContract } from "./repositories-contract.ts";
 import { schedulerContract } from "./scheduler-contract.ts";
 import { unitOfWorkContract } from "./unit-of-work-contract.ts";
+import { windowActivityContract } from "./window-activity-contract.ts";
 
 // Every in-memory adapter must pass its own contract suite.
 unitOfWorkContract(createInMemoryUnitOfWork);
@@ -38,6 +40,10 @@ notifierContract(() => {
 powerMonitorContract(() => {
   const monitor = createFakePowerMonitor();
   return { monitor, change: (c) => monitor.set(c) };
+});
+windowActivityContract(() => {
+  const activity = createFakeWindowActivity();
+  return { activity, change: (s) => activity.set(s) };
 });
 mailProviderContract(() => {
   const provider = createFakeMailProvider({ pageSize: 2 });

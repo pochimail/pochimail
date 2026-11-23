@@ -27,6 +27,7 @@
     "./fake-platform": "./src/fake-platform.ts",
     "./fake-power-monitor": "./src/fake-power-monitor.ts",
     "./fake-timer": "./src/fake-timer.ts",
+    "./fake-window-activity": "./src/fake-window-activity.ts",
     "./faults": "./src/faults.ts",
     "./fixture-mailbox/fixture-mail-provider": "./src/fixture-mailbox/fixture-mail-provider.ts",
     "./fixture-mailbox/generator": "./src/fixture-mailbox/generator.ts",
@@ -64,7 +65,8 @@
     "./secret-store-contract": "./src/secret-store-contract.ts",
     "./settings-store-contract": "./src/settings-store-contract.ts",
     "./sync-contract": "./src/sync-contract.ts",
-    "./unit-of-work-contract": "./src/unit-of-work-contract.ts"
+    "./unit-of-work-contract": "./src/unit-of-work-contract.ts",
+    "./window-activity-contract": "./src/window-activity-contract.ts"
   },
   "scripts": {
     "typecheck": "tsc",

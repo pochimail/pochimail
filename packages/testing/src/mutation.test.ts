@@ -1,6 +1,7 @@
 import { failingChecks } from "@pochimail/kernel/testing/contract";
 import { describe, expect, it } from "vitest";
 import { createFakeClock } from "./fake-clock.ts";
+import { createFakeWindowActivity } from "./fake-window-activity.ts";
 import { createInMemoryJobQueue } from "./in-memory-job-queue.ts";
 import { createFakeScheduler } from "./in-memory-scheduler.ts";
 import { createInMemoryUnitOfWork } from "./in-memory-store.ts";
@@ -9,6 +10,7 @@ import { repositoriesChecks } from "./repositories-contract.ts";
 import { schedulerChecks } from "./scheduler-contract.ts";
 import { unitOfWorkChecks } from "./unit-of-work-contract.ts";
 import type { UnitOfWork } from "./uow-types.ts";
+import { windowActivityChecks } from "./window-activity-contract.ts";
 
 const noopStop = (_real: () => void) => () => {};
 
@@ -95,5 +97,20 @@ describe("contract suites catch broken adapters", () => {
     };
     const failed = await failingChecks(schedulerChecks, broken);
     expect(failed.some((n) => n.includes("unsubscribe stops further runs"))).toBe(true);
+  });
+
+  it("a window activity whose unsubscribe does nothing fails the WindowActivity suite", async () => {
+    const broken = () => {
+      const real = createFakeWindowActivity();
+      return {
+        activity: {
+          current: () => real.current(),
+          onChange: (l: Parameters<typeof real.onChange>[0]) => noopStop(real.onChange(l)),
+        },
+        change: (s: Parameters<typeof real.set>[0]) => real.set(s),
+      };
+    };
+    const failed = await failingChecks(windowActivityChecks, broken);
+    expect(failed.some((n) => n.includes("unsubscribe stops notifications"))).toBe(true);
   });
 });

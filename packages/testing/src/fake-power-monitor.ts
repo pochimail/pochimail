@@ -9,7 +9,13 @@ export interface FakePowerMonitor extends PowerMonitor {
   wake(): void;
 }
 
-const NORMAL: PowerState = { onBattery: false, thermal: "nominal", online: true, asleep: false };
+const NORMAL: PowerState = {
+  onBattery: false,
+  thermal: "nominal",
+  online: true,
+  asleep: false,
+  batterySaver: false,
+};
 
 export function createFakePowerMonitor(initial: Partial<PowerState> = {}): FakePowerMonitor {
   let state: PowerState = { ...NORMAL, ...initial };

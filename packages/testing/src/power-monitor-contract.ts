@@ -12,11 +12,12 @@ export const powerMonitorChecks: readonly Check<PowerMonitorHarness>[] = [
   check(
     "current reflects a change (guards background work running while offline or asleep)",
     async ({ monitor, change }) => {
-      change({ online: false, onBattery: true, thermal: "serious" });
+      change({ online: false, onBattery: true, thermal: "serious", batterySaver: true });
       expect(monitor.current()).toMatchObject({
         online: false,
         onBattery: true,
         thermal: "serious",
+        batterySaver: true,
       });
     },
   ),
@@ -51,7 +52,7 @@ export const powerMonitorChecks: readonly Check<PowerMonitorHarness>[] = [
   ),
 ];
 
-/** Contract for any `PowerMonitor`. `make` returns a fresh monitor in a normal (plugged-in, online, awake) state. */
+/** Contract for any `PowerMonitor`. `make` returns a fresh monitor in a normal (plugged-in, online, awake, battery saver off) state. */
 export function powerMonitorContract(
   make: () => PowerMonitorHarness | Promise<PowerMonitorHarness>,
 ): void {

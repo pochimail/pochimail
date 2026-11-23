@@ -8,6 +8,8 @@ export interface PowerState {
   readonly thermal: ThermalState;
   readonly online: boolean;
   readonly asleep: boolean;
+  /** The OS low-power mode; adaptive polling pauses while it is on (ADR 0004). */
+  readonly batterySaver: boolean;
 }
 
 /** Lets background work pause on sleep, offline, battery or heat. Reads are infallible. */
