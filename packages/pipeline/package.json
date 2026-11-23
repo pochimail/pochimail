@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./adaptive-polling": "./src/adaptive-polling.ts",
     "./concurrency": "./src/concurrency.ts",
     "./event-batching": "./src/event-batching.ts",
     "./event-bus": "./src/event-bus.ts",
@@ -17,7 +18,8 @@
     "./pipeline-types": "./src/pipeline-types.ts",
     "./power-monitor": "./src/power-monitor.ts",
     "./retry": "./src/retry.ts",
-    "./scheduler": "./src/scheduler.ts"
+    "./scheduler": "./src/scheduler.ts",
+    "./window-activity": "./src/window-activity.ts"
   },
   "scripts": {
     "typecheck": "tsc",

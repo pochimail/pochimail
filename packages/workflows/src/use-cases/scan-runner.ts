@@ -1,5 +1,5 @@
 import type { Account } from "@pochimail/accounts/model/account";
-import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import { type AsyncResult, createCancelSource } from "@pochimail/kernel/common";
 import type { StorageError } from "@pochimail/kernel/errors";
 import { InvalidStateError, NotFound } from "@pochimail/kernel/errors";
 import type { AccountId, WorkspaceId } from "@pochimail/kernel/ids";
@@ -30,24 +30,6 @@ export interface ScanRunnerDeps {
   readonly newJobId: () => string;
   /** The scan for one account; the composition root wires its provider and classifier. */
   readonly scanFor: (account: Account) => RunScan;
-}
-
-/** `AbortController` without a DOM: core has no such global. */
-function createStop() {
-  const listeners = new Set<() => void>();
-  const signal: CancelSignal & { aborted: boolean } = {
-    aborted: false,
-    addEventListener: (_type, listener) => void listeners.add(listener),
-    removeEventListener: (_type, listener) => void listeners.delete(listener),
-  };
-  return {
-    signal,
-    abort: () => {
-      if (signal.aborted) return;
-      signal.aborted = true;
-      for (const listener of [...listeners]) listener();
-    },
-  };
 }
 
 /**
@@ -160,7 +142,7 @@ export class ScanRunner {
   }
 
   private drive(job: Job): void {
-    const stop = createStop();
+    const stop = createCancelSource();
     const generation = job.generation + 1;
     job.generation = generation;
     job.status = "running";
