@@ -112,7 +112,13 @@ const setup = (initial: Record<string, Overview>, path = "/overview") => {
     { initialEntries: [path] },
   );
   render(<App workerClient={client} router={router} />);
-  return state;
+  return Object.assign(state, { router });
+};
+
+const reviewButton = (rowLabel: string) => {
+  const row = screen.getByText(rowLabel).closest("li");
+  if (row === null) throw new Error(`No row for ${rowLabel}`);
+  return within(row).getByRole("button", { name: "Review" });
 };
 
 describe("overview", () => {
@@ -128,12 +134,9 @@ describe("overview", () => {
         "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Unsubscribe from promotion senders")).toBeNull();
-    expect(
-      screen.getByText(
-        "I always keep personal conversations, records and receipts, so they never appear in the clean-up list above.",
-      ),
-    ).toBeTruthy();
+    expect(screen.queryByText("Delete old promotions")).toBeNull();
+    expect(screen.getByText("Emails that look important are never selected for you.")).toBeTruthy();
+    expect(screen.getByText("I have counts, not sizes, so I can’t show GB freed.")).toBeTruthy();
   });
 
   it("changes figures in place when a progress event arrives, without going back to a loading state (guards flicker and stale numbers)", async () => {
@@ -234,26 +237,96 @@ describe("overview", () => {
     expect(screen.getByText("Nothing to clean up right now.")).toBeTruthy();
   });
 
-  // Guards: both sections share one full-width two-column grid on a wide screen.
-  it("uses a full-width two-column grid for the sections at desktop width", async () => {
+  // Guards: Clean up first, then Catch what matters, stacked as in the reference screen.
+  it("shows Clean up before Catch what matters in one column", async () => {
     setup({ all: sorted });
     expect(await screen.findByRole("heading", { level: 1, name: "Overview" })).toBeTruthy();
     await screen.findByText("people are waiting on you");
 
-    const main = document.querySelector("main");
-    expect(main?.className).toContain("@container");
-    expect(main?.className).toContain("w-full");
-    expect(main?.className).not.toContain("max-w-");
+    const headings = within(screen.getByRole("main")).getAllByRole("heading", { level: 2 });
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      "Clean up",
+      "Catch what matters",
+    ]);
+    const parent = headings[0]?.closest("section")?.parentElement;
+    expect(parent).toBe(headings[1]?.closest("section")?.parentElement);
+    expect(parent?.className).toContain("flex-col");
+    expect(parent?.className).not.toContain("grid-cols-2");
+  });
 
-    const catchSection = screen
-      .getByRole("heading", { level: 2, name: "Catch what matters" })
-      .closest("section");
-    const cleanSection = screen
-      .getByRole("heading", { level: 2, name: "Clean up" })
-      .closest("section");
-    const grid = catchSection?.parentElement;
-    expect(grid?.className).toContain("@min-desktop:grid-cols-2");
-    expect(grid).toBe(cleanSection?.parentElement);
-    expect(grid?.querySelectorAll("section")).toHaveLength(2);
+  // Guards: a Review button that opens another row's list (and a target that could pre-select an email).
+  it("opens its own Review list for each recommendation, with no email in the target", async () => {
+    const user = userEvent.setup();
+    const { router } = setup({
+      all: {
+        ...sorted,
+        cleanable: [
+          { category: "promotions", count: 400 },
+          { category: "notifications", count: 120 },
+          { category: "sign-ins-security", count: 80 },
+          { category: "newsletters", count: 300 },
+        ],
+      },
+    });
+    await screen.findByText("Delete old promotions");
+    const cases = [
+      { label: "Delete old promotions", path: "/category/promotions", review: "delete" },
+      {
+        label: "Delete expired sign-in codes",
+        path: "/category/sign-ins-security",
+        review: "delete",
+      },
+      {
+        label: "Archive app and social notifications",
+        path: "/category/notifications",
+        review: "archive",
+      },
+      {
+        label: "Unsubscribe from newsletters",
+        path: "/category/newsletters",
+        review: "unsubscribe",
+      },
+    ];
+    for (const { label, path, review } of cases) {
+      await user.click(reviewButton(label));
+      await waitFor(() => expect(router.state.location.pathname).toBe(path));
+      expect(router.state.location.search).toMatchObject({ review });
+      expect(JSON.stringify(router.state.location.search)).not.toMatch(/@|message|email/iu);
+      await user.click(await screen.findByRole("button", { name: "Back to overview" }));
+      await screen.findByText("Delete old promotions");
+    }
+  });
+
+  // Guards: a protecting signal's Review button opening a delete list that pre-selects that email.
+  it("opens a catch-only list for each signal, never a delete list", async () => {
+    const user = userEvent.setup();
+    const { router } = setup({ all: sorted });
+    await screen.findByText("people are waiting on you");
+    const cases: readonly (readonly [string, string])[] = [
+      ["people are waiting on you", "waiting"],
+      ["email mentions a deadline", "deadlines"],
+      ["emails from important people", "important"],
+    ];
+    for (const [label, review] of cases) {
+      await user.click(reviewButton(label));
+      await waitFor(() => expect(router.state.location.pathname).toBe("/category/people"));
+      expect(router.state.location.search).toMatchObject({ review });
+      expect(router.state.location.search).not.toMatchObject({ review: "delete" });
+      await user.click(await screen.findByRole("button", { name: "Back to overview" }));
+      await screen.findByText("people are waiting on you");
+    }
+  });
+
+  // Guards: a fabricated GB figure from email counts (the contract carries no bytes).
+  it("shows a count, not a GB figure", async () => {
+    setup({
+      all: {
+        ...sorted,
+        cleanable: [{ category: "promotions", count: 400 }],
+      },
+    });
+    await screen.findByText("Delete old promotions");
+    expect(screen.getByText("400")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/\d[\d,.]*\s*GB/u);
   });
 });

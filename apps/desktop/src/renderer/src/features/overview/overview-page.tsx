@@ -8,6 +8,7 @@ import { StatusStrip } from "@pochimail/ui/components/status-strip";
 import { StorageBar } from "@pochimail/ui/components/storage-bar";
 import { type T, useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
+import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { cn } from "@pochimail/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -15,7 +16,16 @@ import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
-import { cleanSplit, overviewView, RECOMMENDATION_COPY } from "./overview-figures.ts";
+import {
+  type CleanRowView,
+  cleanRows,
+  cleanSplit,
+  type OverviewData,
+  overviewView,
+  type ReviewTarget,
+  type RowView,
+  signalRows,
+} from "./overview-figures.ts";
 import { SummarySheet } from "./summary-sheet.tsx";
 import { SUMMARY_FOCUS_TARGET_ID, useSummarySheet } from "./use-summary-sheet.ts";
 
@@ -24,6 +34,131 @@ const scanStatusLine = (scan: ScanStatus, t: T): string => {
   if (scan.total === null) return t("overview.scan.progressNoTotal", { processed: scan.processed });
   return t("overview.scan.progress", { processed: scan.processed, total: scan.total });
 };
+
+type SectionProps = {
+  t: T;
+  locale: UserLocale;
+  onReview: (target: ReviewTarget) => void;
+};
+
+function CleanUpSection({
+  data,
+  rows,
+  t,
+  locale,
+  onReview,
+}: SectionProps & { data: OverviewData; rows: CleanRowView[] }) {
+  const { deletable, keep } = cleanSplit(data);
+  const freeingRows = rows.filter((row) => row.freesSpace);
+  const otherRows = rows.filter((row) => !row.freesSpace);
+  return (
+    <section aria-labelledby="clean-title" className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <h2 id="clean-title" className={SECTION_TITLE_CLASS}>
+          {t("overview.clean.title")}
+        </h2>
+        <span className="text-ui text-muted-foreground">{t("overview.clean.note")}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground">{t("overview.nothingToClean")}</p>
+      ) : (
+        <>
+          <p className="flex flex-wrap items-baseline gap-x-3">
+            <span className="font-display text-figure leading-none font-title tabular-nums">
+              {deletable.toLocaleString(locale)}
+            </span>
+            <span className="text-muted-foreground">
+              {t("overview.clean.headline", { total: data.scanned })}
+            </span>
+          </p>
+          <p className="text-ui text-muted-foreground">{t("overview.clean.sizeUnknown")}</p>
+          <StorageBar
+            summary={t("overview.clean.summary", { total: data.scanned })}
+            segments={[
+              ...(keep > 0
+                ? [
+                    {
+                      id: "keep",
+                      label: t("overview.clean.keep"),
+                      value: keep,
+                      size: t("overview.email.count", { count: keep }),
+                      pattern: "solid" as const,
+                    },
+                  ]
+                : []),
+              {
+                id: "deletable",
+                label: t("overview.clean.free"),
+                value: deletable,
+                size: t("overview.email.count", { count: deletable }),
+                pattern: "hatched" as const,
+              },
+            ]}
+          />
+          <ul className="m-0 flex list-none flex-col divide-y p-0">
+            {freeingRows.map((row) => (
+              <RecommendationRow
+                key={row.id}
+                sentence={row.label}
+                reason={row.detail}
+                size={t("overview.email.count", { count: row.count })}
+                reviewLabel={t("overview.review")}
+                onReview={() => onReview(row.review)}
+              />
+            ))}
+          </ul>
+          {otherRows.length > 0 ? (
+            <>
+              <h3 className="text-body font-medium">{t("overview.clean.noFreeing")}</h3>
+              <ul className="m-0 flex list-none flex-col divide-y p-0">
+                {otherRows.map((row) => (
+                  <RecommendationRow
+                    key={row.id}
+                    sentence={row.label}
+                    reason={row.detail}
+                    size={t("overview.email.count", { count: row.count })}
+                    reviewLabel={t("overview.review")}
+                    onReview={() => onReview(row.review)}
+                  />
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
+      )}
+      <p className="text-ui text-muted-foreground">{t("overview.clean.never")}</p>
+    </section>
+  );
+}
+
+function CatchSection({ rows, t, locale, onReview }: SectionProps & { rows: RowView[] }) {
+  return (
+    <section aria-labelledby="catch-title" className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <h2 id="catch-title" className={SECTION_TITLE_CLASS}>
+          {t("overview.catch.title")}
+        </h2>
+        <span className="text-ui text-muted-foreground">{t("overview.catch.note")}</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground">{t("overview.nothingToCatch")}</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col divide-y p-0">
+          {rows.map((row) => (
+            <SignalRow
+              key={row.id}
+              figure={row.count.toLocaleString(locale)}
+              title={row.label}
+              detail={row.detail}
+              reviewLabel={t("overview.review")}
+              onReview={() => onReview(row.review)}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export function OverviewPage() {
   const t = useT();
@@ -52,16 +187,17 @@ export function OverviewPage() {
   const locale = useLocale();
   const device = deviceLabel(deviceName.data ?? "device", locale);
   const data = overview.data;
-  const review = (category: Category) =>
+  const goToCategory = (category: Category, filter?: ReviewTarget["review"]) =>
     void navigate({
       to: "/category/$categoryId",
       params: { categoryId: category },
-      search: (prev) => prev,
+      search: (prev) => (filter === undefined ? prev : { ...prev, review: filter }),
     });
+  const review = (target: ReviewTarget) => goToCategory(target.category, target.review);
 
   const view = overviewView(data, scan.active, overview.isError);
-  const { cleanable: cleanableTotal, keep } =
-    data === undefined ? { cleanable: 0, keep: 0 } : cleanSplit(data);
+  const rows = data === undefined ? [] : cleanRows(data, t);
+  const signals = data === undefined ? [] : signalRows(data, t);
 
   return (
     <main className={cn(PAGE_MAIN_CLASS, "@container")}>
@@ -90,7 +226,7 @@ export function OverviewPage() {
               device={device}
               cadence={summary.cadence}
               onCadenceChange={summary.selectCadence}
-              onReview={review}
+              onReview={goToCategory}
             />
           ) : undefined
         }
@@ -120,111 +256,9 @@ export function OverviewPage() {
         />
       )}
       {view === "content" && data !== undefined && (
-        <div className="grid gap-8 @min-desktop:grid-cols-2 @min-desktop:gap-x-12">
-          <section aria-labelledby="catch-title" className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <h2 id="catch-title" className={SECTION_TITLE_CLASS}>
-                {t("overview.catch.title")}
-              </h2>
-              <span className="text-ui text-muted-foreground">{t("overview.catch.note")}</span>
-            </div>
-            {data.toReview === 0 ? (
-              <p className="text-muted-foreground">{t("overview.nothingToCatch")}</p>
-            ) : (
-              <ul className="m-0 flex list-none flex-col divide-y p-0">
-                {data.waiting > 0 ? (
-                  <SignalRow
-                    figure={data.waiting.toLocaleString(locale)}
-                    title={t("overview.waiting.title", { count: data.waiting })}
-                    detail={
-                      data.oldestWaitingDays > 0
-                        ? t("overview.waiting.detail", { days: data.oldestWaitingDays })
-                        : undefined
-                    }
-                    reviewLabel={t("overview.review")}
-                    onReview={() => review("people")}
-                  />
-                ) : null}
-                {data.deadlines > 0 ? (
-                  <SignalRow
-                    figure={data.deadlines.toLocaleString(locale)}
-                    title={t("overview.deadlines.title", { count: data.deadlines })}
-                    detail={t("overview.deadlines.detail")}
-                    reviewLabel={t("overview.review")}
-                    onReview={() => review("people")}
-                  />
-                ) : null}
-                {data.important > 0 ? (
-                  <SignalRow
-                    figure={data.important.toLocaleString(locale)}
-                    title={t("overview.important.title", { count: data.important })}
-                    detail={t("overview.important.detail")}
-                    reviewLabel={t("overview.review")}
-                    onReview={() => review("people")}
-                  />
-                ) : null}
-              </ul>
-            )}
-          </section>
-
-          <section aria-labelledby="clean-title" className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <h2 id="clean-title" className={SECTION_TITLE_CLASS}>
-                {t("overview.clean.title")}
-              </h2>
-              <span className="text-ui text-muted-foreground">{t("overview.clean.note")}</span>
-            </div>
-            {data.cleanable.length === 0 ? (
-              <p className="text-muted-foreground">{t("overview.nothingToClean")}</p>
-            ) : (
-              <>
-                <p className="flex flex-wrap items-baseline gap-x-3">
-                  <span className="font-display text-figure leading-none font-title tabular-nums">
-                    {cleanableTotal.toLocaleString(locale)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    {t("overview.clean.headline", { total: data.scanned })}
-                  </span>
-                </p>
-                <StorageBar
-                  summary={t("overview.clean.summary", { total: data.scanned })}
-                  segments={[
-                    ...(keep > 0
-                      ? [
-                          {
-                            id: "keep",
-                            label: t("overview.clean.keep"),
-                            value: keep,
-                            size: t("overview.email.count", { count: keep }),
-                            pattern: "solid" as const,
-                          },
-                        ]
-                      : []),
-                    {
-                      id: "clean",
-                      label: t("overview.clean.free"),
-                      value: cleanableTotal,
-                      size: t("overview.email.count", { count: cleanableTotal }),
-                      pattern: "hatched" as const,
-                    },
-                  ]}
-                />
-                <ul className="m-0 flex list-none flex-col divide-y p-0">
-                  {data.cleanable.map((item) => (
-                    <RecommendationRow
-                      key={item.category}
-                      sentence={t(RECOMMENDATION_COPY[item.category].sentence)}
-                      reason={t(RECOMMENDATION_COPY[item.category].reason)}
-                      size={t("overview.email.count", { count: item.count })}
-                      reviewLabel={t("overview.review")}
-                      onReview={() => review(item.category)}
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
-            <p className="text-ui text-muted-foreground">{t("overview.clean.never")}</p>
-          </section>
+        <div className="flex flex-col gap-8">
+          <CleanUpSection data={data} rows={rows} t={t} locale={locale} onReview={review} />
+          <CatchSection rows={signals} t={t} locale={locale} onReview={review} />
         </div>
       )}
     </main>

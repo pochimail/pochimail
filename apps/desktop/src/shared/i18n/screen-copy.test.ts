@@ -28,6 +28,15 @@ describe("no user-facing literals in screen components (M4-07)", () => {
     expect(screenCopyOffenses(sandbox).filter((offense) => offense.file === "catalog.tsx")).toEqual(
       [],
     );
+
+    writeFileSync(
+      join(sandbox, "arrow.tsx"),
+      "const freed = rows.filter((row) => !row.freesSpace);\n" +
+        '  return <main>{t("overview.title")}</main>;\n',
+    );
+    expect(screenCopyOffenses(sandbox).filter((offense) => offense.file === "arrow.tsx")).toEqual(
+      [],
+    );
   });
 
   it("keeps every real renderer screen free of hard-coded copy (guards a new screen bypassing t())", () => {

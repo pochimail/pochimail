@@ -42,9 +42,13 @@ function useShellPose(): MascotPose {
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
-  // The account selection (switcher) lives in the URL so every screen filters by it.
-  validateSearch: (search: Record<string, unknown>): { account?: string } =>
-    typeof search.account === "string" && search.account !== "" ? { account: search.account } : {},
+  // The account selection (switcher) and the Review list live in the URL, so neither is kept in component state.
+  validateSearch: (search: Record<string, unknown>): { account?: string; review?: string } => ({
+    ...(typeof search.account === "string" && search.account !== ""
+      ? { account: search.account }
+      : {}),
+    ...(typeof search.review === "string" && search.review !== "" ? { review: search.review } : {}),
+  }),
 });
 
 // Every screen after onboarding shares one frame (sidebar / rail / tabs); it never remounts between them.
