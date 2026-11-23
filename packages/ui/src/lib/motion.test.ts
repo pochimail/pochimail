@@ -43,6 +43,8 @@ describe("motion catalog timings", () => {
     expect(Number(anim("screen-in"))).toBe(MOTION.screenMs);
     expect(Number(anim("finding-in"))).toBe(MOTION.panelMs);
     expect(Number(anim("pochi-found"))).toBe(MOTION.mascotFoundMs);
+    for (const name of ["pochi-glance", "pochi-nod", "pochi-tilt"])
+      expect(Number(anim(name)), `${name} duration`).toBe(MOTION.mascotIdleMs);
     // The flat-PNG eyelids use the board's blink cadence without adding a second looping token.
     expect(css).toContain(`animation: pochi-lid ${MOTION.mascotBlinkMs / 1000}s infinite`);
     // Guards: the hover response invents a keyframe or fires when motion is disabled.
@@ -52,7 +54,7 @@ describe("motion catalog timings", () => {
     expect(css).toMatch(new RegExp(`\\[data-sonner-toast\\][^}]*${MOTION.toastMs}ms`));
   });
 
-  // Guards: a decorative loop sneaking in; only Pochi's breathing and blink may repeat.
+  // Guards: a decorative loop sneaking in; only Pochi's breathing and blink may repeat, never an idle flourish.
   it("only the mascot animations loop", () => {
     const loops = [...css.matchAll(/--animate-([\w-]+):[^;]*\binfinite\b/g)].map((m) => m[1]);
     expect(loops.sort()).toEqual(["pochi-blink", "pochi-breathe"]);
