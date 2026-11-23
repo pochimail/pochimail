@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./adaptive-polling": "./src/adaptive-polling.ts",
     "./concurrency": "./src/concurrency.ts",
     "./event-batching": "./src/event-batching.ts",
     "./event-bus": "./src/event-bus.ts",

@@ -9,6 +9,7 @@
     "./model/message": "./src/model/message.ts",
     "./model/sender-stats": "./src/model/sender-stats.ts",
     "./model/thread": "./src/model/thread.ts",
+    "./policies/poll-cadence": "./src/policies/poll-cadence.ts",
     "./policies/sanitize-incoming": "./src/policies/sanitize-incoming.ts",
     "./ports/cursor-repository": "./src/ports/cursor-repository.ts",
     "./ports/mail-reader": "./src/ports/mail-reader.ts",
