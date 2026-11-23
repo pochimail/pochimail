@@ -25,6 +25,8 @@ export class ManageSettings {
       notifications: patch.notifications ?? current.value.notifications,
       theme: patch.theme ?? current.value.theme,
       locale: patch.locale !== undefined ? patch.locale : current.value.locale,
+      tidyCadence: patch.tidyCadence ?? current.value.tidyCadence,
+      summaryShown: patch.summaryShown ?? current.value.summaryShown,
     };
     const saved = await this.deps.store.save(workspaceId, next);
     return saved.ok ? ok(next) : saved;

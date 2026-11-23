@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { summaryMessages } from "./summary-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
 export const USER_LOCALES = ["en", "fr", "ja"] as const;
@@ -104,22 +105,7 @@ export const messages = {
   "overview.retry": entry("Try again", []),
   "overview.scan.paused": entry("Paused. Nothing was changed.", []),
   "overview.loading": entry("Loading your overview", []),
-  "summary.from": entry("From Pochi · {date, date, long} · on this {device}", ["date", "device"]),
-  "summary.title": entry("While you were away", []),
-  "summary.sentence": entry(
-    "{count, plural, one {I sorted # new email.} other {I sorted # new emails.}} Nothing was deleted.",
-    ["count"],
-  ),
-  "summary.figure.sorted": entry("sorted", []),
-  "summary.figure.review": entry("to review", []),
-  "summary.figure.free": entry("to free", []),
-  "summary.tidy": entry("Keep it tidy", []),
-  "summary.tidy.weekly": entry("Weekly", []),
-  "summary.tidy.daily": entry("Daily", []),
-  "summary.later": entry("Later", []),
-  "summary.reviewCount": entry("{count, plural, one {Review # email} other {Review # emails}}", [
-    "count",
-  ]),
+  ...summaryMessages.en,
   "sync.progress": entry("Syncing your email", []),
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),

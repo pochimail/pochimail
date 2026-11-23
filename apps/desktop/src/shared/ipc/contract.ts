@@ -2,7 +2,7 @@ import { AUTONOMY_LEVELS } from "@pochimail/actions/policies/autonomy";
 import { categorySchema } from "@pochimail/classification/model/category";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
-import { CAPABILITIES, SETTINGS_LOCALES, THEMES } from "../settings.ts";
+import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
 
 /**
  * The typed contract every screen uses (ADR 0002, M4-01). Handlers backed by core use cases live in worker/handlers.ts (M4-02).
@@ -15,6 +15,8 @@ const actionId = z.string().min(1).max(200);
 const autonomySchema = z.enum(AUTONOMY_LEVELS);
 const themeSchema = z.enum(THEMES);
 const localeSchema = z.enum(SETTINGS_LOCALES);
+const tidyCadenceSchema = z.enum(TIDY_CADENCES);
+const count = z.number().int().nonnegative();
 const capabilitiesSchema = z.object(
   Object.fromEntries(CAPABILITIES.map((name) => [name, z.boolean()])) as Record<
     (typeof CAPABILITIES)[number],
@@ -74,9 +76,20 @@ const queries = {
       )
       .max(100),
   },
+  /**
+   * The latest digest's new items only. Figures are optional until the worker has the per-action
+   * read model (#114); a missing figure means "none new", never a cumulative tally.
+   */
   "digest.get": {
     input: z.undefined(),
-    output: z.object({ ready: z.boolean(), itemCount: z.number().int().nonnegative() }),
+    output: z.object({
+      ready: z.boolean(),
+      itemCount: count,
+      archived: count.optional(),
+      saved: count.optional(),
+      unsubscribed: count.optional(),
+      generatedAt: z.string().optional(),
+    }),
   },
   "settings.get": {
     input: z.undefined(),
@@ -87,6 +100,8 @@ const queries = {
       notifications: z.boolean(),
       theme: themeSchema.optional(),
       locale: localeSchema.nullable().optional(),
+      tidyCadence: tidyCadenceSchema.optional(),
+      summaryShown: z.boolean().optional(),
     }),
   },
   "app.state": {
@@ -154,6 +169,8 @@ const mutations = {
       notifications: z.boolean().optional(),
       theme: themeSchema.optional(),
       locale: localeSchema.nullable().optional(),
+      tidyCadence: tidyCadenceSchema.optional(),
+      summaryShown: z.boolean().optional(),
     }),
     output: z.undefined(),
   },

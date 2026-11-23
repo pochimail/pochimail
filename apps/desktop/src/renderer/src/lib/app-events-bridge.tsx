@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { useOptimisticRegistry } from "./optimistic-context.tsx";
+import { queryKeys } from "./query/keys.ts";
 import { subscribeAppEvents } from "./query/worker-events.ts";
 
 /** Keeps the global app.events subscription active so optimistic mutations reconcile without polling. */
@@ -22,6 +23,7 @@ export function AppEventsBridge({ client }: { client: RpcClient }) {
           void queryClient.invalidateQueries({ queryKey: ["overview"] });
         },
         () => void queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
+        () => void queryClient.invalidateQueries({ queryKey: queryKeys.digest() }),
       ),
     [client, registry, queryClient, t],
   );

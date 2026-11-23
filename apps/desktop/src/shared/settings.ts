@@ -15,7 +15,16 @@ export interface AppSettings {
   readonly theme: Theme;
   /** UI language: null follows the OS until someone chooses one. */
   readonly locale: UserLocale | null;
+  /** The "Keep it tidy" choice offered in the first summary sheet. */
+  readonly tidyCadence: TidyCadence;
+  /** Stored once the first summary has opened, so later scans never reopen it unasked. */
+  readonly summaryShown: boolean;
 }
+
+export const TIDY_CADENCES = ["as-it-arrives", "daily", "weekly", "on-request"] as const;
+export type TidyCadence = (typeof TIDY_CADENCES)[number];
+/** Middle of the offered cadences: check once a day until the person chooses otherwise. */
+export const DEFAULT_TIDY_CADENCE: TidyCadence = "daily";
 
 export const THEMES = ["system", "light", "dark"] as const;
 export type Theme = (typeof THEMES)[number];
@@ -44,6 +53,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   notifications: true,
   theme: "system",
   locale: null,
+  tidyCadence: DEFAULT_TIDY_CADENCE,
+  summaryShown: false,
 };
 
 export interface SettingsStore {
@@ -66,6 +77,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
   const autonomy = AUTONOMY_LEVELS.find((level) => level === row["autonomy"]);
   const theme = THEMES.find((value) => value === row["theme"]);
   const locale = SETTINGS_LOCALES.find((value) => value === row["locale"]) ?? null;
+  const tidyCadence = TIDY_CADENCES.find((value) => value === row["tidyCadence"]);
   const saved = isRecord(row["capabilities"]) ? row["capabilities"] : {};
   const capabilities = Object.fromEntries(
     CAPABILITIES.map((name) => {
@@ -82,5 +94,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
         : DEFAULT_APP_SETTINGS.notifications,
     theme: theme ?? DEFAULT_APP_SETTINGS.theme,
     locale,
+    tidyCadence: tidyCadence ?? DEFAULT_TIDY_CADENCE,
+    summaryShown: row["summaryShown"] === true,
   };
 }

@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { summaryMessages } from "./summary-messages.ts";
 
 /**
  * Japanese catalog. Polite です・ます register, natural product Japanese, no machine-literal
@@ -81,19 +82,7 @@ export const ja = {
   "overview.retry": entry("もう一度試す", []),
   "overview.scan.paused": entry("一時停止中です。何も変更されていません。", []),
   "overview.loading": entry("概要を読み込んでいます", []),
-  "summary.from": entry("Pochiより · {date, date, long} · この{device}で", ["date", "device"]),
-  "summary.title": entry("不在の間のできごと", []),
-  "summary.sentence": entry("新しいメール{count}件を仕分けしました。削除したものはありません。", [
-    "count",
-  ]),
-  "summary.figure.sorted": entry("仕分け済み", []),
-  "summary.figure.review": entry("確認待ち", []),
-  "summary.figure.free": entry("解放できる容量", []),
-  "summary.tidy": entry("整理を続ける", []),
-  "summary.tidy.weekly": entry("毎週", []),
-  "summary.tidy.daily": entry("毎日", []),
-  "summary.later": entry("あとで", []),
-  "summary.reviewCount": entry("メール{count}件を確認する", ["count"]),
+  ...summaryMessages.ja,
 
   "sync.progress": entry("メールを同期しています", []),
   "shell.loading": entry("起動しています…", []),

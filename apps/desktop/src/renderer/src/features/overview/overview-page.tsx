@@ -9,13 +9,15 @@ import { StorageBar } from "@pochimail/ui/components/storage-bar";
 import { type T, useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 import { cn } from "@pochimail/ui/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { cleanSplit, overviewView, RECOMMENDATION_COPY } from "./overview-figures.ts";
+import { SummarySheet } from "./summary-sheet.tsx";
+import { SUMMARY_FOCUS_TARGET_ID, useSummarySheet } from "./use-summary-sheet.ts";
 
 const scanStatusLine = (scan: ScanStatus, t: T): string => {
   if (scan.paused) return t("overview.scan.paused");
@@ -26,6 +28,8 @@ const scanStatusLine = (scan: ScanStatus, t: T): string => {
 export function OverviewPage() {
   const t = useT();
   const client = useWorkerClient();
+  const queryClient = useQueryClient();
+  const summary = useSummarySheet(client, queryClient);
   const navigate = useNavigate();
   const { account } = useSearch({ strict: false });
   const accounts = useQuery({
@@ -74,8 +78,22 @@ export function OverviewPage() {
       ) : null}
 
       <PageHeading
+        id={SUMMARY_FOCUS_TARGET_ID}
         title={t("overview.title")}
         note={accounts.data ? t("overview.accounts", { count: scopedAccounts.length }) : undefined}
+        action={
+          summary.digest?.ready === true ? (
+            <SummarySheet
+              open={summary.open}
+              onOpenChange={summary.setOpen}
+              digest={summary.digest}
+              device={device}
+              cadence={summary.cadence}
+              onCadenceChange={summary.selectCadence}
+              onReview={review}
+            />
+          ) : undefined
+        }
       />
 
       {view === "loading" && (
