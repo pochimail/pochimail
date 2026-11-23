@@ -18,20 +18,9 @@ import {
   WS_A,
   WS_B,
 } from "./fixtures.ts";
-import type { UnitOfWorkHarness } from "./unit-of-work-contract.ts";
+import { type UnitOfWorkHarness, writeThrough as write } from "./unit-of-work-contract.ts";
 
 type H = UnitOfWorkHarness;
-/** Writes through a committed transaction, the only way rows get in. */
-async function write(
-  h: H,
-  work: (tx: Parameters<Parameters<H["uow"]["run"]>[0]>[0]) => Promise<unknown>,
-) {
-  const r = await h.uow.run(async (tx) => {
-    await work(tx);
-    return ok(undefined);
-  });
-  expect(r.ok).toBe(true);
-}
 
 async function drain<T>(
   next: (cursor?: string) => Promise<{ ok: true; value: Page<T> } | { ok: false }>,

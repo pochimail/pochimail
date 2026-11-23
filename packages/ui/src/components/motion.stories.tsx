@@ -176,7 +176,7 @@ export const SummarySheet: Story = {
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Summary</SheetTitle>
-          <SheetDescription>I sorted 18,402 emails. Nothing was deleted.</SheetDescription>
+          <SheetDescription>I sorted 18,402 emails.</SheetDescription>
         </SheetHeader>
       </SheetContent>
     </Sheet>

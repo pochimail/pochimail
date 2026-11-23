@@ -21,6 +21,7 @@ export const fr = {
     "size",
     "total",
   ]),
+  "overview.size.gb": entry("{size, number} Go", ["size"]),
   "scan.failed": entry(
     "Je n'ai pas pu finir le tri. Rien n'a été modifié. Relancez-le et je reprendrai là où je me suis arrêté.",
     [],
@@ -71,7 +72,7 @@ export const fr = {
     [],
   ),
   "overview.rec.notifications.reason": entry(
-    "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord, et rien n’est supprimé.",
+    "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
   ),
   "overview.rec.signins.sentence": entry("Supprimer les codes de connexion expirés", []),
@@ -165,7 +166,7 @@ export const fr = {
     ["percent"],
   ),
   "setup.invariants": entry(
-    "Quel que soit le mode, je ne supprime jamais rien et je n'agis jamais sur les emails de vraies personnes sans vous demander. Je consigne chaque action, et vous pouvez toutes les annuler, sauf un désabonnement.",
+    "Quel que soit le mode, je n'agis jamais sur les emails de vraies personnes sans vous demander. Je consigne chaque action, et vous pouvez toutes les annuler, sauf un désabonnement.",
     [],
   ),
   "setup.capabilities.none": entry(

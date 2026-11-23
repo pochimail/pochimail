@@ -126,3 +126,30 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
     });
   return rows;
 };
+
+/** Bytes to whole-or-one-decimal GB for the locale-formatted size keys (#114). */
+export const toGb = (bytes: number): number => Math.round((bytes / 1e9) * 10) / 10;
+
+/** One cumulative action figure for the Overview; only positive figures are shown, never a zero. */
+export type OverviewFigure = {
+  readonly count: number;
+  readonly labelKey: MessageKey;
+  /** GB size appended to the label via storageBar.legendItem, when the figure carries one. */
+  readonly sizeGb?: number;
+};
+
+/** The archived / saved / unsubscribed figures (#114), largest presentation order kept stable. */
+export const overviewFigures = (data: OverviewData): OverviewFigure[] => {
+  const { archived, savedCount, savedSize, unsubscribed } = data.figures;
+  const figures: OverviewFigure[] = [];
+  if (archived > 0) figures.push({ count: archived, labelKey: "summary.figure.archived" });
+  if (savedCount > 0)
+    figures.push({
+      count: savedCount,
+      labelKey: "summary.figure.saved",
+      sizeGb: toGb(savedSize),
+    });
+  if (unsubscribed > 0)
+    figures.push({ count: unsubscribed, labelKey: "summary.figure.unsubscribed" });
+  return figures;
+};

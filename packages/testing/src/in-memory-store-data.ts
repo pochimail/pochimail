@@ -19,6 +19,8 @@ export interface Data {
   senders: Map<string, SenderStats>;
   suggestions: Map<string, Suggestion>;
   actionLog: Map<string, ActionLog>;
+  /** The account of each log entry's first message at append time, like action_log.account_id. */
+  actionLogAccount: Map<string, string>;
   topics: Map<string, Topic>;
   cursors: Map<string, SyncCursor>;
   signals: Map<string, StoredSignal>;
@@ -38,6 +40,7 @@ export const emptyData = (): Data => ({
   senders: new Map(),
   suggestions: new Map(),
   actionLog: new Map(),
+  actionLogAccount: new Map(),
   topics: new Map(),
   cursors: new Map(),
   signals: new Map(),

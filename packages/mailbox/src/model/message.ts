@@ -28,6 +28,10 @@ export const incomingMessageSchema = z.object({
   opened: z.boolean(),
   /** The provider's size estimate in bytes, when it reports one (for "space you can free"). */
   size: z.int().nonnegative().optional(),
+  /** How many attachments the message carries; a number only, never a name (ADR 0014). */
+  savedCount: z.int().nonnegative().optional(),
+  /** Their combined size in bytes, when the provider reports one. */
+  savedSize: z.int().nonnegative().optional(),
   topicIds: z.array(topicIdSchema),
   /** A phishing flag the provider or a later stage raised; never a category. */
   suspicious: z
@@ -40,5 +44,9 @@ export const incomingMessageSchema = z.object({
 export type IncomingMessage = z.infer<typeof incomingMessageSchema>;
 
 /** A stored message: the label is opaque here, classification owns the closed set. */
-export const messageSchema = incomingMessageSchema.extend({ category: z.string() });
+export const messageSchema = incomingMessageSchema.extend({
+  category: z.string(),
+  /** Whether an applied archive action left the message out of the inbox; the action log owns it. */
+  archived: z.boolean().optional(),
+});
 export type Message = z.infer<typeof messageSchema>;

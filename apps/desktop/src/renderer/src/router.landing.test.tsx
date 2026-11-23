@@ -25,6 +25,14 @@ const createFakeAppClient = (hasConnectedAccount: boolean) => {
         important: 0,
         oldestWaitingDays: 0,
         cleanable: [],
+        figures: {
+          archived: 0,
+          savedCount: 0,
+          savedSize: 0,
+          deletableSize: 0,
+          unsubscribed: 0,
+          totalSize: 0,
+        },
       }),
       "mailbox.categories": () => ({
         people: 0,

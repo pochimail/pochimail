@@ -15,6 +15,7 @@ import { createSearchRepository } from "./mailbox/search-repository.ts";
 import { createSenderRepository } from "./mailbox/sender-repository.ts";
 import { createThreadRepository } from "./mailbox/thread-repository.ts";
 import { mailboxFactsOver } from "./read-models/mailbox-facts.ts";
+import { overviewFiguresOver } from "./read-models/overview-figures.ts";
 import { signalFactsOver } from "./read-models/signal-facts.ts";
 import type { ReadRepositories, WriteRepositories } from "./unit-of-work-types.ts";
 
@@ -108,7 +109,7 @@ export function createSqliteRepositories(db: Database): {
   const reads: ReadRepositories = {
     ...base,
     signalFacts: signalFactsOver(base),
-    mailboxFacts: mailboxFactsOver(base),
+    mailboxFacts: mailboxFactsOver({ ...base, figures: lift(overviewFiguresOver(db)) }),
   };
   const writes: WriteRepositories = {
     accounts: { ...accounts, save: lift(core.accounts.save), remove: lift(core.accounts.remove) },

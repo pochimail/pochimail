@@ -131,7 +131,7 @@ interface Plan {
   body: string;
   opened: boolean;
   listUnsubscribe: boolean;
-  attachment: boolean;
+  attachmentSize: number;
   suspicious: boolean;
   signals: Set<MessageLabel["signals"][number]>;
 }
@@ -252,13 +252,12 @@ function planAll(rng: Rng, total: number): Plan[] {
             (category === "newsletters" ||
               (category === "promotions" && rng.chance(0.9)) ||
               (category === "notifications" && rng.chance(0.1))),
-          attachment: false,
+          attachmentSize: 0,
           suspicious,
           signals: new Set(),
         });
       }
-      // The last message of a waiting thread is the one from them; the first 7 threads of
-      // `people` are exactly the "7 people waiting".
+      // The last message of a waiting thread is from them; the first 7 `people` threads are the waiters.
       if (waiting) plans[plans.length - 1]?.signals.add("needs-reply");
       if (important) plans[plans.length - 1]?.signals.add("important-sender");
       if (category === "people" && !waiting && !important && length > 1 && !lastInbound)
@@ -286,7 +285,7 @@ function assignSignals(rng: Rng, plans: Plan[], total: number): void {
     (p) => p.category === "records" || p.category === "purchases-travel",
   );
   for (const plan of rng.shuffle(eligible).slice(0, documents)) {
-    plan.attachment = true;
+    plan.attachmentSize = rng.int(150_000, 2_500_000); // Declared size; the PDF body stays a stub (#114).
     plan.signals.add("has-document");
   }
   // Old and never opened: only bulk senders, where this is what makes a clean-up proposal safe.
@@ -368,7 +367,7 @@ function renderMessage(
   ];
 
   const separator = `From ${from.address} ${weekday.slice(0, 3)} ${month} ${day} ${time} ${year}`;
-  if (!plan.attachment)
+  if (!plan.attachmentSize)
     return [separator, ...headers, ...textHeaders, "", encodedBody, "", ""].join("\n");
 
   const boundary = `fixture-${ids.messageId.split("@")[0]}`;
@@ -387,7 +386,7 @@ function renderMessage(
     encodedBody,
     `--${boundary}`,
     `Content-Type: application/pdf; name="${filename}"`,
-    `Content-Disposition: attachment; filename="${filename}"`,
+    `Content-Disposition: attachment; filename="${filename}"; size=${plan.attachmentSize}`,
     "Content-Transfer-Encoding: base64",
     "",
     encodeBase64Body(pdf),
@@ -459,6 +458,7 @@ export function generateMailbox(options: { seed: number; scale: MailboxScale }):
     totals: {
       messages: labels.length,
       documents: labels.filter((l) => l.signals.includes("has-document")).length,
+      attachmentBytes: plans.reduce((sum, p) => sum + p.attachmentSize, 0),
       byCategory,
     },
     messages: labels,

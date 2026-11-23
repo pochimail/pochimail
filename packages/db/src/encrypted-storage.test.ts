@@ -1,8 +1,11 @@
+import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import Database from "better-sqlite3-multiple-ciphers";
 import { describe, expect, it } from "vitest";
-import { migrate } from "./migrator.ts";
+import { createMessageRepository } from "./mailbox/message-repository.ts";
+import { MIGRATIONS, migrate } from "./migrator.ts";
 import { isPlainSqliteFile, openStorage } from "./open-storage.ts";
+import { overviewFiguresOver } from "./read-models/overview-figures.ts";
 import { freshPath, key, open } from "./test-support/storage.ts";
 
 describe("encrypted storage", () => {
@@ -57,10 +60,51 @@ describe("migrator", () => {
         "INSERT INTO digest_state (workspace_id, account_id, last_digest_at) VALUES ('w', 'a', '2026-01-01T00:00:00.000Z')",
       )
       .run();
-    expect(unwrap(migrate(first.writer))).toEqual({ from: 4, to: 4 });
+    expect(unwrap(migrate(first.writer))).toEqual({ from: 5, to: 5 });
     first.close();
     const again = open(path);
     expect(again.writer.prepare("SELECT count(*) AS n FROM digest_state").get()).toEqual({ n: 1 });
+  });
+
+  // Guards: an upgrade wiping rows stored before the figures columns existed, or guessing their facts (#114).
+  it("opens a version 4 database, keeps its rows and leaves the new facts unknown", () => {
+    const path = freshPath();
+    const old = new Database(path);
+    old.pragma("cipher='sqlcipher'");
+    old.pragma(`key="x'${key(1).toString("hex")}'"`);
+    expect(unwrap(migrate(old, MIGRATIONS.slice(0, 4)))).toEqual({ from: 0, to: 4 });
+    old
+      .prepare(
+        `INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
+         received_at, has_list_unsubscribe, opened, size, topic_ids, category, ingest_seq)
+       VALUES ('w', 'm-old', 'a', 't', 'sender@example.com', '["owner@example.com"]', 'Subject', 'Snippet',
+         '2026-01-01T00:00:00.000Z', 0, 0, 1234, '[]', 'notifications', 1)`,
+      )
+      .run();
+    old.close();
+    const storage = open(path);
+    expect(storage.writer.pragma("user_version", { simple: true })).toBe(5);
+    const stored = unwrap(
+      createMessageRepository(storage.writer).get("w" as WorkspaceId, "m-old" as MessageId),
+    );
+    expect(stored.size).toBe(1234);
+    expect(stored.savedCount).toBeUndefined();
+    expect(stored.savedSize).toBeUndefined();
+    expect(stored.archived).toBeUndefined();
+    // Unknown facts add nothing; only the size the old row already had is counted.
+    expect(
+      unwrap(overviewFiguresOver(storage.reader)("w" as WorkspaceId, ["a" as AccountId])),
+    ).toEqual([
+      {
+        accountId: "a",
+        archived: 0,
+        savedCount: 0,
+        savedSize: 0,
+        deletableSize: 0,
+        unsubscribed: 0,
+        totalSize: 1234,
+      },
+    ]);
   });
 
   it("refuses a database written by a newer build (guards downgrade corrupting a newer schema)", () => {

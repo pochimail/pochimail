@@ -46,7 +46,7 @@ export type ProposeSuggestionsError =
 /**
  * Proposes sender-level clean-ups, each with a human-readable reason and a confidence (brief §3).
  *
- * Only archive and unsubscribe are ever proposed (never delete) and never for a sender who has
+ * Only archive and unsubscribe are ever proposed (delete moves to Trash with approval, ADR 0012) and never for a sender who has
  * People mail, a protected category (brief §2). The reason and confidence come from what the
  * classifier recorded for the sender's messages. Re-running creates nothing twice and never
  * resets a suggestion the user already approved or dismissed.

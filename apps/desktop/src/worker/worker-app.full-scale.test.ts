@@ -7,14 +7,15 @@ import {
   MAILBOX_SCALES,
   MOCK_DATASET,
 } from "@pochimail/testing/fixture-mailbox/generator";
+import { readMailbox } from "@pochimail/testing/fixture-mailbox/mailbox-reader";
 import { describe, expect, it } from "vitest";
 import { DEMO_SEED } from "../shared/demo.ts";
 import { createWorkerApp } from "./app.ts";
-import { createFixtureAdapters } from "./fixture-adapters.ts";
+import { createFixtureAdapters, DEMO_HISTORY_CAPS } from "./fixture-adapters.ts";
 
 // Slow on purpose (about a minute): it is the only check at the real mailbox size of brief §6. CI runs it with the rest.
 describe("worker app at the brief §6 mock dataset size", () => {
-  it("scanning the full fixture stores all 48,312 emails of both accounts (guards a scan that drops mail at real mailbox size)", async () => {
+  it("scanning the full fixture stores all 48,312 emails and the Overview figures are the fixture's own totals (guards a scan that drops mail, or figures that drift, at real mailbox size)", async () => {
     const mailbox = generateMailbox({ seed: DEMO_SEED, scale: "full" });
     const labels = new Map(mailbox.labels.messages.map((l) => [l.messageId, l.category] as const));
     expect(mailbox.labels.totals.messages).toBe(MOCK_DATASET.totalMessages);
@@ -51,5 +52,31 @@ describe("worker app at the brief §6 mock dataset size", () => {
     // asserted: the detectors do not reach them yet (known M3 gap, docs/status.md).
     for (const { category, count } of overview?.cleanable ?? [])
       expect(count).toBe(MOCK_DATASET.categories[category]);
+
+    // #114: attachment totals come from the scan, action totals from the demo history,
+    // and the archived markers survive the scan's re-store of the same messages.
+    const figures = overview?.figures;
+    expect(figures?.savedCount).toBe(MOCK_DATASET.documents);
+    expect(figures?.savedSize).toBe(mailbox.labels.totals.attachmentBytes);
+    expect(figures?.archived).toBe(DEMO_HISTORY_CAPS.archived);
+    expect(figures?.unsubscribed).toBe(DEMO_HISTORY_CAPS.unsubscribed);
+    // Deletable size is exactly the oldest documents the demo history moved to Trash.
+    const [firstAccount] = mailbox.accounts;
+    if (!firstAccount) throw new Error("generator returned no account");
+    const documents = new Set(
+      mailbox.labels.messages
+        .filter((l) => l.signals.includes("has-document"))
+        .map((l) => l.messageId),
+    );
+    const trashed = readMailbox(firstAccount.mbox, {
+      accountId: firstAccount.id,
+      workspaceId: mailbox.workspaceId,
+    })
+      .filter((m) => documents.has(m.message.id))
+      .slice(0, DEMO_HISTORY_CAPS.trashed);
+    expect(trashed).toHaveLength(DEMO_HISTORY_CAPS.trashed);
+    expect(figures?.deletableSize).toBe(trashed.reduce((sum, m) => sum + (m.message.size ?? 0), 0));
+    expect(figures?.deletableSize).toBeGreaterThan(0);
+    expect(figures?.totalSize).toBeGreaterThan(figures?.savedSize ?? 0);
   }, 600_000);
 });

@@ -64,7 +64,7 @@ describe("Message", () => {
 });
 
 describe("Action and ActionLog", () => {
-  it("has no delete command (mail is archived, never deleted)", () => {
+  it("has no delete command (delete means move to Trash, ADR 0012)", () => {
     const a = sampleBuilders.action(r);
     expect(
       actionSchema.safeParse({ ...a, command: { kind: "delete", messageIds: ["m-1"] } }).success,

@@ -132,6 +132,8 @@ export interface RawMessage {
   readonly headers: ReadonlyMap<string, string>;
   /** Everything after the blank line, `>From ` escaping already undone. */
   readonly body: string;
+  /** Size of the raw message in bytes, the fixture's stand-in for the provider's size estimate. */
+  readonly size: number;
 }
 
 /** The raw text of each message in an mbox (`\n` line ends, `>From ` escaping not yet undone). */
@@ -166,7 +168,7 @@ function parseRaw(raw: string): RawMessage {
     if (colon > 0)
       headers.set(line.slice(0, colon).toLowerCase(), line.slice(colon + 1).replace(/^\s+/, ""));
   }
-  return { headers, body: unquoteFromLines(body.replace(/\n$/, "")) };
+  return { headers, body: unquoteFromLines(body.replace(/\n$/, "")), size: Buffer.byteLength(raw) };
 }
 
 function parameter(contentType: string, name: string): string | undefined {
@@ -183,7 +185,12 @@ function decodePart(headers: ReadonlyMap<string, string>, body: string): string 
 
 export interface MessageContent {
   readonly text: string;
-  readonly attachments: readonly { readonly filename: string; readonly mimeType: string }[];
+  readonly attachments: readonly {
+    readonly filename: string;
+    readonly mimeType: string;
+    /** Size in bytes: the declared RFC 2183 `size` when present, else the decoded body (#114). */
+    readonly size: number;
+  }[];
 }
 
 /** Decodes the plain-text body (and lists attachments) of a message, whatever its encoding. */
@@ -192,14 +199,22 @@ export function readContent(message: RawMessage): MessageContent {
   const boundary = type.toLowerCase().startsWith("multipart/") ? parameter(type, "boundary") : null;
   if (!boundary) return { text: decodePart(message.headers, message.body), attachments: [] };
   let text = "";
-  const attachments: { filename: string; mimeType: string }[] = [];
+  const attachments: { filename: string; mimeType: string; size: number }[] = [];
   for (const part of message.body.split(`--${boundary}`).slice(1)) {
     if (part.startsWith("--")) break;
     const parsed = parseRaw(part.replace(/^\n/, ""));
     const partType = parsed.headers.get("content-type") ?? "text/plain";
-    const filename = parameter(parsed.headers.get("content-disposition") ?? "", "filename");
-    if (filename) attachments.push({ filename, mimeType: partType.split(";")[0]?.trim() ?? "" });
-    else if (partType.toLowerCase().startsWith("text/plain"))
+    const disposition = parsed.headers.get("content-disposition") ?? "";
+    const filename = parameter(disposition, "filename");
+    if (filename) {
+      // Fixture attachment bodies are base64 stubs; the declared size is the document's real size.
+      const declared = parameter(disposition, "size");
+      attachments.push({
+        filename,
+        mimeType: partType.split(";")[0]?.trim() ?? "",
+        size: declared === undefined ? decodeBase64(parsed.body).length : Number(declared),
+      });
+    } else if (partType.toLowerCase().startsWith("text/plain"))
       text = decodePart(parsed.headers, parsed.body);
   }
   return { text, attachments };

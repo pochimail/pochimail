@@ -39,6 +39,12 @@ const logOf = (r: Row) =>
 export function createActionLogRepository(db: Database) {
   const { all, one, run } = sqlHelpers(db);
   // ---- action log (append-only: triggers refuse update and delete) ----
+  // #114: an executed archive/unarchive (applied, or the inverse an undo ran) marks the stored
+  // messages; the log stays the source of truth and a re-sync never overwrites the marker.
+  const archiveMarker = db.prepare(
+    `UPDATE message SET archived = ?
+     WHERE workspace_id = ? AND id IN (SELECT value FROM json_each(?, '$.messageIds'))`,
+  );
   const logs = (where: string, ...params: unknown[]) =>
     guard(() =>
       all(
@@ -99,6 +105,16 @@ export function createActionLogRepository(db: Database) {
           v.denialReason ?? null,
           v.at,
         );
+        if (
+          (v.outcome === "applied" || v.outcome === "undone") &&
+          (v.command.kind === "archive" || v.command.kind === "unarchive")
+        ) {
+          archiveMarker.run(
+            v.command.kind === "archive" ? 1 : 0,
+            v.workspaceId,
+            JSON.stringify(v.command),
+          );
+        }
       }),
   };
 

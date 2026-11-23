@@ -20,6 +20,14 @@ const empty: Overview = {
   important: 0,
   oldestWaitingDays: 0,
   cleanable: [],
+  figures: {
+    archived: 0,
+    savedCount: 0,
+    savedSize: 0,
+    deletableSize: 0,
+    unsubscribed: 0,
+    totalSize: 0,
+  },
 };
 const sorted: Overview = {
   scanned: 1000,
@@ -32,9 +40,21 @@ const sorted: Overview = {
     { category: "newsletters", count: 300 },
     { category: "notifications", count: 120 },
   ],
+  figures: {
+    archived: 120,
+    savedCount: 412,
+    savedSize: 1_200_000_000,
+    deletableSize: 3_100_000_000,
+    unsubscribed: 120,
+    totalSize: 6_400_000_000,
+  },
 };
 
-const setup = (initial: Record<string, Overview>, path = "/overview") => {
+const setup = (
+  initial: Record<string, Overview>,
+  path = "/overview",
+  locale?: "en" | "fr" | "ja",
+) => {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
@@ -86,6 +106,7 @@ const setup = (initial: Record<string, Overview>, path = "/overview") => {
           "save-documents": true,
         },
         notifications: true,
+        ...(locale !== undefined ? { locale } : {}),
       }),
       "scan.pause": ({ jobId }) => {
         state.calls.push(`pause:${jobId}`);
@@ -131,12 +152,41 @@ describe("overview", () => {
     expect(screen.getByText("Archive app and social notifications")).toBeTruthy();
     expect(
       screen.getByText(
-        "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+        "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
       ),
     ).toBeTruthy();
     expect(screen.queryByText("Delete old promotions")).toBeNull();
     expect(screen.getByText("Emails that look important are never selected for you.")).toBeTruthy();
     expect(screen.getByText("I have counts, not sizes, so I can’t show GB freed.")).toBeTruthy();
+  });
+
+  // Guards: the cumulative archived/saved/unsubscribed figures and the deletable GB headline (#114).
+  it("shows the archived, saved and unsubscribed figures with the deletable size apart from the clean-up list", async () => {
+    setup({ all: sorted });
+    expect(await screen.findByText("emails archived")).toBeTruthy();
+    expect(screen.getByText("attachments saved · 1.2 GB")).toBeTruthy();
+    expect(screen.getByText("newsletters unsubscribed")).toBeTruthy();
+    expect(screen.getByText("3.1 GB you can free, out of 6.4 GB")).toBeTruthy();
+    expect(screen.getByText("412")).toBeTruthy();
+  });
+
+  it("formats the figures and the deletable size in French and Japanese (guards English-only sizes)", async () => {
+    setup({ all: sorted }, "/overview", "fr");
+    expect(await screen.findByText("emails archivés")).toBeTruthy();
+    expect(screen.getByText("pièces jointes enregistrées · 1,2 Go")).toBeTruthy();
+    expect(screen.getByText("3,1 Go à libérer, sur 6,4 Go")).toBeTruthy();
+    cleanup();
+    setup({ all: sorted }, "/overview", "ja");
+    expect(await screen.findByText("アーカイブしたメール")).toBeTruthy();
+    expect(screen.getByText("保存した添付ファイル · 1.2 GB")).toBeTruthy();
+    expect(screen.getByText("合計6.4 GBのうち、3.1 GBを空けられます。")).toBeTruthy();
+  });
+
+  it("hides the figures area when no action has happened and nothing is deletable (guards a ledger of zeros)", async () => {
+    setup({ all: { ...empty, scanned: 40 } });
+    expect(await screen.findByText("Nothing needs you right now.")).toBeTruthy();
+    expect(screen.queryByText("emails archived")).toBeNull();
+    expect(screen.queryByText(/you can free/)).toBeNull();
   });
 
   it("changes figures in place when a progress event arrives, without going back to a loading state (guards flicker and stale numbers)", async () => {
@@ -317,11 +367,12 @@ describe("overview", () => {
     }
   });
 
-  // Guards: a fabricated GB figure from email counts (the contract carries no bytes).
+  // Guards: a fabricated GB figure from email counts (no bytes in the contract means no GB).
   it("shows a count, not a GB figure", async () => {
     setup({
       all: {
         ...sorted,
+        figures: empty.figures,
         cleanable: [{ category: "promotions", count: 400 }],
       },
     });

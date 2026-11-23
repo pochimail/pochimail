@@ -29,6 +29,7 @@
     "./fake-timer": "./src/fake-timer.ts",
     "./fake-window-activity": "./src/fake-window-activity.ts",
     "./faults": "./src/faults.ts",
+    "./figures-contract": "./src/figures-contract.ts",
     "./fixture-mailbox/fixture-mail-provider": "./src/fixture-mailbox/fixture-mail-provider.ts",
     "./fixture-mailbox/generator": "./src/fixture-mailbox/generator.ts",
     "./fixture-mailbox/labels": "./src/fixture-mailbox/labels.ts",

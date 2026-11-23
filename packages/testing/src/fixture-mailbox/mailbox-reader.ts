@@ -5,7 +5,11 @@ export interface FixtureMessage {
   readonly message: IncomingMessage;
   /** Decoded plain text, what `fetchBody` returns. */
   readonly body: string;
-  readonly attachments: readonly { readonly filename: string; readonly mimeType: string }[];
+  readonly attachments: readonly {
+    readonly filename: string;
+    readonly mimeType: string;
+    readonly size: number;
+  }[];
 }
 
 const address = (header: string): string => /<([^>]+)>/.exec(header)?.[1] ?? header.trim();
@@ -23,6 +27,7 @@ export function readMailbox(
   return splitMbox(mbox).map((raw) => {
     const header = (name: string) => raw.headers.get(name) ?? "";
     const content = readContent(raw);
+    const savedSize = content.attachments.reduce((sum, a) => sum + a.size, 0);
     const message = incomingMessageSchema.parse({
       schemaVersion: 1,
       id: header("message-id").replace(/^<|>$/g, ""),
@@ -36,6 +41,11 @@ export function readMailbox(
       receivedAt: new Date(Date.parse(header("date"))).toISOString(),
       hasListUnsubscribe: raw.headers.has("list-unsubscribe"),
       opened: header("status").includes("R"),
+      // Known facts, always reported (#114): raw bytes plus the documents' declared sizes,
+      // standing in for the provider's estimate of the whole message.
+      size: raw.size + savedSize,
+      savedCount: content.attachments.length,
+      savedSize,
       topicIds: [],
     });
     return { message, body: content.text, attachments: content.attachments };

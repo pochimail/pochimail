@@ -66,6 +66,29 @@ describe("GetOverview", () => {
       { category: "newsletters", count: 1 },
     ]);
   });
+
+  // Guards: Overview figures counting unknown sizes or attachment facts, or inventing action totals (#114).
+  it("sums the stored attachment and size facts, leaving unknown rows out of the sums", async () => {
+    const cleanup = createInMemoryCleanup();
+    await cleanup.seed({
+      1: { message: { size: 2_000_000_000, savedCount: 2, savedSize: 500_000_000 } },
+      2: { message: { size: 1_000_000_000, savedCount: 1, savedSize: 700_000_000 } },
+      3: {}, // stored before the provider reported sizes: unknown adds nothing
+    });
+    const overview = unwrap(
+      await new GetOverview({ uow: cleanup.uow, clock: fakeClock() }).execute(WS_A, ACCOUNT_1),
+    );
+    // The fake holds no action log, so the action-derived figures are truly 0 here;
+    // the repositories contract exercises them on the real stores.
+    expect(overview.figures).toEqual({
+      archived: 0,
+      savedCount: 3,
+      savedSize: 1_200_000_000,
+      deletableSize: 0,
+      unsubscribed: 0,
+      totalSize: 3_000_000_000,
+    });
+  });
 });
 
 describe("digest status", () => {

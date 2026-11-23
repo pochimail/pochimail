@@ -38,6 +38,8 @@ export const messages = {
     "size",
     "total",
   ]),
+  /** One size in GB for the saved-attachments figure (#114); the unit alone, locale-formatted. */
+  "overview.size.gb": entry("{size, number} GB", ["size"]),
   "scan.failed": entry(
     "I could not finish sorting. Nothing was changed. Start again and I will continue where I stopped.",
     [],
@@ -82,7 +84,7 @@ export const messages = {
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
   "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
   "overview.rec.notifications.reason": entry(
-    "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve, and nothing is deleted.",
+    "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
   ),
   "overview.rec.signins.sentence": entry("Delete expired sign-in codes", []),
@@ -161,7 +163,7 @@ export const messages = {
     ["percent"],
   ),
   "setup.invariants": entry(
-    "In every mode, I never delete anything and never act on email from real people without asking. I log every action, and you can undo any of them except an unsubscribe.",
+    "In every mode, I never act on email from real people without asking. I log every action, and you can undo any of them except an unsubscribe.",
     [],
   ),
   "setup.capabilities.none": entry("Choose at least one thing for me to help with.", []),

@@ -12,6 +12,18 @@ export interface UnitOfWorkHarness {
   committedOutbox(): Promise<readonly OutboxEntry[]>;
 }
 
+/** Writes through a committed transaction, the only way rows get in. */
+export async function writeThrough(
+  h: UnitOfWorkHarness,
+  work: (tx: Parameters<Parameters<UnitOfWork["run"]>[0]>[0]) => Promise<unknown>,
+) {
+  const r = await h.uow.run(async (tx) => {
+    await work(tx);
+    return ok(undefined);
+  });
+  expect(r.ok).toBe(true);
+}
+
 const ws = "w-1" as WorkspaceId;
 const topic = { schemaVersion: 1 as const, id: "t-1" as TopicId, workspaceId: ws, name: "Trips" };
 const entry: OutboxEntry = {

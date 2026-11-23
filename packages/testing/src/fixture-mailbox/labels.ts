@@ -25,6 +25,8 @@ export const labelsFileSchema = z.object({
   totals: z.object({
     messages: z.int().nonnegative(),
     documents: z.int().nonnegative(),
+    /** Combined declared size of the documents in bytes (#114); a number, never a name. */
+    attachmentBytes: z.int().nonnegative(),
     byCategory: z.record(z.enum(CATEGORIES), z.int().nonnegative()),
   }),
   messages: z.array(messageLabelSchema),
