@@ -23,7 +23,6 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
           /not emails from people/i,
           /review opens the list/i,
           /nothing is archived until you approve/i,
-          /nothing is deleted/i,
         ],
       },
       {
@@ -34,7 +33,6 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
           /pas des emails de personnes/i,
           /examiner ouvre la liste/i,
           /rien n’est archivé avant votre accord/i,
-          /rien n’est supprimé/i,
         ],
       },
       {
@@ -44,8 +42,7 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
           /自動送信された通知/,
           /個人からのメールではありません/,
           /確認する.*一覧が開き/,
-          /承認するまで何もアーカイブされず/,
-          /削除もされません/,
+          /承認するまで何もアーカイブされません/,
         ],
       },
     ];
@@ -56,6 +53,18 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
       // The explanation names the button the card actually shows.
       expect(detail).toContain(catalog["overview.review"].text);
     }
+  });
+  // Guards: the pre-ADR-0012 "nothing is deleted" reassurance creeping back into the copy (#114).
+  it("drops the 'nothing is deleted' reassurance from the summary, notifications and setup copy", () => {
+    expect(messages["summary.sentence"].text).not.toMatch(/nothing was deleted/i);
+    expect(fr["summary.sentence"].text).not.toMatch(/rien n’a été supprimé/i);
+    expect(ja["summary.sentence"].text).not.toContain("削除したものはありません");
+    expect(messages["overview.rec.notifications.reason"].text).not.toMatch(/nothing is deleted/i);
+    expect(fr["overview.rec.notifications.reason"].text).not.toMatch(/rien n’est supprimé/i);
+    expect(ja["overview.rec.notifications.reason"].text).not.toContain("削除もされません");
+    expect(messages["setup.invariants"].text).not.toMatch(/never delete/i);
+    expect(fr["setup.invariants"].text).not.toMatch(/ne supprime jamais rien/i);
+    expect(ja["setup.invariants"].text).not.toContain("何も削除せず");
   });
   it("uses {device} for the host instead of a literal Mac (guards copy that breaks on Windows)", () => {
     for (const catalog of catalogs)

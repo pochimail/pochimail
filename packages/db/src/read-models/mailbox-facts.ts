@@ -4,7 +4,10 @@ import type { MailboxFacts } from "@pochimail/cleanup/ports/mailbox-facts";
 import { ok } from "@pochimail/kernel/result";
 import { type SignalFactsReads, signalFactsOver } from "./signal-facts.ts";
 
-type Reads = SignalFactsReads & { readonly derived: DerivedReader };
+type Reads = SignalFactsReads & {
+  readonly derived: DerivedReader;
+  readonly figures: MailboxFacts["figures"];
+};
 
 /**
  * Cleanup's plain-data view of the mailbox, read from the
@@ -32,11 +35,15 @@ export function mailboxFactsOver(reads: Reads): MailboxFacts {
           receivedAt: m.receivedAt,
           opened: m.opened,
           hasListUnsubscribe: m.hasListUnsubscribe,
+          ...(m.size === undefined ? {} : { size: m.size }),
+          ...(m.savedCount === undefined ? {} : { savedCount: m.savedCount }),
+          ...(m.savedSize === undefined ? {} : { savedSize: m.savedSize }),
         })),
         nextCursor: page.value.nextCursor,
       });
     },
     latestSequence: (ws, accountId) => reads.messages.latestSequence(ws, accountId),
+    figures: (ws, accountIds) => reads.figures(ws, accountIds),
     async decisions(ws, ids) {
       const out = [];
       for (const id of ids) {

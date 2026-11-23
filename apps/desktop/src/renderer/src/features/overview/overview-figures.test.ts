@@ -15,6 +15,14 @@ const data: OverviewData = {
     { category: "sign-ins-security", count: 80 },
     { category: "newsletters", count: 300 },
   ],
+  figures: {
+    archived: 0,
+    savedCount: 0,
+    savedSize: 0,
+    deletableSize: 0,
+    unsubscribed: 0,
+    totalSize: 0,
+  },
 };
 
 describe("overview figures", () => {

@@ -16,6 +16,7 @@ import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
+import { FiguresSection } from "./figures-section.tsx";
 import {
   type CleanRowView,
   cleanRows,
@@ -259,6 +260,7 @@ export function OverviewPage() {
         <div className="flex flex-col gap-8">
           <CleanUpSection data={data} rows={rows} t={t} locale={locale} onReview={review} />
           <CatchSection rows={signals} t={t} locale={locale} onReview={review} />
+          <FiguresSection data={data} t={t} locale={locale} />
         </div>
       )}
     </main>

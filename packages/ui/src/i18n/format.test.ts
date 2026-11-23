@@ -17,6 +17,19 @@ describe("t() (design › Writing, P13)", () => {
     );
   });
 
+  // Guards: the saved-attachments figure shipping a raw byte count or an English-only unit (#114).
+  it("formats the saved-attachments size in GB per locale and composes the figure label", () => {
+    expect(t("overview.size.gb", { size: 1.2 })).toBe("1.2 GB");
+    expect(t("overview.size.gb", { size: 1.2 }, { locale: "fr" })).toBe("1,2 Go");
+    expect(t("overview.size.gb", { size: 1.2 }, { locale: "ja" })).toBe("1.2 GB");
+    expect(
+      t("storageBar.legendItem", {
+        label: t("summary.figure.saved"),
+        size: t("overview.size.gb", { size: 1.2 }),
+      }),
+    ).toBe("attachments saved · 1.2 GB");
+  });
+
   it("substitutes the device name from the port, never a hard-coded Mac (guards Windows copy)", () => {
     expect(t("overview.sorting", { device: "PC" })).toBe("Sorting privately on this PC");
     expect(t("overview.promise.device", { device: "device" })).toBe(

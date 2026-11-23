@@ -82,6 +82,14 @@ const harness = (opts: Options = {}) => {
         important: 0,
         oldestWaitingDays: 0,
         cleanable: [],
+        figures: {
+          archived: 0,
+          savedCount: 0,
+          savedSize: 0,
+          deletableSize: 0,
+          unsubscribed: 0,
+          totalSize: 0,
+        },
       }),
       "mailbox.categories": () => ({
         people: 0,
@@ -192,7 +200,7 @@ describe("Setup screen", () => {
 
   it("the invariants line names the unsubscribe exception like the Autopilot reminder (guards contradictory undo promises)", async () => {
     harness();
-    expect((await screen.findByText(/In every mode, I never delete/)).textContent).toMatch(
+    expect((await screen.findByText(/In every mode, I never act/)).textContent).toMatch(
       /except an unsubscribe/,
     );
   });

@@ -7,6 +7,22 @@ import { CLEANABLE_LABELS, type CleanableLabel } from "../policies/labels.ts";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 import { SummarizeMailbox } from "./summarize-mailbox.ts";
 
+/** The action- and size-derived figures (#114), summed over the selected accounts. Sizes are bytes. */
+export interface OverviewFigures {
+  /** Emails an applied archive action left out of the inbox. */
+  readonly archived: number;
+  /** Attachments the stored messages carry; a count only, never a name (ADR 0014). */
+  readonly savedCount: number;
+  /** Their combined size in bytes. */
+  readonly savedSize: number;
+  /** Size of the emails whose latest executed trash/untrash effect is trash (ADR 0012). */
+  readonly deletableSize: number;
+  /** Applied unsubscribe actions; one entry is one sender. */
+  readonly unsubscribed: number;
+  /** Combined size of the stored emails, for "out of Y GB". */
+  readonly totalSize: number;
+}
+
 export interface OverviewNumbers {
   /** Emails stored over the selected accounts. */
   readonly scanned: number;
@@ -19,6 +35,7 @@ export interface OverviewNumbers {
   readonly oldestWaitingDays: number;
   /** Emails Pochi could propose to clean, per category, largest first; empty categories are left out. */
   readonly cleanable: readonly { readonly category: CleanableLabel; readonly count: number }[];
+  readonly figures: OverviewFigures;
 }
 
 /** The figures the Overview leads with, computed from what the scan stored, for all accounts or one. */
@@ -34,6 +51,24 @@ export class GetOverview {
     const ids = accounts.value.filter((id) => accountId === undefined || id === accountId);
     const summary = await new SummarizeMailbox(this.deps).execute({ workspaceId, accountIds: ids });
     if (!summary.ok) return summary;
+    const rows = await this.deps.uow.reads.mailboxFacts.figures(workspaceId, ids);
+    if (!rows.ok) return rows;
+    const figures = {
+      archived: 0,
+      savedCount: 0,
+      savedSize: 0,
+      deletableSize: 0,
+      unsubscribed: 0,
+      totalSize: 0,
+    };
+    for (const row of rows.value) {
+      figures.archived += row.archived;
+      figures.savedCount += row.savedCount;
+      figures.savedSize += row.savedSize;
+      figures.deletableSize += row.deletableSize;
+      figures.unsubscribed += row.unsubscribed;
+      figures.totalSize += row.totalSize;
+    }
     const { signals, categories } = summary.value;
     const waiting = signals["needs-reply"] ?? 0;
     const deadlines = signals["time-sensitive"] ?? 0;
@@ -51,6 +86,7 @@ export class GetOverview {
       }))
         .filter((c) => c.count > 0)
         .sort((a, b) => b.count - a.count),
+      figures,
     });
   }
 }

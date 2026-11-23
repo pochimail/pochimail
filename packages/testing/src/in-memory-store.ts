@@ -1,5 +1,5 @@
 import type { ActionLog } from "@pochimail/actions/model/action";
-import { CATEGORIES, DEFAULT_CATEGORY } from "@pochimail/classification/model/category";
+import { CATEGORIES } from "@pochimail/classification/model/category";
 import type { AsyncResult, CancelSignal, Page, PageRequest } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
@@ -9,8 +9,8 @@ import type { Message } from "@pochimail/mailbox/model/message";
 import type { OutboxEntry, OutboxRecord, OutboxStore } from "@pochimail/pipeline/outbox";
 import { eventSinkOver } from "@pochimail/pipeline/outbox-event-sink";
 import { copy, type Data, emptyData, key, removeAccount } from "./in-memory-store-data.ts";
-import { mailboxFactsOver } from "./read-models/mailbox-facts.ts";
-import { signalFactsOver } from "./read-models/signal-facts.ts";
+import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
+import { inMemoryReads } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
 
 function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
@@ -203,7 +203,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           guarded(() => ok(data().digestSequence.get(key(ws, acc)) ?? 0)) as never,
       },
     };
-    return { ...base, signalFacts: signalFactsOver(base), mailboxFacts: mailboxFactsOver(base) };
+    return inMemoryReads(base, data, fail);
   }
 
   function writers(data: () => Data): WriteRepositories {
@@ -238,11 +238,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
               data().counters.set("ingest", next);
               data().messageSequence.set(k, next);
             }
-            // Re-running with the same input changes nothing; a known category survives.
-            data().messages.set(
-              k,
-              copy({ ...m, category: existing?.category ?? DEFAULT_CATEGORY }),
-            );
+            data().messages.set(k, storeMessage(m, existing));
           }
           return ok(undefined);
         },
@@ -281,6 +277,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           if (data().actionLog.has(k))
             return err(new StorageError("Action log entry already exists"));
           data().actionLog.set(k, copy(entry));
+          applyActionEffects(data(), k, entry);
           return ok(undefined);
         },
       },

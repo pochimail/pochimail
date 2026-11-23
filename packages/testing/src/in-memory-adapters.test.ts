@@ -8,6 +8,7 @@ import { createFakeClock } from "./fake-clock.ts";
 import { createFakeMailProvider } from "./fake-mail-provider.ts";
 import { createFakePowerMonitor } from "./fake-power-monitor.ts";
 import { createFakeWindowActivity } from "./fake-window-activity.ts";
+import { figuresContract } from "./figures-contract.ts";
 import { createInMemoryJobQueue } from "./in-memory-job-queue.ts";
 import { createInMemoryNotifier } from "./in-memory-notifier.ts";
 import { createFakeScheduler } from "./in-memory-scheduler.ts";
@@ -24,6 +25,7 @@ import { windowActivityContract } from "./window-activity-contract.ts";
 // Every in-memory adapter must pass its own contract suite.
 unitOfWorkContract(createInMemoryUnitOfWork);
 repositoriesContract(createInMemoryUnitOfWork);
+figuresContract(createInMemoryUnitOfWork);
 secretStoreContract(createInMemorySecretStore);
 jobQueueContract(() => {
   const clock = createFakeClock();

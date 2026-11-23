@@ -20,6 +20,7 @@ export const ja = {
     "size",
     "total",
   ]),
+  "overview.size.gb": entry("{size, number} GB", ["size"]),
   "scan.failed": entry(
     "仕分けを最後まで終えられませんでした。何も変更していません。もう一度始めると、止まったところから続けます。",
     [],
@@ -60,7 +61,7 @@ export const ja = {
   "overview.rec.promotions.reason": entry("セールや宣伝のメールです", []),
   "overview.rec.notifications.sentence": entry("アプリやSNSからの通知をアーカイブする", []),
   "overview.rec.notifications.reason": entry(
-    "自動送信された通知で、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされず、削除もされません。",
+    "自動送信された通知で、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
     [],
   ),
   "overview.rec.signins.sentence": entry("期限切れのログインコードを削除する", []),
@@ -145,7 +146,7 @@ export const ja = {
     ["percent"],
   ),
   "setup.invariants": entry(
-    "どのモードでも、何も削除せず、個人からのメールは確認なしに操作しません。すべての操作を記録し、配信停止を除いて元に戻せます。",
+    "どのモードでも、個人からのメールは確認なしに操作しません。すべての操作を記録し、配信停止を除いて元に戻せます。",
     [],
   ),
   "setup.capabilities.none": entry("お手伝いすることを1つ以上選んでください。", []),

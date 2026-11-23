@@ -186,7 +186,7 @@ export function createFixtureMailProvider(
   };
 }
 
-/** Returns whether the command changed anything. There is no delete: mail is archived (brief §2). */
+/** Returns whether the command changed anything. Delete moves mail to Trash (ADR 0012); the fixture mailbox keeps no Trash. */
 function applyEffect(state: Entry["state"], command: Command): boolean {
   const flag = (key: "archived" | "handled", value: boolean) => {
     const changed = state[key] !== value;

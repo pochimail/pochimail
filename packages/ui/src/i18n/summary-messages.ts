@@ -7,7 +7,7 @@ export const summaryMessages = {
     },
     "summary.title": { text: "While you were away", params: [] },
     "summary.sentence": {
-      text: "{count, plural, one {I sorted # new email.} other {I sorted # new emails.}} Nothing was deleted.",
+      text: "{count, plural, one {I sorted # new email.} other {I sorted # new emails.}}",
       params: ["count"],
     },
     "summary.figure.sorted": { text: "sorted", params: [] },
@@ -42,7 +42,7 @@ export const summaryMessages = {
     },
     "summary.title": { text: "Pendant votre absence", params: [] },
     "summary.sentence": {
-      text: "{count, plural, one {J’ai trié # nouvel email.} other {J’ai trié # nouveaux emails.}} Rien n’a été supprimé.",
+      text: "{count, plural, one {J’ai trié # nouvel email.} other {J’ai trié # nouveaux emails.}}",
       params: ["count"],
     },
     "summary.figure.sorted": { text: "triés", params: [] },
@@ -80,7 +80,7 @@ export const summaryMessages = {
     },
     "summary.title": { text: "不在の間のできごと", params: [] },
     "summary.sentence": {
-      text: "新しいメール{count}件を仕分けしました。削除したものはありません。",
+      text: "新しいメール{count}件を仕分けしました。",
       params: ["count"],
     },
     "summary.figure.sorted": { text: "仕分け済み", params: [] },

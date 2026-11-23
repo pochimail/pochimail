@@ -55,6 +55,15 @@ const queries = {
           }),
         )
         .max(4),
+      /** Action- and size-derived figures (#114); sizes are bytes, counts only, never content. */
+      figures: z.object({
+        archived: count,
+        savedCount: count,
+        savedSize: z.number().int().nonnegative(),
+        deletableSize: z.number().int().nonnegative(),
+        unsubscribed: count,
+        totalSize: z.number().int().nonnegative(),
+      }),
     }),
   },
   /** Email counts per category over the given accounts (the switcher's selection); counts only, never content. */

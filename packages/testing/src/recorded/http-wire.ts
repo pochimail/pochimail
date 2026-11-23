@@ -15,6 +15,16 @@ export interface MailboxIds {
 export const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 export const GRAPH_BASE = "https://graph.microsoft.com/v1.0/me";
 const UNSUBSCRIBE_VALUE = "<mailto:unsubscribe@list.example.net>";
+// Graph has no size field on a message: PR_MESSAGE_SIZE (0x0FF8) through extended properties
+// is the documented way, and attachments arrive through `$expand` (#114).
+const GRAPH_SIZE_PROPERTY = "Integer 0x0FF8";
+const GRAPH_EXPAND = `attachments,singleValueExtendedProperties($filter=id eq '${GRAPH_SIZE_PROPERTY}')`;
+const graphUrl = (size: number, token?: string) =>
+  `${GRAPH_BASE}/messages?${new URLSearchParams({
+    $top: String(size),
+    $expand: GRAPH_EXPAND,
+    ...(token ? { $skiptoken: token } : {}),
+  })}`;
 
 const ok = (body: unknown): RecordedEntry["response"] => ({
   status: 200,
@@ -52,7 +62,7 @@ export function gmailRecording(
       response: ok(body),
     });
   });
-  for (const { message } of messages) {
+  for (const { message, attachments } of messages) {
     entries.push({
       request: {
         method: "GET",
@@ -64,6 +74,7 @@ export function gmailRecording(
         labelIds: message.opened ? ["INBOX"] : ["INBOX", "UNREAD"],
         snippet: message.snippet,
         internalDate: String(Date.parse(message.receivedAt)),
+        sizeEstimate: message.size,
         payload: {
           headers: [
             { name: "From", value: message.from },
@@ -73,6 +84,11 @@ export function gmailRecording(
               ? [{ name: "List-Unsubscribe", value: UNSUBSCRIBE_VALUE }]
               : []),
           ],
+          // Numbers only: an attachment part is its size and an opaque id, never a name (ADR 0014).
+          parts: attachments.map((a, i) => ({
+            mimeType: a.mimeType,
+            body: { attachmentId: `att-${i}`, size: a.size },
+          })),
         },
       }),
     });
@@ -87,14 +103,12 @@ export function graphRecording(
 ): Recording {
   const size = options.pageSize ?? 100;
   const pages = page(messages, size);
-  const urlOf = (index: number) =>
-    `${GRAPH_BASE}/messages?$top=${size}${index > 0 ? `&$skiptoken=page-${index}` : ""}`;
   return {
     version: 1,
     entries: pages.map((items, index) => ({
-      request: { method: "GET", url: urlOf(index) },
+      request: { method: "GET", url: graphUrl(size, index > 0 ? `page-${index}` : undefined) },
       response: ok({
-        value: items.map(({ message }) => ({
+        value: items.map(({ message, attachments }) => ({
           id: message.id,
           conversationId: message.threadId,
           subject: message.subject,
@@ -106,8 +120,17 @@ export function graphRecording(
           internetMessageHeaders: message.hasListUnsubscribe
             ? [{ name: "List-Unsubscribe", value: UNSUBSCRIBE_VALUE }]
             : [],
+          // Numbers only, never an attachment name (ADR 0014).
+          attachments: attachments.map((a) => ({
+            size: a.size,
+            contentType: a.mimeType,
+            isInline: false,
+          })),
+          singleValueExtendedProperties: [{ id: GRAPH_SIZE_PROPERTY, value: String(message.size) }],
         })),
-        ...(index < pages.length - 1 ? { "@odata.nextLink": urlOf(index + 1) } : {}),
+        ...(index < pages.length - 1
+          ? { "@odata.nextLink": graphUrl(size, `page-${index + 1}`) }
+          : {}),
       }),
     })),
   };
@@ -133,6 +156,7 @@ async function getJson(http: WireHttp, url: string): Promise<Record<string, unkn
 type Row = Record<string, unknown>;
 const rows = (value: unknown): Row[] => (Array.isArray(value) ? (value as Row[]) : []);
 const text = (value: unknown): string => (typeof value === "string" ? value : "");
+const num = (value: unknown): number => (typeof value === "number" ? value : 0);
 
 export async function readGmailMailbox(
   http: WireHttp,
@@ -150,8 +174,11 @@ export async function readGmailMailbox(
         http,
         `${GMAIL_BASE}/messages/${encodeURIComponent(text(ref.id))}?format=metadata`,
       );
-      const headers = new Map(
-        rows((raw.payload as Row | undefined)?.headers).map((h) => [text(h.name), text(h.value)]),
+      const payload = raw.payload as Row | undefined;
+      const headers = new Map(rows(payload?.headers).map((h) => [text(h.name), text(h.value)]));
+      // A part with an attachmentId is an attachment; its body.size is the provider's report (#114).
+      const parts = rows(payload?.parts).filter(
+        (p) => text((p.body as Row | undefined)?.attachmentId) !== "",
       );
       out.push(
         incomingMessageSchema.parse({
@@ -167,6 +194,9 @@ export async function readGmailMailbox(
           receivedAt: new Date(Number(raw.internalDate)).toISOString(),
           hasListUnsubscribe: headers.has("List-Unsubscribe"),
           opened: !Array.isArray(raw.labelIds) || !raw.labelIds.includes("UNREAD"),
+          size: num(raw.sizeEstimate),
+          savedCount: parts.length,
+          savedSize: parts.reduce((sum, p) => sum + num((p.body as Row).size), 0),
           topicIds: [],
         }),
       );
@@ -183,11 +213,15 @@ export async function readGraphMailbox(
   pageSize = 100,
 ): Promise<IncomingMessage[]> {
   const out: IncomingMessage[] = [];
-  let url: string | null = `${GRAPH_BASE}/messages?$top=${pageSize}`;
+  let url: string | null = graphUrl(pageSize);
   for (let guard = 0; url !== null && guard < 1000; guard++) {
     const body: Row = await getJson(http, url);
     for (const m of rows(body.value)) {
       const address = (party: unknown) => text(((party as Row).emailAddress as Row).address);
+      const attachments = rows(m.attachments);
+      const sizeProperty = rows(m.singleValueExtendedProperties).find(
+        (p) => text(p.id) === GRAPH_SIZE_PROPERTY,
+      );
       out.push(
         incomingMessageSchema.parse({
           schemaVersion: 1,
@@ -204,6 +238,9 @@ export async function readGraphMailbox(
             (h) => text(h.name).toLowerCase() === "list-unsubscribe",
           ),
           opened: m.isRead === true,
+          size: Number(text(sizeProperty?.value)),
+          savedCount: attachments.length,
+          savedSize: attachments.reduce((sum, a) => sum + num(a.size), 0),
           topicIds: [],
         }),
       );

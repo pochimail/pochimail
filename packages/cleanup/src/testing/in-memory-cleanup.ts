@@ -2,7 +2,7 @@ import { Cancelled, NotFound } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
 import type { Suggestion } from "../model/suggestion.ts";
-import type { DecisionFact, MessageFact } from "../ports/mailbox-facts.ts";
+import type { AccountFigures, DecisionFact, MessageFact } from "../ports/mailbox-facts.ts";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 import { ACCOUNT_1, idOf, type Seeder, WS_A } from "./samples.ts";
 
@@ -60,6 +60,26 @@ export function createInMemoryCleanup(): InMemoryCleanup {
       return ok({ items, nextCursor: end < rows.length ? String(end) : null });
     },
     latestSequence: async () => ok(Math.max(0, ...[...facts.values()].map((f) => f.seq))),
+    figures: async (ws, accountIds) => {
+      // The fake holds no action log, so the action-derived figures (archived, deletable,
+      // unsubscribed) are truly 0 here; the repositories contract exercises them on the real stores.
+      if (facts.size === 0 || !accountIds.includes(ACCOUNT_1)) return ok([]);
+      const totals = { savedCount: 0, savedSize: 0, totalSize: 0 };
+      for (const [k, f] of facts) {
+        if (!k.startsWith(`${ws}/`)) continue;
+        totals.savedCount += f.savedCount ?? 0;
+        totals.savedSize += f.savedSize ?? 0;
+        totals.totalSize += f.size ?? 0;
+      }
+      const row: AccountFigures = {
+        accountId: ACCOUNT_1,
+        archived: 0,
+        deletableSize: 0,
+        unsubscribed: 0,
+        ...totals,
+      };
+      return ok([row]);
+    },
     decisions: async (ws, ids) =>
       ok(
         ids.flatMap((id) => {
