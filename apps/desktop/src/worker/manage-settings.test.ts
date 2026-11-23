@@ -47,6 +47,22 @@ it("a legacy autopilot:false row reads as Suggest (guards the safe default being
   expect(unwrap(await settings.get(WS)).autonomy).toBe("suggest");
 });
 
+// Guards: a cadence write clearing the stored summary marker, or losing the chosen cadence on read-back.
+it("persists the summary marker and cadence across later patches", async () => {
+  const settings = new ManageSettings({ store: createInMemorySettingsStore() });
+  expect(
+    unwrap(await settings.update(WS, { summaryShown: true, tidyCadence: "weekly" })),
+  ).toMatchObject({ summaryShown: true, tidyCadence: "weekly" });
+  expect(unwrap(await settings.get(WS))).toMatchObject({
+    summaryShown: true,
+    tidyCadence: "weekly",
+  });
+  expect(unwrap(await settings.update(WS, { tidyCadence: "on-request" }))).toMatchObject({
+    summaryShown: true,
+    tidyCadence: "on-request",
+  });
+});
+
 it("updating a legacy row never persists an undefined field (guards a half-migrated row)", async () => {
   const store = legacyStore({ autopilot: false, notifications: true });
   await new ManageSettings({ store }).update(WS, { notifications: false });
@@ -61,6 +77,8 @@ it("updating a legacy row never persists an undefined field (guards a half-migra
     notifications: false,
     theme: DEFAULT_APP_SETTINGS.theme,
     locale: DEFAULT_APP_SETTINGS.locale,
+    tidyCadence: DEFAULT_APP_SETTINGS.tidyCadence,
+    summaryShown: DEFAULT_APP_SETTINGS.summaryShown,
   });
 });
 

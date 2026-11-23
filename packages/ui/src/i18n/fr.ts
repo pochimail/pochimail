@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { summaryMessages } from "./summary-messages.ts";
 
 /**
  * French catalog. Typed against the English keys: a missing key or a renamed placeholder fails
@@ -92,23 +93,7 @@ export const fr = {
   "overview.retry": entry("Réessayer", []),
   "overview.scan.paused": entry("En pause. Rien n’a été modifié.", []),
   "overview.loading": entry("Chargement de la vue d’ensemble", []),
-  "summary.from": entry("De Pochi · {date, date, long} · sur votre {device}", ["date", "device"]),
-  "summary.title": entry("Pendant votre absence", []),
-  "summary.sentence": entry(
-    "{count, plural, one {J’ai trié # nouvel email.} other {J’ai trié # nouveaux emails.}} Rien n’a été supprimé.",
-    ["count"],
-  ),
-  "summary.figure.sorted": entry("triés", []),
-  "summary.figure.review": entry("à vérifier", []),
-  "summary.figure.free": entry("à libérer", []),
-  "summary.tidy": entry("Garder au propre", []),
-  "summary.tidy.weekly": entry("Chaque semaine", []),
-  "summary.tidy.daily": entry("Chaque jour", []),
-  "summary.later": entry("Plus tard", []),
-  "summary.reviewCount": entry(
-    "{count, plural, one {Vérifier # email} other {Vérifier # emails}}",
-    ["count"],
-  ),
+  ...summaryMessages.fr,
 
   "sync.progress": entry("Synchronisation de vos emails", []),
   "shell.loading": entry("Démarrage…", []),

@@ -20,11 +20,14 @@ const settingsStoreChecks: readonly Check<SettingsStore>[] = [
     "saved settings are read back and stay inside their workspace (guards one workspace changing another's Autopilot)",
     async (s) => {
       const chosen: AppSettings = {
+        ...DEFAULT_APP_SETTINGS,
         autonomy: "autopilot",
         capabilities: { ...DEFAULT_APP_SETTINGS.capabilities, declutter: false },
         notifications: false,
         theme: "dark",
         locale: "ja",
+        tidyCadence: "weekly",
+        summaryShown: true,
       };
       await s.save(WS_1, chosen);
       expect(unwrap(await s.get(WS_1))).toEqual(chosen);

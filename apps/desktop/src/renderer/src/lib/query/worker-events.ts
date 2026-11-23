@@ -5,6 +5,40 @@ import type { OptimisticActionRegistry } from "./optimistic.ts";
 const INITIAL_BACKOFF_MS = 250;
 const MAX_BACKOFF_MS = 4000;
 
+type AppEventHandlers = {
+  readonly registry: OptimisticActionRegistry;
+  readonly onMailboxChanged: () => void;
+  readonly onScanFailed: () => void;
+  readonly onScanEnded: () => void;
+  readonly onDigestReady: () => void;
+};
+
+/** Routes one global app event to the reconciliation or shell callback that owns it. */
+const dispatchAppEvent = (event: EventOf<"app.events">, handlers: AppEventHandlers): void => {
+  switch (event.type) {
+    case "ActionApplied":
+      handlers.registry.apply(event.actionId);
+      handlers.onMailboxChanged();
+      break;
+    case "ScanCompleted":
+      handlers.onMailboxChanged();
+      break;
+    case "ActionFailed":
+      handlers.registry.fail(event.actionId);
+      break;
+    case "ScanFailed":
+      handlers.onScanFailed();
+      handlers.onScanEnded();
+      break;
+    case "ScanCancelled":
+      handlers.onScanEnded();
+      break;
+    case "DigestReady":
+      handlers.onDigestReady();
+      break;
+  }
+};
+
 /** Subscribes to global app events and reconciles optimistic mutations on ActionApplied/ActionFailed. */
 export const subscribeAppEvents = (
   client: RpcClient,
@@ -14,6 +48,8 @@ export const subscribeAppEvents = (
   onMailboxChanged: () => void = () => {},
   /** A scan ended without completing: the shell's progress state must be re-read. */
   onScanEnded: () => void = () => {},
+  /** A digest was tallied: the summary's counts must be re-read. */
+  onDigestReady: () => void = () => {},
 ): (() => void) => {
   let closed = false;
   let currentUnsubscribe: (() => void) | undefined;
@@ -28,15 +64,13 @@ export const subscribeAppEvents = (
         undefined,
         (event: EventOf<"app.events">) => {
           backoffMs = INITIAL_BACKOFF_MS;
-          if (event.type === "ActionApplied") {
-            registry.apply(event.actionId);
-            onMailboxChanged();
-          } else if (event.type === "ScanCompleted") onMailboxChanged();
-          else if (event.type === "ActionFailed") registry.fail(event.actionId);
-          else if (event.type === "ScanFailed") {
-            onScanFailed();
-            onScanEnded();
-          } else if (event.type === "ScanCancelled") onScanEnded();
+          dispatchAppEvent(event, {
+            registry,
+            onMailboxChanged,
+            onScanFailed,
+            onScanEnded,
+            onDigestReady,
+          });
         },
         (error) => {
           console.error("[app.events]", error.code);
