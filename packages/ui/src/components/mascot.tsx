@@ -162,7 +162,6 @@ function Mascot({
         className={cn("relative block", idle && idlePoseClasses[idle])}
         style={{ transformOrigin: "50% 82%" }}
       >
-
         <span
           data-slot="mascot-breathe"
           className={cn("block", animationsEnabled && "animate-pochi-breathe")}
