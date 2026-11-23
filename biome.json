@@ -180,7 +180,6 @@
         "apps/desktop/packaging/gallery-check.ts",
         "apps/desktop/src/main/secret-vault.ts",
         "apps/desktop/src/model-host/serve.ts",
-        "apps/desktop/src/renderer/src/features/overview/overview-page.tsx",
         "apps/desktop/src/shared/ipc/client.ts",
         "apps/desktop/src/shared/ipc/secrets.ts",
         "apps/desktop/src/shared/ipc/server.ts",
