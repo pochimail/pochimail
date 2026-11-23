@@ -21,9 +21,8 @@ describe("category page", () => {
   it("explains Notifications: what belongs there, where the mail stays and what appears after approval", () => {
     params.categoryId = "notifications";
     render(<CategoryPage />);
-    expect(screen.getByText(/app and social alerts/iu)).toBeTruthy();
-    expect(screen.getByText(/stay in your inbox/iu)).toBeTruthy();
-    expect(screen.getByText(/after that/iu)).toBeTruthy();
+    expect(screen.getByText(/app and social alerts appear here after you approve/iu)).toBeTruthy();
+    expect(screen.getByText(/only label them in your inbox/iu)).toBeTruthy();
   });
 
   it("keeps the generic copy for other categories (guards Notifications copy leaking everywhere)", () => {

@@ -115,11 +115,37 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     );
   });
 
-  it("explains what Notifications holds, where the mail stays and what appears later (guards a vague empty state)", () => {
-    expect(messages["category.notifications.placeholder"].text).toMatch(/app and social alerts/iu);
-    expect(messages["category.notifications.placeholder"].text).toMatch(/stay in your inbox/iu);
-    expect(messages["category.notifications.placeholder"].text).toMatch(/after that/iu);
-    expect(fr["category.notifications.placeholder"].text).toMatch(/boîte de réception/u);
-    expect(ja["category.notifications.placeholder"].text).toMatch(/受信トレイ/u);
+  // Guards: a vague or sprawling Notifications empty state (#224).
+  it("explains what Notifications holds, where the mail stays and what appears later", () => {
+    const placeholders = [
+      {
+        text: messages["category.notifications.placeholder"].text,
+        source: /app and social alerts/iu,
+        approval: /after you approve/iu,
+        label: /only label them/iu,
+        inbox: /in your inbox/iu,
+      },
+      {
+        text: fr["category.notifications.placeholder"].text,
+        source: /alertes d’applications et de réseaux sociaux/u,
+        approval: /après votre accord/u,
+        label: /je les étiquette/u,
+        inbox: /boîte de réception/u,
+      },
+      {
+        text: ja["category.notifications.placeholder"].text,
+        source: /アプリやSNSからの通知/u,
+        approval: /承認/u,
+        label: /ラベルを付けるだけ/u,
+        inbox: /受信トレイ/u,
+      },
+    ];
+    for (const { text, source, approval, label, inbox } of placeholders) {
+      expect(text).toMatch(source);
+      expect(text).toMatch(approval);
+      expect(text).toMatch(label);
+      expect(text).toMatch(inbox);
+      expect(text.length).toBeLessThan(160);
+    }
   });
 });
