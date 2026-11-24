@@ -77,7 +77,8 @@ const queries = {
       deadlines: count,
       important: count,
       cleanable: cleanableSchema,
-      onlineNeeded: z.boolean(),
+      /** True only when no stored account matches the selection, not a live session probe. */
+      noAccount: z.boolean(),
     }),
   },
   /** Email counts per category over the given accounts (the switcher's selection); counts only, never content. */

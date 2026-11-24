@@ -18,17 +18,38 @@ export interface PrivateFields {
 
 const key = (...parts: readonly string[]) => parts.join("/");
 
+/** The most private fields one long-lived unit of work may keep in memory (ADR 0014). */
+const DEFAULT_MAX_ENTRIES = 1000;
+
 /**
  * Display fields and free-text reasons are fetched by id and held only for the lifetime of this
- * connection. They never reach a SQL statement, a database file or a log. A unit of work opened
- * after a restart has no cache: rows carry only counts, ids, dates and fixed codes, and the UI
- * asks the provider for anything it needs to display.
+ * connection, at most `maxEntries` of them. They never reach a SQL statement, a database file or a
+ * log. A unit of work opened after a restart has no cache: rows carry only counts, ids, dates and
+ * fixed codes, and the UI asks the provider for anything it needs to display.
  */
 export class DisplayFieldsCache {
   private readonly fields = new Map<string, PrivateFields>();
 
+  constructor(private readonly maxEntries: number = DEFAULT_MAX_ENTRIES) {}
+
+  private remember(key: string, fields: PrivateFields): void {
+    // Insertion order is recency: a re-remembered id becomes the newest entry.
+    this.fields.delete(key);
+    this.fields.set(key, fields);
+    const oldest = this.fields.keys().next().value;
+    if (this.fields.size > this.maxEntries && oldest !== undefined) this.fields.delete(oldest);
+  }
+
+  private read(key: string): PrivateFields {
+    const fields = this.fields.get(key);
+    if (fields === undefined) return {};
+    this.fields.delete(key);
+    this.fields.set(key, fields);
+    return fields;
+  }
+
   rememberMessage(message: IncomingMessage): void {
-    this.fields.set(key(message.workspaceId, message.id), {
+    this.remember(key(message.workspaceId, message.id), {
       subject: message.subject,
       snippet: message.snippet,
       from: message.from,
@@ -38,31 +59,31 @@ export class DisplayFieldsCache {
   }
 
   rememberThread(thread: Thread): void {
-    this.fields.set(key("thread", thread.workspaceId, thread.id), { subject: thread.subject });
+    this.remember(key("thread", thread.workspaceId, thread.id), { subject: thread.subject });
   }
 
   rememberSender(ws: string, account: string, hash: string, address: string): void {
-    this.fields.set(key("sender", ws, account, hash), { address });
+    this.remember(key("sender", ws, account, hash), { address });
   }
 
   rememberFields(scope: string, ws: string, id: string, fields: PrivateFields): void {
-    this.fields.set(key(scope, ws, id), fields);
+    this.remember(key(scope, ws, id), fields);
   }
 
   of(ws: string, id: string): PrivateFields {
-    return this.fields.get(key(ws, id)) ?? {};
+    return this.read(key(ws, id));
   }
 
   ofThread(ws: string, id: string): PrivateFields {
-    return this.fields.get(key("thread", ws, id)) ?? {};
+    return this.read(key("thread", ws, id));
   }
 
   ofSender(ws: string, account: string, hash: string): PrivateFields {
-    return this.fields.get(key("sender", ws, account, hash)) ?? {};
+    return this.read(key("sender", ws, account, hash));
   }
 
   ofFields(scope: string, ws: string, id: string): PrivateFields {
-    return this.fields.get(key(scope, ws, id)) ?? {};
+    return this.read(key(scope, ws, id));
   }
 
   forgetMessage(ws: string, id: string): void {

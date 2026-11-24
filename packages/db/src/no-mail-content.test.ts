@@ -14,8 +14,10 @@ import {
 import Database from "better-sqlite3-multiple-ciphers";
 import { describe, expect, it } from "vitest";
 import { createSenderHasher } from "./hmac-sender-hasher.ts";
+import { DisplayFieldsCache } from "./mailbox/display-fields-cache.ts";
 import { MIGRATIONS, migrate } from "./migrator.ts";
 import { ALLOWED_COLUMNS, guardSchema } from "./schema-guard.ts";
+import { createSqliteCore } from "./sqlite-repositories.ts";
 import { createSqliteUnitOfWork } from "./sqlite-unit-of-work.ts";
 import { freshPath, key, open } from "./test-support/storage.ts";
 
@@ -117,10 +119,30 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     expect(
       storage.reader.prepare("SELECT reason_code FROM derived WHERE message_id = 'msg-1'").get(),
     ).not.toEqual({ reason_code: MARKERS[6] });
+
+    // A restart with no cache must not pass the stored hex code off as the rule's reason text.
+    const fresh = createSqliteCore(storage.reader, {
+      cache: new DisplayFieldsCache(),
+      senderHasher: storage.senderHasher,
+    });
+    const [signal] = unwrap(fresh.signals.listForMessages(WS_A, ["msg-1" as MessageId]));
+    expect(signal?.kind).toBe("needs-reply");
+    expect(signal?.reason).toBeUndefined();
   });
 
-  // Guards: an upgrade leaving FTS5, clear-text senders or free-text reasons behind.
-  it("a v5 database upgrades to v6 with FTS5 gone and clear-text values wiped", () => {
+  // Guards: an upgrade leaving FTS5, clear-text senders or free-text reasons in a row, a freed page or the WAL.
+  it("a v5 database upgrades to v6 with FTS5 gone and clear-text values scrubbed from the file", () => {
+    const OLD = {
+      subject: "Old subject",
+      snippet: "Old snippet",
+      address: "sender@example.com",
+      owner: "owner@example.com",
+      reason: "Old reason",
+      thread: "Old thread",
+      derived: "Old derived reason",
+      signal: "Old signal reason",
+      suggestion: "Old suggestion reason",
+    } as const;
     const path = freshPath();
     const old = new Database(path);
     old.pragma("cipher='sqlcipher'");
@@ -129,18 +151,18 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     old.exec(`
       INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
         received_at, has_list_unsubscribe, opened, size, topic_ids, suspicious_reasons, suspicious_confidence, category, ingest_seq)
-      VALUES ('w', 'm-old', 'a', 't', 'sender@example.com', '["owner@example.com"]', 'Old subject',
-        'Old snippet', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["Old reason"]', 0.5, 'records', 1);
+      VALUES ('${WS_A}', 'm-old', 'a', 't', '${OLD.address}', '["${OLD.owner}"]', '${OLD.subject}',
+        '${OLD.snippet}', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["${OLD.reason}"]', 0.5, 'records', 1);
       INSERT INTO thread (workspace_id, id, account_id, subject, message_ids, last_message_at)
-        VALUES ('w', 't', 'a', 'Old thread', '["m-old"]', '2026-01-01T00:00:00.000Z');
+        VALUES ('${WS_A}', 't', 'a', '${OLD.thread}', '["m-old"]', '2026-01-01T00:00:00.000Z');
       INSERT INTO derived (workspace_id, message_id, account_id, category, reason, confidence, model_version, snippet, derived_at)
-        VALUES ('w', 'm-old', 'a', 'records', 'Old derived reason', 0.9, 'rules-1', 'Old snippet', '2026-01-01T00:00:00.000Z');
+        VALUES ('${WS_A}', 'm-old', 'a', 'records', '${OLD.derived}', 0.9, 'rules-1', '${OLD.snippet}', '2026-01-01T00:00:00.000Z');
       INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason)
-        VALUES ('w', 'm-old', 'has-document', 0.9, '2026-01-01T00:00:00.000Z', 'Old signal reason');
+        VALUES ('${WS_A}', 'm-old', 'has-document', 0.9, '2026-01-01T00:00:00.000Z', '${OLD.signal}');
       INSERT INTO sender_stats (workspace_id, account_id, address, message_count, opened_count, replied_count, last_message_at, vip)
-        VALUES ('w', 'a', 'sender@example.com', 1, 0, 0, '2026-01-01T00:00:00.000Z', 0);
+        VALUES ('${WS_A}', 'a', '${OLD.address}', 1, 0, 0, '2026-01-01T00:00:00.000Z', 0);
       INSERT INTO suggestion (workspace_id, id, account_id, state, confidence, created_at, command, reasons)
-        VALUES ('w', 's-old', 'a', 'pending', 0.9, '2026-01-01T00:00:00.000Z', '{"kind":"archive","messageIds":["m-old"]}', '["Old suggestion reason"]');
+        VALUES ('${WS_A}', 's-old', 'a', 'pending', 0.9, '2026-01-01T00:00:00.000Z', '{"kind":"archive","messageIds":["m-old"]}', '["${OLD.suggestion}"]');
     `);
     old.close();
 
@@ -165,12 +187,29 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     expect(storage.reader.prepare("SELECT reason_codes FROM suggestion").get()).toEqual({
       reason_codes: "[]",
     });
+    // Migrated messages have sender_hash = '', so no per-sender stats row can point at them.
     expect(storage.reader.prepare("SELECT count(*) AS n FROM sender_stats").get()).toEqual({
       n: 0,
     });
-    const all = JSON.stringify(storage.reader.prepare("SELECT * FROM message").all());
-    for (const text of ["sender@example.com", "Old subject", "Old snippet", "Old reason"])
-      expect(all).not.toContain(text);
+
+    const rows = JSON.stringify(storage.reader.prepare("SELECT * FROM message").all());
+    const wal = `${path}-wal`;
+    const bytes =
+      readFileSync(path).toString("latin1") +
+      (existsSync(wal) ? readFileSync(wal).toString("latin1") : "");
+    for (const marker of Object.values(OLD)) {
+      expect(rows).not.toContain(marker);
+      expect(bytes).not.toContain(marker);
+    }
+
+    // A restart has no private-field cache: an empty reason_code must not become a fake reason.
+    const fresh = createSqliteCore(storage.reader, {
+      cache: new DisplayFieldsCache(),
+      senderHasher: storage.senderHasher,
+    });
+    const [migrated] = unwrap(fresh.signals.listForMessages(WS_A, ["m-old" as MessageId]));
+    expect(migrated?.kind).toBe("has-document");
+    expect(migrated?.reason).toBeUndefined();
   });
 
   // Guards: an allow-list entry that lets a private field back into a table.

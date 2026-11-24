@@ -198,8 +198,8 @@ describe("worker app over the real IPC layer", () => {
     close();
   });
 
-  // Guards: a Review answer built from mail content, or a connection flag guessed from counts instead of sessions.
-  it("review.get mirrors the stored overview figures and reports a connection need from the account list", async () => {
+  // Guards: a Review answer built from mail content, or an account flag guessed from counts.
+  it("review.get mirrors the stored overview figures and reports a missing account from the account list", async () => {
     const { client, app, close } = await connect();
     for (const account of mailbox.accounts)
       await client.call("scan.start", { accountId: account.id });
@@ -211,7 +211,7 @@ describe("worker app over the real IPC layer", () => {
       deadlines: overview.deadlines,
       important: overview.important,
       cleanable: [...overview.cleanable],
-      onlineNeeded: false,
+      noAccount: false,
     });
     close();
 
@@ -240,7 +240,7 @@ describe("worker app over the real IPC layer", () => {
       deadlines: 0,
       important: 0,
       cleanable: [],
-      onlineNeeded: true,
+      noAccount: true,
     });
     offline.close();
   });

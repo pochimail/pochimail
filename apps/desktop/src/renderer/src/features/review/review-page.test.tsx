@@ -21,7 +21,7 @@ const stored: Review = {
     { category: "newsletters", count: 300 },
     { category: "notifications", count: 120 },
   ],
-  onlineNeeded: true,
+  noAccount: true,
 };
 
 const setup = () => {
@@ -73,7 +73,7 @@ const setup = () => {
 
 describe("review screen (issue #98)", () => {
   // Guards: a Review screen asking for stored mail content, or hiding the design's connection note.
-  it("shows stored counts and the exact Online needed note, asking only for counts", async () => {
+  it("shows stored counts and the exact Online needed note when no account is stored", async () => {
     const { asked, router } = setup();
     expect(await screen.findByRole("heading", { level: 1, name: "Review" })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/review");

@@ -11,6 +11,7 @@ const signalOf = (r: Row, context: RepositoryContext): StoredSignal => {
   const ws = text(r.workspace_id);
   const messageId = text(r.message_id);
   const kind = text(r.kind);
+  const cached = context.cache.ofFields("signal", ws, signalId(messageId, kind));
   return {
     ...signalSchema.parse({
       schemaVersion: 1,
@@ -20,12 +21,11 @@ const signalOf = (r: Row, context: RepositoryContext): StoredSignal => {
       confidence: r.confidence,
       detectedAt: r.detected_at,
     }),
-    reason:
-      context.cache.ofFields("signal", ws, signalId(messageId, kind)).reason ?? text(r.reason_code),
+    ...(cached.reason === undefined ? {} : { reason: cached.reason }),
   };
 };
 
-/** Repository over one connection. Signals keep a fixed reason code, never the rule text. */
+/** Repository over one connection. The code identifies a rule; only the live cache holds its text. */
 export function createSignalRepository(db: Database, context: RepositoryContext) {
   const { all, run, atomic } = sqlHelpers(db);
   const replaceSignals = atomic(
@@ -37,9 +37,10 @@ export function createSignalRepository(db: Database, context: RepositoryContext)
           JSON.stringify(ids.slice(i, i + CHUNK)),
         );
       for (const s of rows) {
-        context.cache.rememberFields("signal", ws, signalId(s.messageId, s.kind), {
-          reason: s.reason,
-        });
+        if (s.reason !== undefined)
+          context.cache.rememberFields("signal", ws, signalId(s.messageId, s.kind), {
+            reason: s.reason,
+          });
         run(
           `INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason_code)
            VALUES (?, ?, ?, ?, ?, ?)
@@ -50,7 +51,7 @@ export function createSignalRepository(db: Database, context: RepositoryContext)
           s.kind,
           s.confidence,
           s.detectedAt,
-          reasonCode(s.reason),
+          s.reason === undefined ? "" : reasonCode(s.reason),
         );
       }
     },

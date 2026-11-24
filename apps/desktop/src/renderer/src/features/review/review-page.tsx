@@ -95,7 +95,7 @@ function CleanableCounts({
 
 /**
  * The offline Review screen: the counts the worker stored, plus the design's connection note when
- * no provider session can apply a choice. It never reads or renders mail content (ADR 0014).
+ * no account is stored for the selection. It never reads or renders mail content (ADR 0014).
  */
 export function ReviewPage() {
   const t = useT();
@@ -125,7 +125,7 @@ export function ReviewPage() {
       )}
       {data !== undefined && (
         <div className="flex flex-col gap-8">
-          {data.onlineNeeded ? <OnlineNote t={t} /> : null}
+          {data.noAccount ? <OnlineNote t={t} /> : null}
           <Counts data={data} locale={locale} t={t} />
           <CleanableCounts data={data} locale={locale} t={t} />
         </div>

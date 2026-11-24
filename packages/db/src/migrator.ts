@@ -14,6 +14,9 @@ export interface Migration {
   readonly sql: string;
 }
 
+/** The reports-only migration drops clear-text columns; its freed pages and WAL frames need scrubbing (ADR 0014). */
+const REPORTS_ONLY_VERSION = 6;
+
 /**
  * The SQL files are imported into the bundle: the worker runs from a built file with no `migrations/` next to it,
  * so reading them from disk at runtime would make every database open fail there (ADR 0005).
@@ -44,11 +47,19 @@ export function migrate(
         new StorageError(`Database version ${from} is newer than this app supports (${latest})`),
       );
     }
-    for (const m of migrations.filter((x) => x.version > from)) {
+    const pending = migrations.filter((x) => x.version > from);
+    for (const m of pending) {
       db.transaction(() => {
         db.exec(m.sql);
         db.pragma(`user_version = ${m.version}`);
       })();
+    }
+    if (pending.some((m) => m.version === REPORTS_ONLY_VERSION)) {
+      // Outside the transaction: VACUUM cannot run inside one. This also truncates the WAL frames
+      // that still held the pre-v6 rows, so no clear-text subject or address survives on disk.
+      db.pragma("secure_delete = ON");
+      db.exec("VACUUM");
+      db.pragma("wal_checkpoint(TRUNCATE)");
     }
     return ok({ from, to: latest });
   } catch (cause) {

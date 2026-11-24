@@ -83,14 +83,14 @@ const emptyHandlers: Handlers = {
         totalSize: 0,
       },
     }),
-    // Without storage there is no provider session, so Review has counts only and needs a connection.
+    // Without storage there is no account, so Review has counts only and no session to apply a choice.
     "review.get": () => ({
       toReview: 0,
       waiting: 0,
       deadlines: 0,
       important: 0,
       cleanable: [],
-      onlineNeeded: true,
+      noAccount: true,
     }),
     "mailbox.categories": () => ({
       people: 0,
