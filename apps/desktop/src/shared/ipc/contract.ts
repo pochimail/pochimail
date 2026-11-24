@@ -17,6 +17,15 @@ const themeSchema = z.enum(THEMES);
 const localeSchema = z.enum(SETTINGS_LOCALES);
 const tidyCadenceSchema = z.enum(TIDY_CADENCES);
 const count = z.number().int().nonnegative();
+/** The four cleanable categories, shared by the Overview and Review figures; counts only (ADR 0014). */
+const cleanableSchema = z
+  .array(
+    z.object({
+      category: z.enum(["newsletters", "promotions", "notifications", "sign-ins-security"]),
+      count,
+    }),
+  )
+  .max(4);
 const capabilitiesSchema = z.object(
   Object.fromEntries(CAPABILITIES.map((name) => [name, z.boolean()])) as Record<
     (typeof CAPABILITIES)[number],
@@ -47,14 +56,7 @@ const queries = {
       deadlines: z.number().int().nonnegative(),
       important: z.number().int().nonnegative(),
       oldestWaitingDays: z.number().int().nonnegative(),
-      cleanable: z
-        .array(
-          z.object({
-            category: z.enum(["newsletters", "promotions", "notifications", "sign-ins-security"]),
-            count: z.number().int().nonnegative(),
-          }),
-        )
-        .max(4),
+      cleanable: cleanableSchema,
       /** Action- and size-derived figures (#114); sizes are bytes, counts only, never content. */
       figures: z.object({
         archived: count,
@@ -64,6 +66,18 @@ const queries = {
         unsubscribed: count,
         totalSize: z.number().int().nonnegative(),
       }),
+    }),
+  },
+  /** The Review screen's stored figures (#98): counts only, never a subject, sender, snippet or URL. */
+  "review.get": {
+    input: z.object({ accountId: accountId.optional() }),
+    output: z.object({
+      toReview: count,
+      waiting: count,
+      deadlines: count,
+      important: count,
+      cleanable: cleanableSchema,
+      onlineNeeded: z.boolean(),
     }),
   },
   /** Email counts per category over the given accounts (the switcher's selection); counts only, never content. */

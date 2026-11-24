@@ -16,6 +16,7 @@ import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
 import { OverviewPage } from "./features/overview/overview-page.tsx";
+import { ReviewPage } from "./features/review/review-page.tsx";
 import { useAppearance } from "./features/settings/appearance.tsx";
 import { AppearanceControls } from "./features/settings/appearance-controls.tsx";
 import { SettingsPage } from "./features/settings/settings-page.tsx";
@@ -111,6 +112,12 @@ const overviewRoute = createRoute({
   component: OverviewPage,
 });
 
+const reviewRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/review",
+  component: ReviewPage,
+});
+
 const categoryRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/category/$categoryId",
@@ -154,6 +161,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute.addChildren([welcomeRoute, connectRoute, setupRoute]),
   shellRoute.addChildren([
     overviewRoute,
+    reviewRoute,
     categoryRoute,
     documentsRoute,
     activityRoute,

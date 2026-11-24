@@ -6,6 +6,7 @@ import mailSql from "./migrations/0002_mail_repositories.sql?raw";
 import scopesSql from "./migrations/0003_account_granted_scopes.sql?raw";
 import sizeSql from "./migrations/0004_message_size.sql?raw";
 import figuresSql from "./migrations/0005_overview_figures.sql?raw";
+import reportsSql from "./migrations/0006_reports_only.sql?raw";
 
 export interface Migration {
   /** 1, 2, 3…: the value `PRAGMA user_version` holds once it has run. */
@@ -23,6 +24,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 3, sql: scopesSql },
   { version: 4, sql: sizeSql },
   { version: 5, sql: figuresSql },
+  { version: 6, sql: reportsSql },
 ];
 
 /**

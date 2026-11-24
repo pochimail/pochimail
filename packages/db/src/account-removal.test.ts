@@ -7,7 +7,7 @@ import { createSqliteJobQueue } from "./sqlite-job-queue.ts";
 import { harness, mail, put } from "./test-support/harness.ts";
 
 describe("account removal", () => {
-  it("removes the search entries and signals of that account only (guards ghost search hits after removal)", async () => {
+  it("removes the signals of that account only (guards ghost signals after removal)", async () => {
     const h = harness();
     const other = "acc-2" as AccountId;
     await h.uow.run(async (tx) => {
@@ -36,16 +36,16 @@ describe("account removal", () => {
       return ok(undefined);
     });
     await h.uow.run((tx) => tx.repositories.accounts.remove(WS_A, ACCOUNT_1));
-    const hits = () =>
-      h.storage.reader
-        .prepare("SELECT count(*) AS n FROM message_search WHERE message_search MATCH 'invoice'")
-        .get() as { n: number } & { account?: AccountId };
-    expect(hits().n).toBe(1);
     const signals = h.storage.reader.prepare("SELECT message_id FROM signal").all();
     expect(signals).toEqual([{ message_id: "msg-2" }]);
-    const found = unwrap(await h.search.search(WS_A, other, "invoice", 10));
-    expect(found.map((m) => m.id)).toEqual(["msg-2"]);
-    expect(unwrap(await h.search.search(WS_A, ACCOUNT_1, "invoice", 10))).toEqual([]);
+    expect(
+      unwrap(await h.uow.reads.messages.query(WS_A, { accountId: ACCOUNT_1, limit: 10 })).items,
+    ).toEqual([]);
+    expect(
+      unwrap(await h.uow.reads.messages.query(WS_A, { accountId: other, limit: 10 })).items.map(
+        (m) => m.id,
+      ),
+    ).toEqual(["msg-2"]);
   });
 });
 
@@ -125,6 +125,7 @@ describe("account removal: events, jobs, log and schema coverage", () => {
       "derived",
       "digest_state",
       "job",
+      "keep_rule",
       "message",
       "outbox",
       "sender_stats",

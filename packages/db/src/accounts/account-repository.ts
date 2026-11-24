@@ -32,7 +32,7 @@ export function createAccountRepository(db: Database) {
   /** Every table with an `account_id` column, except those handled on their own. */
   function accountScopedTables(): string[] {
     const names = all(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'message_search%'",
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     ).map((r) => text(r.name));
     return names.filter(
       (name) =>
@@ -67,8 +67,8 @@ export function createAccountRepository(db: Database) {
         );
       }),
     /**
-     * Deletes the account and everything scoped to it, children first (the FTS rows go with the
-     * messages). Tables are found by their `account_id` column, so a table added later is purged
+     * Deletes the account and everything scoped to it, children first. Tables are found by their
+     * `account_id` column, so a table added later is purged
      * too: that includes the outbox and job rows that name the account. Action log entries are
      * anonymised instead (kind, outcome, date and counts stay; ids and labels go).
      */

@@ -1,6 +1,4 @@
-import type { AsyncResult } from "@pochimail/kernel/common";
-import type { StorageError } from "@pochimail/kernel/errors";
-import type { Message } from "@pochimail/mailbox/model/message";
+import type { KeepRuleRepository } from "@pochimail/cleanup/ports/keep-rule-repository";
 import type { Database } from "better-sqlite3-multiple-ciphers";
 import { createAccountRepository } from "./accounts/account-repository.ts";
 import { createActionLogRepository } from "./actions/action-log-repository.ts";
@@ -8,53 +6,46 @@ import { createDerivedRepository } from "./classification/derived-repository.ts"
 import { createSignalRepository } from "./classification/signal-repository.ts";
 import { createTopicRepository } from "./classification/topic-repository.ts";
 import { createDigestStateRepository } from "./cleanup/digest-state-repository.ts";
+import { createKeepRuleRepository } from "./cleanup/keep-rule-repository.ts";
 import { createSuggestionRepository } from "./cleanup/suggestion-repository.ts";
 import { createCursorRepository } from "./mailbox/cursor-repository.ts";
 import { createMessageRepository } from "./mailbox/message-repository.ts";
-import { createSearchRepository } from "./mailbox/search-repository.ts";
 import { createSenderRepository } from "./mailbox/sender-repository.ts";
 import { createThreadRepository } from "./mailbox/thread-repository.ts";
 import { mailboxFactsOver } from "./read-models/mailbox-facts.ts";
 import { overviewFiguresOver } from "./read-models/overview-figures.ts";
 import { signalFactsOver } from "./read-models/signal-facts.ts";
+import type { RepositoryContext } from "./shared/repository-context.ts";
 import type { ReadRepositories, WriteRepositories } from "./unit-of-work-types.ts";
 
 /** Every repository's statements and logic, bound to one connection (synchronous). */
-export function createSqliteCore(db: Database) {
+export function createSqliteCore(db: Database, context: RepositoryContext) {
   return {
     accounts: createAccountRepository(db),
-    messages: createMessageRepository(db),
-    threads: createThreadRepository(db),
-    derived: createDerivedRepository(db),
-    senders: createSenderRepository(db),
-    suggestions: createSuggestionRepository(db),
+    messages: createMessageRepository(db, context),
+    threads: createThreadRepository(db, context.cache),
+    derived: createDerivedRepository(db, context),
+    senders: createSenderRepository(db, context),
+    suggestions: createSuggestionRepository(db, context),
     actionLog: createActionLogRepository(db),
     topics: createTopicRepository(db),
     cursors: createCursorRepository(db),
-    signals: createSignalRepository(db),
+    signals: createSignalRepository(db, context),
     digestState: createDigestStateRepository(db),
-    search: createSearchRepository(db),
+    keepRules: createKeepRuleRepository(db),
   };
 }
 
-/** Full-text search over metadata and derived data (sender, subject, snippet, category, signals). */
-export interface MessageSearch {
-  /** Best match first; the last word may be a prefix. Never matches message bodies: none are stored. */
-  search(
-    ws: Message["workspaceId"],
-    accountId: Message["accountId"],
-    text: string,
-    limit: number,
-  ): AsyncResult<readonly Message[], StorageError>;
-}
-
 /** Repositories bound to one connection; every query is parameterised and workspace-scoped. */
-export function createSqliteRepositories(db: Database): {
+export function createSqliteRepositories(
+  db: Database,
+  context: RepositoryContext,
+): {
   reads: ReadRepositories;
   writes: WriteRepositories;
-  search: MessageSearch;
+  keepRules: KeepRuleRepository;
 } {
-  const core = createSqliteCore(db);
+  const core = createSqliteCore(db, context);
   // The core is synchronous (better-sqlite3 is); the ports are async.
   const lift =
     <A extends unknown[], R>(fn: (...args: A) => R) =>
@@ -128,5 +119,5 @@ export function createSqliteRepositories(db: Database): {
     signals: { ...signals, replaceForMessages: lift(core.signals.replaceForMessages) },
     digestState: { ...digestState, set: lift(core.digestState.set) },
   };
-  return { reads, writes, search: { search: lift(core.search) } };
+  return { reads, writes, keepRules: core.keepRules };
 }

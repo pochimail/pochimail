@@ -22,12 +22,17 @@ describe("sender stats", () => {
     const stats = unwrap(await h.uow.reads.senders.list(WS_A, ACCOUNT_1, { limit: 100 })).items;
     const recount = h.storage.reader
       .prepare(
-        "SELECT sender AS address, count(*) AS n, sum(opened) AS opened, max(received_at) AS last FROM message GROUP BY sender ORDER BY sender",
+        "SELECT sender_hash, count(*) AS n, sum(opened) AS opened, max(received_at) AS last FROM message GROUP BY sender_hash ORDER BY sender_hash",
       )
-      .all() as { address: string; n: number; opened: number; last: string }[];
-    expect(stats.map((s) => [s.address, s.messageCount, s.openedCount, s.lastMessageAt])).toEqual(
-      recount.map((r) => [r.address, r.n, r.opened, r.last]),
-    );
+      .all() as { sender_hash: string; n: number; opened: number; last: string }[];
+    expect(
+      stats.map((s) => [
+        h.storage.senderHasher.hash(ACCOUNT_1, s.address),
+        s.messageCount,
+        s.openedCount,
+        s.lastMessageAt,
+      ]),
+    ).toEqual(recount.map((r) => [r.sender_hash, r.n, r.opened, r.last]));
     expect(stats.reduce((n, s) => n + s.messageCount, 0)).toBe(7);
   });
 

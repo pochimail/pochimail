@@ -7,6 +7,7 @@ import type {
   ClassificationTransaction,
   ClassificationUnitOfWork,
 } from "@pochimail/classification/ports/unit-of-work";
+import type { KeepRuleRepository } from "@pochimail/cleanup/ports/keep-rule-repository";
 import type { CleanupTransaction, CleanupUnitOfWork } from "@pochimail/cleanup/ports/unit-of-work";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import type { Cancelled, StorageError } from "@pochimail/kernel/errors";
@@ -30,6 +31,8 @@ export type ReadRepositories = AccountsUnitOfWork["reads"] &
 
 export interface Transaction {
   readonly repositories: WriteRepositories;
+  /** Protection rules keyed by a hashed sender (ADR 0012, 0014). */
+  readonly keepRules: KeepRuleRepository;
   readonly outbox: { append(entry: OutboxEntry): AsyncResult<void, StorageError> };
   readonly events: EventSink;
 }

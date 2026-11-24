@@ -7,11 +7,13 @@
   "exports": {
     "./events": "./src/events.ts",
     "./model/digest": "./src/model/digest.ts",
+    "./model/keep-rule": "./src/model/keep-rule.ts",
     "./model/scores": "./src/model/scores.ts",
     "./model/suggestion": "./src/model/suggestion.ts",
     "./policies/labels": "./src/policies/labels.ts",
     "./ports/digest-state-repository": "./src/ports/digest-state-repository.ts",
     "./ports/digest-tally": "./src/ports/digest-tally.ts",
+    "./ports/keep-rule-repository": "./src/ports/keep-rule-repository.ts",
     "./ports/mailbox-facts": "./src/ports/mailbox-facts.ts",
     "./ports/suggestion-repository": "./src/ports/suggestion-repository.ts",
     "./ports/unit-of-work": "./src/ports/unit-of-work.ts",
