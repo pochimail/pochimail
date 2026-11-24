@@ -16,6 +16,7 @@ function harness(
     activity?: WindowActivityState;
     power?: Partial<PowerState>;
     hiddenMs?: number | null;
+    onError?: (error: unknown) => void;
   } = {},
 ) {
   const scheduler = createFakeScheduler(createFakeClock());
@@ -25,6 +26,7 @@ function harness(
     scheduler,
     power,
     activity,
+    ...(opts.onError === undefined ? {} : { onError: opts.onError }),
     cadence: {
       focusedMs: FOCUSED_POLL_MS,
       visibleMs: VISIBLE_POLL_MS,
@@ -171,6 +173,21 @@ describe("adaptive polling pauses", () => {
     );
   });
 
+  // Guards: a manual refresh bypassing a pause and failing on the network.
+  it("does not start a trigger while paused", () => {
+    const { power, polling } = harness();
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+    });
+    power.sleep();
+    polling.trigger("acc-1");
+    expect(runs).toBe(0);
+    power.wake();
+    polling.trigger("acc-1");
+    expect(runs).toBe(1);
+  });
+
   // Guards: a sync keeps running through sleep or offline, wasting battery and failing on the network.
   it("aborts an in-flight poll when pausing", async () => {
     const { scheduler, power, polling } = harness();
@@ -230,6 +247,73 @@ describe("adaptive polling single flight", () => {
     expect(runs).toBe(2);
   });
 
+  // Guards: an activity change arming a second tick beside the pending one while a long poll is in flight.
+  it("leaves the pending tick alone when the activity changes during a long poll", async () => {
+    const { scheduler, activity, polling } = harness();
+    const { gate, done, release, finished } = blockedTask();
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+      if (runs === 1) {
+        await gate;
+        finished();
+      }
+    });
+    polling.trigger("acc-1");
+    activity.set("visible");
+    release();
+    await done;
+    await Promise.resolve();
+    await scheduler.advance(FOCUSED_POLL_MS - 1);
+    expect(runs).toBe(1);
+    await scheduler.advance(1);
+    expect(runs).toBe(2);
+    await scheduler.advance(VISIBLE_POLL_MS - FOCUSED_POLL_MS);
+    expect(runs).toBe(2);
+  });
+
+  // Guards: an unwatch or dispose leaving an in-flight poll running after its watch is gone.
+  it("aborts an in-flight poll on unwatch and dispose", async () => {
+    const { polling } = harness();
+    const first = blockedTask();
+    let unwatchAborted = false;
+    const stop = polling.watch("acc-1", async (signal) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          unwatchAborted = true;
+        },
+        { once: true },
+      );
+      await first.gate;
+      first.finished();
+    });
+    polling.trigger("acc-1");
+    stop();
+    expect(unwatchAborted).toBe(true);
+    first.release();
+    await first.done;
+
+    const second = blockedTask();
+    let disposeAborted = false;
+    polling.watch("acc-2", async (signal) => {
+      signal.addEventListener(
+        "abort",
+        () => {
+          disposeAborted = true;
+        },
+        { once: true },
+      );
+      await second.gate;
+      second.finished();
+    });
+    polling.trigger("acc-2");
+    polling.dispose();
+    expect(disposeAborted).toBe(true);
+    second.release();
+    await second.done;
+  });
+
   // Guards: one account's poll blocking or standing in for another's.
   it("polls each account on its own", async () => {
     const { scheduler, polling } = harness();
@@ -267,5 +351,24 @@ describe("adaptive polling single flight", () => {
     activity.set("visible");
     await scheduler.advance(5 * FOCUSED_POLL_MS);
     expect(runs).toBe(0);
+  });
+});
+
+describe("adaptive polling errors", () => {
+  // Guards: a throwing poll disappearing without a cause, or ending the cadence.
+  it("reports a throwing task and keeps polling", async () => {
+    const errors: unknown[] = [];
+    const { scheduler, polling } = harness({ onError: (error) => errors.push(error) });
+    const thrown = new Error("poll failed");
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+      if (runs === 1) throw thrown;
+    });
+    await scheduler.advance(FOCUSED_POLL_MS);
+    expect(errors).toEqual([thrown]);
+    await scheduler.advance(FOCUSED_POLL_MS);
+    expect(runs).toBe(2);
+    expect(errors).toEqual([thrown]);
   });
 });

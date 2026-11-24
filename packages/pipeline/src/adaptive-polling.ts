@@ -15,6 +15,8 @@ export interface AdaptivePollingDeps {
   readonly power: PowerMonitor;
   readonly activity: WindowActivity;
   readonly cadence: PollCadence;
+  /** Reports a poll that threw; expected failures are Result values and are not reported here. */
+  readonly onError?: (error: unknown) => void;
 }
 
 export interface AdaptivePolling {
@@ -44,7 +46,7 @@ const isPaused = (state: PowerState): boolean =>
  * injected so this stays free of domain knowledge; a failed poll is retried at the next tick.
  */
 export function createAdaptivePolling(deps: AdaptivePollingDeps): AdaptivePolling {
-  const { scheduler, power, activity, cadence } = deps;
+  const { scheduler, power, activity, cadence, onError } = deps;
   const watches = new Map<string, Watch>();
   let powerState = power.current();
   let activityState: WindowActivityState = activity.current();
@@ -63,8 +65,9 @@ export function createAdaptivePolling(deps: AdaptivePollingDeps): AdaptivePollin
     watch.abort = source.abort;
     try {
       await watch.task(source.signal);
-    } catch {
+    } catch (error) {
       // Tasks report expected failures as Result; a throw must not kill the cadence.
+      onError?.(error);
     } finally {
       watch.running = false;
       watch.abort = null;
@@ -107,7 +110,7 @@ export function createAdaptivePolling(deps: AdaptivePollingDeps): AdaptivePollin
   const offActivity = activity.onChange((state) => {
     activityState = state;
     // A cadence change only re-arms pending ticks; a running poll finishes undisturbed.
-    for (const watch of watches.values()) schedule(watch);
+    for (const watch of watches.values()) if (!watch.running) schedule(watch);
   });
 
   return {

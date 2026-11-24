@@ -12,6 +12,7 @@ export const powerMonitorChecks: readonly Check<PowerMonitorHarness>[] = [
   check(
     "current reflects a change (guards background work running while offline or asleep)",
     async ({ monitor, change }) => {
+      expect(monitor.current().batterySaver).toBe(false);
       change({ online: false, onBattery: true, thermal: "serious", batterySaver: true });
       expect(monitor.current()).toMatchObject({
         online: false,
@@ -22,13 +23,14 @@ export const powerMonitorChecks: readonly Check<PowerMonitorHarness>[] = [
     },
   ),
   check(
-    "listeners receive the new state (guards pausing work too late)",
+    "listeners receive a battery-saver-only change (guards pausing work too late)",
     async ({ monitor, change }) => {
       const seen: PowerState[] = [];
       monitor.onChange((s) => void seen.push(s));
-      change({ asleep: true });
+      change({ batterySaver: true });
       expect(seen).toHaveLength(1);
-      expect(seen[0]?.asleep).toBe(true);
+      expect(seen[0]?.batterySaver).toBe(true);
+      expect(seen[0]?.asleep).toBe(false);
     },
   ),
   check(
