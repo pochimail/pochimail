@@ -15,6 +15,7 @@ import { CategoryPage } from "./features/category/category-page.tsx";
 import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
+import type { ReviewTarget } from "./features/overview/overview-figures.ts";
 import { OverviewPage } from "./features/overview/overview-page.tsx";
 import { useAppearance } from "./features/settings/appearance.tsx";
 import { AppearanceControls } from "./features/settings/appearance-controls.tsx";
@@ -40,14 +41,28 @@ function useShellPose(): MascotPose {
   return pathname === "/documents" ? "reading" : idle;
 }
 
+const REVIEW_VALUES = new Set<string>([
+  "waiting",
+  "deadlines",
+  "important",
+  "delete",
+  "archive",
+  "unsubscribe",
+] satisfies ReviewTarget["review"][]);
+
+const isReview = (value: string): value is ReviewTarget["review"] => REVIEW_VALUES.has(value);
+
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
   // The account selection (switcher) and the Review list live in the URL, so neither is kept in component state.
-  validateSearch: (search: Record<string, unknown>): { account?: string; review?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { account?: string; review?: ReviewTarget["review"] | undefined } => ({
     ...(typeof search.account === "string" && search.account !== ""
       ? { account: search.account }
       : {}),
-    ...(typeof search.review === "string" && search.review !== "" ? { review: search.review } : {}),
+    review:
+      typeof search.review === "string" && isReview(search.review) ? search.review : undefined,
   }),
 });
 
