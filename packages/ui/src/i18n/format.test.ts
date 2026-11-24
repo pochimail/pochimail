@@ -30,6 +30,28 @@ describe("t() (design › Writing, P13)", () => {
     ).toBe("attachments saved · 1.2 GB");
   });
 
+  // Guards: a 12 MB figure rounding to 0 GB in any locale (#114).
+  it("formats small sizes in MB per locale and composes the figure label", () => {
+    expect(t("overview.size.mb", { size: 12 })).toBe("12 MB");
+    expect(t("overview.size.mb", { size: 12 }, { locale: "fr" })).toBe("12 Mo");
+    expect(t("overview.size.mb", { size: 12 }, { locale: "ja" })).toBe("12 MB");
+    expect(t("overview.size.freeMb", { size: 12, total: 40 })).toBe(
+      "12 MB you can free, out of 40 MB",
+    );
+    expect(t("overview.size.freeMb", { size: 12, total: 40 }, { locale: "fr" })).toBe(
+      "12 Mo à libérer, sur 40 Mo",
+    );
+    expect(t("overview.size.freeMb", { size: 12, total: 40 }, { locale: "ja" })).toBe(
+      "合計40 MBのうち、12 MBを空けられます。",
+    );
+    expect(
+      t("storageBar.legendItem", {
+        label: t("summary.figure.saved"),
+        size: t("overview.size.mb", { size: 2.4 }),
+      }),
+    ).toBe("attachments saved · 2.4 MB");
+  });
+
   it("substitutes the device name from the port, never a hard-coded Mac (guards Windows copy)", () => {
     expect(t("overview.sorting", { device: "PC" })).toBe("Sorting privately on this PC");
     expect(t("overview.promise.device", { device: "device" })).toBe(

@@ -72,7 +72,6 @@ function CleanUpSection({
               {t("overview.clean.headline", { total: data.scanned })}
             </span>
           </p>
-          <p className="text-ui text-muted-foreground">{t("overview.clean.sizeUnknown")}</p>
           <StorageBar
             summary={t("overview.clean.summary", { total: data.scanned })}
             segments={[

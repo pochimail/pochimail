@@ -66,12 +66,11 @@ export function SummarySheet({
         }}
       >
         <SheetHeader>
-          <p className="text-ui text-muted-foreground">
-            {t("summary.from", {
-              date: view.generatedAt ?? new Date().toISOString(),
-              device,
-            })}
-          </p>
+          {view.generatedAt === undefined ? null : (
+            <p className="text-ui text-muted-foreground">
+              {t("summary.from", { date: view.generatedAt, device })}
+            </p>
+          )}
           <SheetTitle>{t("summary.title")}</SheetTitle>
           <SheetDescription>{t("summary.sentence", { count: view.itemCount })}</SheetDescription>
         </SheetHeader>
@@ -81,11 +80,11 @@ export function SummarySheet({
         ) : (
           <dl className="grid grid-cols-3 gap-4">
             {view.figures.map((figure) => (
-              <div key={figure.labelKey}>
+              <div key={figure.labelKey} className="flex flex-col-reverse">
+                <dt className="text-ui text-muted-foreground">{t(figure.labelKey)}</dt>
                 <dd className="font-display text-3xl tabular-nums">
                   {figure.count.toLocaleString(locale)}
                 </dd>
-                <dt className="text-ui text-muted-foreground">{t(figure.labelKey)}</dt>
               </div>
             ))}
           </dl>

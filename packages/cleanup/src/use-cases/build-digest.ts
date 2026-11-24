@@ -11,6 +11,12 @@ import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 const PAGE = 200;
 /** Before any digest exists, all stored mail counts as new. */
 export const FIRST_DIGEST_SINCE = "1970-01-01T00:00:00.000Z";
+/** New mail's intended action, matching the Summary's figure-to-category routing. */
+const ACTION_CATEGORIES = {
+  archived: "notifications",
+  saved: "records",
+  unsubscribed: "newsletters",
+} as const;
 
 export interface BuildDigestDeps {
   readonly uow: CleanupUnitOfWork;
@@ -91,6 +97,11 @@ export class BuildDigest {
       .map((s) => ({ messageId: s.messageId, kind: s.kind }))
       .sort((a, b) => (a.messageId + a.kind < b.messageId + b.kind ? -1 : 1));
 
+    const figures = {
+      archived: byCategory[ACTION_CATEGORIES.archived] ?? 0,
+      saved: byCategory[ACTION_CATEGORIES.saved] ?? 0,
+      unsubscribed: byCategory[ACTION_CATEGORIES.unsubscribed] ?? 0,
+    };
     const generatedAt = clock.now().toISOString();
     const digest: Digest = {
       schemaVersion: 1,
@@ -119,7 +130,7 @@ export class BuildDigest {
         version: 1,
         workspaceId: request.workspaceId,
         occurredAt: generatedAt,
-        payload: { itemCount: fresh.length },
+        payload: { itemCount: fresh.length, ...figures, generatedAt },
       } satisfies DigestReady;
       return tx.events.append([event]);
     }, signal);

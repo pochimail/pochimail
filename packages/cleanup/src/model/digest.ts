@@ -24,3 +24,15 @@ export const digestSchema = z.object({
   attention: z.array(z.object({ messageId: messageIdSchema, kind: z.string().min(1) })),
 });
 export type Digest = z.infer<typeof digestSchema>;
+
+/**
+ * The three new-item figures a digest announces, plus when it was generated. Counts come from the
+ * digest's new mail (never cumulative Overview totals); the date is optional for older events.
+ */
+export const digestFiguresSchema = z.object({
+  archived: z.int().nonnegative(),
+  saved: z.int().nonnegative(),
+  unsubscribed: z.int().nonnegative(),
+  generatedAt: timestampSchema.optional(),
+});
+export type DigestFigures = z.infer<typeof digestFiguresSchema>;

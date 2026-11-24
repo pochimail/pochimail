@@ -6,6 +6,10 @@ export class RecordDigestReady {
   constructor(private readonly deps: { readonly tally: DigestTally }) {}
 
   execute(event: DigestReady): void {
-    this.deps.tally.record(event.id, event.payload.itemCount);
+    // The envelope time is the digest's generation time for events written before it was a payload field.
+    this.deps.tally.record(event.id, {
+      ...event.payload,
+      generatedAt: event.payload.generatedAt ?? event.occurredAt,
+    });
   }
 }

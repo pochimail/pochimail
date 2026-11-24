@@ -49,7 +49,7 @@ const open = async (path: string) => {
           totalSize: 0,
         },
       }),
-      "digest.get": () => ({ ready: false, itemCount: 0 }),
+      "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
       "settings.get": () => ({
         autonomy: "suggest" as const,
         capabilities: {

@@ -93,7 +93,7 @@ const emptyHandlers: Handlers = {
       promotions: 0,
     }),
     "scan.status": () => [],
-    "digest.get": () => ({ ready: false, itemCount: 0 }),
+    "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
     "settings.get": () => DEFAULT_APP_SETTINGS,
   },
   subscriptions: {

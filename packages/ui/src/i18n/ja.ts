@@ -22,6 +22,11 @@ export const ja = {
     "total",
   ]),
   "overview.size.gb": entry("{size, number} GB", ["size"]),
+  "overview.size.mb": entry("{size, number} MB", ["size"]),
+  "overview.size.freeMb": entry("合計{total, number} MBのうち、{size, number} MBを空けられます。", [
+    "size",
+    "total",
+  ]),
   "scan.failed": entry(
     "仕分けを最後まで終えられませんでした。何も変更していません。もう一度始めると、止まったところから続けます。",
     [],
@@ -49,11 +54,10 @@ export const ja = {
     "count",
   ]),
   "overview.important.detail": entry("よく返信する相手です", []),
-  "overview.clean.headline": entry("件を削除できます（全体で{total, number}）", ["total"]),
+  "overview.clean.headline": entry("件を削除できます（全体で{total, number}件）", ["total"]),
   "overview.clean.summary": entry("{total, number}件を整理済み", ["total"]),
   "overview.clean.keep": entry("残すもの", []),
   "overview.clean.free": entry("削除できるもの", []),
-  "overview.clean.sizeUnknown": entry("件数しかないため、空いた容量は示せません。", []),
   "overview.clean.noFreeing": entry("これらは容量を空けません", []),
   "overview.clean.never": entry("重要そうなメールは、あなたのために選択しません。", []),
   "overview.rec.newsletters.sentence": entry("ニュースレターの配信を停止する", []),
@@ -65,7 +69,7 @@ export const ja = {
     "自動送信された通知メールで、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
     [],
   ),
-  "overview.rec.signins.sentence": entry("期限切れのログインコードを削除する", []),
+  "overview.rec.signins.sentence": entry("ログインコードとログインアラートを削除する", []),
   "overview.rec.signins.reason": entry("ワンタイムコードとログインの通知です", []),
   "overview.scan.progress": entry("{total, number}件中{processed, number}件を整理しました", [
     "processed",

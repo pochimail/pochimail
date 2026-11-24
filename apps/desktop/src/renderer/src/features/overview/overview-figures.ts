@@ -127,15 +127,30 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
   return rows;
 };
 
-/** Bytes to whole-or-one-decimal GB for the locale-formatted size keys (#114). */
-export const toGb = (bytes: number): number => Math.round((bytes / 1e9) * 10) / 10;
+const GB = 1e9;
+
+/** Bytes to whole-or-one-decimal units for the locale-formatted size keys (#114). */
+const toGb = (bytes: number): number => Math.round((bytes / GB) * 10) / 10;
+const toMb = (bytes: number): number => Math.round((bytes / 1e6) * 10) / 10;
+
+/** One locale-formatted size: MB under 1 GB, so small fixtures never round to 0 GB. */
+export const sizeLabel = (bytes: number, t: T): string =>
+  bytes < GB
+    ? t("overview.size.mb", { size: toMb(bytes) })
+    : t("overview.size.gb", { size: toGb(bytes) });
+
+/** The free-space sentence uses the same unit as the two sizes it reports. */
+export const freeSizeLabel = (sizeBytes: number, totalBytes: number, t: T): string =>
+  totalBytes < GB
+    ? t("overview.size.freeMb", { size: toMb(sizeBytes), total: toMb(totalBytes) })
+    : t("overview.size.free", { size: toGb(sizeBytes), total: toGb(totalBytes) });
 
 /** One cumulative action figure for the Overview; only positive figures are shown, never a zero. */
 export type OverviewFigure = {
   readonly count: number;
   readonly labelKey: MessageKey;
-  /** GB size appended to the label via storageBar.legendItem, when the figure carries one. */
-  readonly sizeGb?: number;
+  /** Byte size appended to the label via storageBar.legendItem, when the figure carries one. */
+  readonly sizeBytes?: number;
 };
 
 /** The archived / saved / unsubscribed figures (#114), largest presentation order kept stable. */
@@ -147,7 +162,7 @@ export const overviewFigures = (data: OverviewData): OverviewFigure[] => {
     figures.push({
       count: savedCount,
       labelKey: "summary.figure.saved",
-      sizeGb: toGb(savedSize),
+      sizeBytes: savedSize,
     });
   if (unsubscribed > 0)
     figures.push({ count: unsubscribed, labelKey: "summary.figure.unsubscribed" });

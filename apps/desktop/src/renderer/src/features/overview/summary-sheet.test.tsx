@@ -33,7 +33,14 @@ const emptyOverview: OutputOf<"overview.get"> = {
   },
 };
 
-const digest = (values: Partial<Digest> = {}): Digest => ({ ready: true, itemCount: 0, ...values });
+const digest = (values: Partial<Digest> = {}): Digest => ({
+  ready: true,
+  itemCount: 0,
+  archived: 0,
+  saved: 0,
+  unsubscribed: 0,
+  ...values,
+});
 
 const settings = (values: Partial<Settings> = {}): Settings => ({
   autonomy: "suggest",
@@ -231,4 +238,24 @@ it.each([
   expect(within(sheet).getByText(new RegExp(`\\b${heading}\\b`))).toBeTruthy();
   await user.click(within(sheet).getByRole("button", { name: `Review ${count} emails` }));
   expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeTruthy();
+});
+
+// Guards: the figure grid emitting its number before its label in the DOM.
+it("renders each figure as a term before its number", async () => {
+  const user = userEvent.setup();
+  setup({
+    digest: digest({ itemCount: 3, archived: 2, saved: 1 }),
+    settings: settings({ summaryShown: true }),
+  });
+  const sheet = await openSheet(user);
+  const cells = within(sheet)
+    .getAllByRole("definition")
+    .map((node) => node.parentElement)
+    .filter((node) => node !== null);
+  expect(cells).toHaveLength(2);
+  for (const cell of cells) {
+    expect(cell.firstElementChild?.tagName).toBe("DT");
+    expect(cell.lastElementChild?.tagName).toBe("DD");
+    expect(cell.className).toContain("flex-col-reverse");
+  }
 });

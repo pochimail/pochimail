@@ -39,8 +39,13 @@ export const messages = {
     "size",
     "total",
   ]),
-  /** One size in GB for the saved-attachments figure (#114); the unit alone, locale-formatted. */
+  /** One size for a figure (#114): MB below 1 GB so small sizes never round to zero. */
   "overview.size.gb": entry("{size, number} GB", ["size"]),
+  "overview.size.mb": entry("{size, number} MB", ["size"]),
+  "overview.size.freeMb": entry("{size, number} MB you can free, out of {total, number} MB", [
+    "size",
+    "total",
+  ]),
   "scan.failed": entry(
     "I could not finish sorting. Nothing was changed. Start again and I will continue where I stopped.",
     [],
@@ -76,7 +81,6 @@ export const messages = {
   "overview.clean.summary": entry("{total, number} emails sorted", ["total"]),
   "overview.clean.keep": entry("Stays", []),
   "overview.clean.free": entry("Can be deleted", []),
-  "overview.clean.sizeUnknown": entry("I have counts, not sizes, so I can’t show GB freed.", []),
   "overview.clean.noFreeing": entry("These don’t free space", []),
   "overview.clean.never": entry("Emails that look important are never selected for you.", []),
   "overview.rec.newsletters.sentence": entry("Unsubscribe from newsletters", []),
@@ -88,7 +92,7 @@ export const messages = {
     "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
   ),
-  "overview.rec.signins.sentence": entry("Delete expired sign-in codes", []),
+  "overview.rec.signins.sentence": entry("Delete sign-in codes and login alerts", []),
   "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [
     "processed",

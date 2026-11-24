@@ -1,14 +1,16 @@
 // Guards: a protected sender proposed for cleanup, a digest that re-reports old mail, an Overview figure that drifts, and a lost or phantom event.
 import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
+import { type DigestReady, digestReadyEvent } from "./events.ts";
 import { createSuggestion } from "./model/suggestion.ts";
 import { digestContract } from "./testing/digest-contract.ts";
 import { digestStateContract } from "./testing/digest-state-contract.ts";
 import { createInMemoryCleanup } from "./testing/in-memory-cleanup.ts";
 import { createInMemoryDigestTally } from "./testing/in-memory-digest-tally.ts";
-import { ACCOUNT_1, makeSuggestion, WS_A } from "./testing/samples.ts";
+import { ACCOUNT_1, live, makeSuggestion, WS_A } from "./testing/samples.ts";
 import { suggestionRepositoryContract } from "./testing/suggestion-repository-contract.ts";
 import { suggestionsContract } from "./testing/suggestions-contract.ts";
+import { BuildDigest } from "./use-cases/build-digest.ts";
 import { GetDigestStatus } from "./use-cases/get-digest-status.ts";
 import { GetOverview } from "./use-cases/get-overview.ts";
 import { RecordDigestReady } from "./use-cases/record-digest-ready.ts";
@@ -92,6 +94,37 @@ describe("GetOverview", () => {
 });
 
 describe("digest status", () => {
+  // Guards: a real first scan whose DigestReady carries no per-action figures, leaving the Summary empty.
+  it("carries the new items of each action from BuildDigest to the tally", async () => {
+    const h = createInMemoryCleanup();
+    await h.seed({
+      1: { category: "notifications" },
+      2: { category: "records" },
+      3: { category: "newsletters" },
+      4: { category: "promotions" },
+    });
+    const clock = fakeClock();
+    const digest = unwrap(
+      await new BuildDigest({ uow: h.uow, clock }).execute(
+        { workspaceId: WS_A, accountId: ACCOUNT_1 },
+        live(),
+      ),
+    );
+    const tally = createInMemoryDigestTally();
+    for (const event of h.committedEvents())
+      if (event.type === "DigestReady")
+        new RecordDigestReady({ tally }).execute(digestReadyEvent.parse(event));
+
+    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+      ready: true,
+      itemCount: 4,
+      archived: 1,
+      saved: 1,
+      unsubscribed: 1,
+      generatedAt: digest.generatedAt,
+    });
+  });
+
   it("counts a delivered event once (guards double counting on at-least-once delivery)", () => {
     const tally = createInMemoryDigestTally();
     const record = new RecordDigestReady({ tally });
@@ -105,6 +138,60 @@ describe("digest status", () => {
     };
     record.execute(event);
     record.execute(event);
-    expect(new GetDigestStatus({ tally }).execute()).toEqual({ ready: true, itemCount: 3 });
+    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+      ready: true,
+      itemCount: 3,
+      archived: 0,
+      saved: 0,
+      unsubscribed: 0,
+      generatedAt: event.occurredAt,
+    });
+  });
+
+  // Guards: a second sync showing cumulative figures on the Summary instead of only its new items (#227).
+  it("replaces the figures with the newest digest, not their sum", () => {
+    const tally = createInMemoryDigestTally();
+    const record = new RecordDigestReady({ tally });
+    const delivered = (id: string, at: string, payload: DigestReady["payload"]) =>
+      record.execute({
+        id,
+        type: "DigestReady" as const,
+        version: 1 as const,
+        workspaceId: WS_A,
+        occurredAt: at,
+        payload,
+      });
+    delivered("digest:acc-1:one", "2026-01-01T00:00:00.000Z", {
+      itemCount: 3,
+      archived: 3,
+      saved: 1,
+      unsubscribed: 2,
+    });
+    delivered("digest:acc-1:two", "2026-01-02T00:00:00.000Z", {
+      itemCount: 1,
+      archived: 0,
+      saved: 1,
+      unsubscribed: 0,
+    });
+    delivered("digest:acc-1:one", "2026-01-01T00:00:00.000Z", {
+      itemCount: 3,
+      archived: 3,
+      saved: 1,
+      unsubscribed: 2,
+    });
+    delivered("digest:acc-1:stale", "2025-12-31T00:00:00.000Z", {
+      itemCount: 9,
+      archived: 9,
+      saved: 9,
+      unsubscribed: 9,
+    });
+    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+      ready: true,
+      itemCount: 1,
+      archived: 0,
+      saved: 1,
+      unsubscribed: 0,
+      generatedAt: "2026-01-02T00:00:00.000Z",
+    });
   });
 });

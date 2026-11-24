@@ -23,6 +23,11 @@ export const fr = {
     "total",
   ]),
   "overview.size.gb": entry("{size, number} Go", ["size"]),
+  "overview.size.mb": entry("{size, number} Mo", ["size"]),
+  "overview.size.freeMb": entry("{size, number} Mo à libérer, sur {total, number} Mo", [
+    "size",
+    "total",
+  ]),
   "scan.failed": entry(
     "Je n'ai pas pu finir le tri. Rien n'a été modifié. Relancez-le et je reprendrai là où je me suis arrêté.",
     [],
@@ -58,7 +63,6 @@ export const fr = {
   "overview.clean.summary": entry("{total, number} emails triés", ["total"]),
   "overview.clean.keep": entry("Restent", []),
   "overview.clean.free": entry("À supprimer", []),
-  "overview.clean.sizeUnknown": entry("Je n’ai que des nombres, pas de Go libéré.", []),
   "overview.clean.noFreeing": entry("Ceux-ci ne libèrent pas d’espace", []),
   "overview.clean.never": entry(
     "Les emails qui semblent importants ne sont jamais sélectionnés pour vous.",
@@ -73,7 +77,10 @@ export const fr = {
     "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
   ),
-  "overview.rec.signins.sentence": entry("Supprimer les codes de connexion expirés", []),
+  "overview.rec.signins.sentence": entry(
+    "Supprimer les codes de connexion et les alertes de connexion",
+    [],
+  ),
   "overview.rec.signins.reason": entry("Des codes à usage unique et des alertes de connexion", []),
   "overview.scan.progress": entry("{processed, number} emails triés sur {total, number}", [
     "processed",
