@@ -7,7 +7,7 @@ Reference screens and design-tool fonts only. Tokens, fonts, brand and mascot li
 | `screens/{light,dark}/` | Every screen at 2x |
 | `screens/{phone,narrow-window}/` | 390px phone and 860px icon-rail layouts |
 | `screens/html/` | Static HTML and CSS with mock data: exact spacing, colors, copy |
-| `screens/source/` | Original canvas files; `Motion.dc.html` is the source of truth for every timing |
+| `screens/source/` | Original canvas files; `Motion.dc.html` is the source of truth for board-sourced timings; idle-flourish timings live in `motion.ts` |
 | `fonts/ttf/` | Full variable fonts for Figma and Sketch |
 
 The **light desktop screens** are canonical. Dark, phone and narrow exports show theme and layout only; their export glitches (empty percentages, blank Pause, missing checkboxes, crushed segmented labels, outlines on unselected modes) are not reproduced. Mascot PNGs are placeholders for the 3D render.
