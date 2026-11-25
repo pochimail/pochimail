@@ -6,6 +6,7 @@ import {
   timestampSchema,
 } from "@pochimail/kernel/schemas";
 import { z } from "zod";
+import type { SuspiciousFlag } from "./category.ts";
 
 // PRIVATE MAIL DATA: subjects, addresses and snippets. Never log them.
 
@@ -27,13 +28,14 @@ export type ClassifiableMessage = z.infer<typeof classifiableMessageSchema>;
 /** Everything the signal rules need about one message, as plain data from the mailbox. */
 export interface SignalFacts {
   readonly messageId: MessageId;
-  /** The sender's address; empty when it is no longer known (ADR 0014), which the rules treat as unsure. */
-  readonly from: string;
+  /** Whether the owner sent it, worked out at ingest from the stored sender hash (ADR 0014); `undefined` when the sender is unknown, which the rules treat as unsure. */
+  readonly fromOwner: boolean | undefined;
+  /** The domain flag stored at ingest, before the trust check; classification never sees an address. */
+  readonly suspicious?: SuspiciousFlag;
   /** The label stored on the message; narrowed here, the mailbox does not know the closed set. */
   readonly storedCategory: string;
   readonly receivedAt: string;
   readonly opened: boolean;
-  readonly ownerAddress: string;
   /** True when the message ends its thread (a message without a stored thread is a thread of one). */
   readonly lastInThread: boolean;
   readonly senderVip: boolean;

@@ -47,12 +47,11 @@ export class EvaluateSignals {
       const derived = await this.deps.derived.get(ws, f.messageId);
       if (!derived.ok && derived.error.code !== "storage.not_found") return derived;
       for (const hit of signalRules({
-        from: f.from,
+        fromOwner: f.fromOwner,
         receivedAt: f.receivedAt,
         opened: f.opened,
         category: derived.ok ? derived.value.category : categoryOf({ category: f.storedCategory }),
         confidence: derived.ok ? derived.value.confidence : undefined,
-        ownerAddress: f.ownerAddress,
         now,
         lastInThread: f.lastInThread,
         important: f.senderVip || f.senderRepliedCount >= IMPORTANT_REPLY_COUNT,

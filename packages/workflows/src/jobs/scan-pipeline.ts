@@ -13,6 +13,7 @@ import type { JobQueue } from "@pochimail/pipeline/job-queue";
 import { createPipeline } from "@pochimail/pipeline/job-runner";
 import type { CursorStore, Pipeline, Stage } from "@pochimail/pipeline/pipeline-types";
 import type { RetryPolicy } from "@pochimail/pipeline/retry";
+import { flagSuspicious } from "../flag-suspicious.ts";
 import type { MailProvider } from "../ports/mail-provider.ts";
 import type { WorkflowUnitOfWork } from "../ports/unit-of-work.ts";
 
@@ -67,7 +68,11 @@ export function createScanPipeline(deps: ScanPipelineDeps): Pipeline {
     name: "sync",
     concurrency: 1,
     process: async (item) => {
-      const ids = await store.execute({ workspaceId, accountId, messages: item.messages });
+      const ids = await store.execute({
+        workspaceId,
+        accountId,
+        messages: item.messages.map(flagSuspicious),
+      });
       return ids.ok ? ok({ ids: ids.value }) : err(ids.error as DomainError);
     },
   };

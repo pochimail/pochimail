@@ -3,8 +3,8 @@ import type { AccountReader } from "@pochimail/accounts/ports/account-repository
 import type { SignalFacts } from "@pochimail/classification/model/message-facts";
 import type { SignalFactsSource } from "@pochimail/classification/ports/message-source";
 import type { AsyncResult } from "@pochimail/kernel/common";
-import type { StorageError } from "@pochimail/kernel/errors";
-import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
+import type { NotFound, StorageError } from "@pochimail/kernel/errors";
+import type { MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
 import type { Message } from "@pochimail/mailbox/model/message";
 import type { MessageReader } from "@pochimail/mailbox/ports/message-repository";
@@ -18,19 +18,6 @@ export interface SignalFactsReads {
   readonly senders: SenderReader;
 }
 type Reads = SignalFactsReads;
-
-/** What the sender's statistics say; a sender never seen has no statistics. */
-async function senderOf(
-  reads: Reads,
-  ws: WorkspaceId,
-  accountId: AccountId,
-  message: Message,
-): AsyncResult<{ vip: boolean; repliedCount: number }, StorageError> {
-  const stats = await reads.senders.get(ws, accountId, message.from);
-  if (stats.ok) return ok(stats.value);
-  if (stats.error.code === "storage.not_found") return ok({ vip: false, repliedCount: 0 });
-  return err(stats.error);
-}
 
 /** Threads are optional context: a message without a stored thread is a thread of one. */
 async function endsThread(
@@ -49,21 +36,21 @@ async function factsOf(
   ws: WorkspaceId,
   owner: Account,
   message: Message,
-): AsyncResult<SignalFacts, StorageError> {
-  const sender = await senderOf(reads, ws, owner.id, message);
+): AsyncResult<SignalFacts, StorageError | NotFound> {
+  const sender = await reads.senders.ofMessage(ws, message.id, owner.address);
   if (!sender.ok) return sender;
   const last = await endsThread(reads, ws, message);
   if (!last.ok) return last;
   return ok({
     messageId: message.id,
-    from: message.from,
+    fromOwner: sender.value.fromOwner,
+    ...(message.suspicious === undefined ? {} : { suspicious: message.suspicious }),
     storedCategory: message.category,
     receivedAt: message.receivedAt,
     opened: message.opened,
-    ownerAddress: owner.address,
     lastInThread: last.value,
-    senderVip: sender.value.vip,
-    senderRepliedCount: sender.value.repliedCount,
+    senderVip: sender.value.stats?.vip ?? false,
+    senderRepliedCount: sender.value.stats?.repliedCount ?? 0,
     hasListUnsubscribe: message.hasListUnsubscribe,
     ...(message.savedCount === undefined ? {} : { attachmentCount: message.savedCount }),
   });

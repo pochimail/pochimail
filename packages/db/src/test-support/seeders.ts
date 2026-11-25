@@ -49,6 +49,7 @@ export const classificationSeeder = (h: Harness): ClassificationSeeder => ({
             incoming: {
               ...row.message,
               ...(row.attachmentCount === undefined ? {} : { savedCount: row.attachmentCount }),
+              ...(row.suspicious === undefined ? {} : { suspicious: row.suspicious }),
             },
             category: row.category ?? "notifications",
             derived: row.derived === undefined ? {} : row.derived,

@@ -72,12 +72,13 @@ export const signalsSafetyChecks: readonly Check<SignalsHarness>[] = [
     },
   ),
   check(
-    "suspicious flags a lookalike sender domain and spares a normal one and a sender you answered (guards flagging real mail and missing phishing)",
+    "suspicious reports the flag stored at ingest and spares a sender you answered, without reading an address (guards missing phishing and warning about a friend)",
     async (h) => {
+      const flag = { reasons: ["lookalike-domain"], confidence: 0.8 };
       await h.seed({
-        1: { message: { from: "security@id-examp1e-verify.example.net" } },
+        1: { suspicious: flag, message: { from: "security@id-examp1e-verify.example.net" } },
         2: { message: { from: "security@account.example.net" } },
-        3: { message: { from: "friend@examp1e-friends.example.net" } },
+        3: { suspicious: flag, message: { from: "friend@examp1e-friends.example.net" } },
       });
       await h.setSender("friend@examp1e-friends.example.net", { repliedCount: 2 });
       expect(await suspiciousIds(h, [1, 2, 3])).toEqual([1]);

@@ -6,6 +6,7 @@ import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok, type Result } from "@pochimail/kernel/result";
 import { createFaults, type Faults } from "@pochimail/kernel/testing/faults";
 import type { Message } from "@pochimail/mailbox/model/message";
+import type { SenderOfMessage } from "@pochimail/mailbox/ports/sender-repository";
 import type { OutboxEntry, OutboxRecord, OutboxStore } from "@pochimail/pipeline/outbox";
 import { eventSinkOver } from "@pochimail/pipeline/outbox-event-sink";
 import { copy, type Data, emptyData, key, removeAccount } from "./in-memory-store-data.ts";
@@ -131,6 +132,17 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
       },
       senders: {
         get: (ws, acc, address) => found(data().senders, key(ws, acc, address), "Sender"),
+        ofMessage: (ws, id, ownerAddress) =>
+          guarded<SenderOfMessage>(() => {
+            const m = data().messages.get(key(ws, id));
+            if (m === undefined) return err(new NotFound("Message"));
+            if (m.from === "") return ok({ fromOwner: undefined, stats: undefined });
+            const stats = data().senders.get(key(ws, m.accountId, m.from));
+            return ok({
+              fromOwner: m.from.toLowerCase() === ownerAddress.toLowerCase(),
+              stats: stats === undefined ? undefined : copy(stats),
+            });
+          }),
         list: (ws, acc, page) =>
           guarded(() => {
             const rows = [...data().senders.values()]

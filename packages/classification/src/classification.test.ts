@@ -5,6 +5,7 @@ import { AiUnavailable } from "./errors.ts";
 import type { Category } from "./model/category.ts";
 import { DEFAULT_SIGNAL_SETTINGS, signalSettingsSchema } from "./model/signal-settings.ts";
 import { type RuleInput, signalRules, UNSURE_CONFIDENCE } from "./policies/signal-rules.ts";
+import { suspiciousDomainFlag, suspiciousRules } from "./policies/suspicious-rules.ts";
 import {
   classifierContract,
   embedderContract,
@@ -86,14 +87,35 @@ describe("classification", () => {
   });
 });
 
+describe("suspicious domain flag", () => {
+  it("flags lookalike and punycode domains and spares legitimate ones, digit domains included (guards phishing missed and real mail flagged)", () => {
+    for (const a of ["a@id-examp1e-verify.example.net", "a@xn--pypal-4ve.example.net"])
+      expect(suspiciousDomainFlag(a)?.confidence).toBeGreaterThan(0);
+    for (const a of [
+      "a@account.example.net",
+      "a@web3.example.net",
+      "a@s3-notify.example.net",
+      "a@x",
+      "",
+    ])
+      expect(suspiciousDomainFlag(a)).toBeUndefined();
+  });
+
+  it("a stored flag is not shown for a VIP or a sender you replied to (guards warning about a friend)", () => {
+    const flag = suspiciousDomainFlag("a@examp1e-mail.example.net");
+    expect(suspiciousRules({ flag, senderVip: false, senderRepliedCount: 0 })).toEqual(flag);
+    expect(suspiciousRules({ flag, senderVip: true, senderRepliedCount: 0 })).toBeUndefined();
+    expect(suspiciousRules({ flag, senderVip: false, senderRepliedCount: 1 })).toBeUndefined();
+  });
+});
+
 describe("signal rules", () => {
   const input: RuleInput = {
-    from: "alice@example.com",
+    fromOwner: false,
     receivedAt: "2026-01-01T00:00:00.000Z",
     opened: true,
     category: "people",
     confidence: 0.9,
-    ownerAddress: "owner@example.com",
     now: new Date("2026-01-02T00:00:00.000Z"),
     lastInThread: true,
     important: false,
@@ -103,7 +125,7 @@ describe("signal rules", () => {
   };
 
   it("an unreadable sender or date still protects at reduced confidence (guards a silent rule on missing facts, ADR 0012)", () => {
-    for (const unreadable of [{ from: "" }, { receivedAt: "not a date" }]) {
+    for (const unreadable of [{ fromOwner: undefined }, { receivedAt: "not a date" }]) {
       const hit = signalRules({ ...input, ...unreadable }).find((h) => h.kind === "needs-reply");
       expect(hit?.confidence).toBe(UNSURE_CONFIDENCE);
     }

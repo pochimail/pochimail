@@ -18,7 +18,7 @@ export interface SuspiciousFinding {
 }
 
 /**
- * Finds the messages whose sender domain looks like phishing. Phishing is a flag on top of a type,
+ * Reports the messages whose sender domain looked like phishing at ingest, unless the sender is trusted. Phishing is a flag on top of a type,
  * never a type (ADR 0016); this reports it without storing anything. Output is in message id order.
  */
 export class EvaluateSuspicious {
@@ -35,7 +35,7 @@ export class EvaluateSuspicious {
     if (!facts.ok) return facts;
     return ok(
       facts.value.flatMap((f) => {
-        const flag = suspiciousRules(f);
+        const flag = suspiciousRules({ ...f, flag: f.suspicious });
         return flag === undefined ? [] : [{ messageId: f.messageId, flag }];
       }),
     );

@@ -15,13 +15,13 @@ export const TIME_SENSITIVE_WITHIN_DAYS = 7;
 export const BULK_CATEGORIES: readonly Category[] = ["notifications", "newsletters", "promotions"];
 
 export interface RuleInput {
-  readonly from: string;
+  /** Whether the owner sent it; `undefined` when the sender is unknown. */
+  readonly fromOwner: boolean | undefined;
   readonly receivedAt: string;
   readonly opened: boolean;
   readonly category: Category;
   /** The classifier's confidence in `category`; `undefined` when no decision was recorded. */
   readonly confidence: number | undefined;
-  readonly ownerAddress: string;
   readonly now: Date;
   readonly lastInThread: boolean;
   readonly important: boolean;
@@ -79,8 +79,7 @@ function typeIn(i: RuleInput, categories: readonly Category[]): Verdict {
 }
 
 function sentByOwner(i: RuleInput): Verdict {
-  if (!i.from.includes("@")) return "unsure";
-  return known(i.from.toLowerCase() === i.ownerAddress.toLowerCase());
+  return i.fromOwner === undefined ? "unsure" : known(i.fromOwner);
 }
 
 const not = (v: Verdict): Verdict => (v === "unsure" ? v : known(v === "no"));

@@ -59,6 +59,38 @@ export function mailboxRepositoryContract(make: () => { uow: MailboxUnitOfWork }
       const other = await uow.reads.messages.get("ws-b" as WorkspaceId, makeIncoming(1).id);
       expect(other.ok).toBe(false);
     });
+    it("ofMessage tells whether the owner sent a message and gives the sender's stats, by what ingest stored (guards a lost sender once the address is dropped)", async () => {
+      const { uow } = make();
+      const owner = "owner@example.com";
+      await put(uow, [
+        makeIncoming(1, { from: "boss@example.com" }),
+        makeIncoming(2, { from: owner }),
+      ]);
+      unwrap(
+        await uow.run(async (tx) =>
+          tx.repositories.senders.upsert({
+            schemaVersion: 1,
+            workspaceId: WS_A,
+            accountId: ACCOUNT_1,
+            address: "boss@example.com",
+            messageCount: 1,
+            openedCount: 0,
+            repliedCount: 4,
+            lastMessageAt: "2026-01-01T00:00:00.000Z",
+            vip: true,
+          }),
+        ),
+      );
+      const theirs = unwrap(await uow.reads.senders.ofMessage(WS_A, makeIncoming(1).id, owner));
+      expect([theirs.fromOwner, theirs.stats?.repliedCount, theirs.stats?.vip]).toEqual([
+        false,
+        4,
+        true,
+      ]);
+      const mine = unwrap(await uow.reads.senders.ofMessage(WS_A, makeIncoming(2).id, owner));
+      expect(mine.fromOwner).toBe(true);
+      expect((await uow.reads.senders.ofMessage(WS_A, makeIncoming(9).id, owner)).ok).toBe(false);
+    });
     it("pages newest first and ends with a null cursor (guards skipped or repeated rows)", async () => {
       const { uow } = make();
       await put(uow, [makeIncoming(1), makeIncoming(2), makeIncoming(3)]);

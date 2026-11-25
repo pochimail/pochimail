@@ -1,6 +1,7 @@
 import { Cancelled, NotFound } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
+import type { SuspiciousFlag } from "../model/category.ts";
 import { CATEGORIES } from "../model/category.ts";
 import type { DerivedMessage } from "../model/derived.ts";
 import type { ClassifiableMessage, SignalFacts } from "../model/message-facts.ts";
@@ -19,6 +20,7 @@ const byText = (a: string, b: string) => {
 type StoredMessage = ClassifiableMessage & {
   category: string;
   attachmentCount?: number;
+  suspicious?: SuspiciousFlag;
 };
 
 /** The facts the signal rules read of one stored message and its sender's statistics. */
@@ -28,11 +30,11 @@ function factsOf(
 ): SignalFacts {
   return {
     messageId: m.id,
-    from: m.from,
+    fromOwner: m.from === "" ? undefined : m.from.toLowerCase() === OWNER_ADDRESS,
+    ...(m.suspicious === undefined ? {} : { suspicious: m.suspicious }),
     storedCategory: m.category,
     receivedAt: m.receivedAt,
     opened: m.opened,
-    ownerAddress: OWNER_ADDRESS,
     lastInThread: true,
     senderVip: sender?.vip ?? false,
     senderRepliedCount: sender?.repliedCount ?? 0,
@@ -119,7 +121,7 @@ export function createInMemoryClassification(): InMemoryClassification {
       get: async (ws, id) => {
         const m = data().messages.get(`${ws}/${id}`);
         if (!m) return err(new NotFound("Message"));
-        const { category: _category, attachmentCount: _count, ...message } = m;
+        const { category: _category, attachmentCount: _count, suspicious: _flag, ...message } = m;
         return ok(copy(message));
       },
       countByCategory: async (ws, accountIds) => {
@@ -219,6 +221,7 @@ export function createInMemoryClassification(): InMemoryClassification {
           ...message,
           category,
           ...(row.attachmentCount === undefined ? {} : { attachmentCount: row.attachmentCount }),
+          ...(row.suspicious === undefined ? {} : { suspicious: row.suspicious }),
         });
         if (row.derived !== null)
           committed.derived.set(

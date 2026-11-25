@@ -16,6 +16,7 @@ import type { SyncCursor } from "@pochimail/mailbox/ports/mail-reader";
 import { UpsertThreads } from "@pochimail/mailbox/use-cases/upsert-threads";
 import type { JobRequest } from "@pochimail/pipeline/job-queue";
 import type { DomainEvent, DomainEventOf, DomainEventType } from "../events.ts";
+import { flagSuspicious } from "../flag-suspicious.ts";
 import type { MailProvider } from "../ports/mail-provider.ts";
 import type { WorkflowUnitOfWork } from "../ports/unit-of-work.ts";
 
@@ -155,7 +156,7 @@ export class RunIncrementalSync {
       }
 
       const { messages, nextCursor, hasMore } = batch.value;
-      const keep = messages.flatMap((m) => sanitizeIncoming(m, request));
+      const keep = messages.flatMap((m) => sanitizeIncoming(m, request)).map(flagSuspicious);
       const key = `${accountId}:${scope}:${position}`;
       const committed = await uow.run(async (tx) => {
         const rows = await tx.repositories.messages.upsertMany(keep);
