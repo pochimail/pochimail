@@ -2,13 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { egressPolicy } from "./allowlist.ts";
 import { createModelDownloader, type StreamFetch } from "./model-download.ts";
 
-const respond = (status: number, location?: string): Awaited<ReturnType<StreamFetch>> => ({
-  status,
-  headers: { get: (name) => (name === "location" ? (location ?? null) : null) },
-  body: (async function* () {
-    yield new Uint8Array([1, 2, 3]);
-  })(),
-});
+const respond = (
+  status: number,
+  location?: string,
+  retryAfter?: string,
+): Awaited<ReturnType<StreamFetch>> => {
+  const headers: Record<string, string | undefined> = { location, "retry-after": retryAfter };
+  return {
+    status,
+    headers: { get: (name) => headers[name] ?? null },
+    body: (async function* () {
+      yield new Uint8Array([1, 2, 3]);
+    })(),
+  };
+};
 
 const download = (url: string, answers: Record<string, ReturnType<typeof respond>> = {}) => {
   const asked: string[] = [];
@@ -189,5 +196,14 @@ describe("model download egress", () => {
     expect(removed).not.toHaveBeenCalled();
     await result.value.body[Symbol.asyncIterator]().return?.();
     expect(removed).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("model download Retry-After", () => {
+  // Guards: the downloader never learning how long a busy server asked it to wait.
+  it("passes the Retry-After header of a 429 on", async () => {
+    const { result } = download(START, { [START]: respond(429, undefined, "7") });
+    const response = await result;
+    expect(response.ok && response.value.retryAfter).toBe("7");
   });
 });

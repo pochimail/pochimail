@@ -12,12 +12,16 @@ import {
   sleep,
 } from "./downloader.ts";
 
-const failing = vi.hoisted(() => ({ code: undefined as string | undefined }));
+const failing = vi.hoisted(() => ({
+  code: undefined as string | undefined,
+  open: false,
+}));
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...actual,
     open: async (...args: Parameters<typeof actual.open>) => {
+      if (failing.open && String(args[0]).endsWith(".part")) throw new Error("open failed");
       const handle = await actual.open(...args);
       if (failing.code === undefined) return handle;
       const code = failing.code;
@@ -49,6 +53,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   failing.code = undefined;
+  failing.open = false;
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -118,6 +123,33 @@ describe("downloadFile", () => {
     expect(waits).toEqual([2_000]);
     expect(closed).toHaveBeenCalledTimes(1);
     expect(new Uint8Array(await readFile(final))).toEqual(bytes);
+  });
+
+  // Guards: a busy server's Retry-After being ignored, or one huge value parking the download for hours.
+  it.each([
+    ["seconds", "7", [7_000, 7_000]],
+    ["an HTTP date", new Date(Date.now() + 20_000).toUTCString(), [15_000, 20_000]],
+    ["a date in the past", "Wed, 21 Oct 2015 07:28:00 GMT", [0, 0]],
+    ["a huge value", "86400", [300_000, 300_000]],
+    ["garbage", "soon", [2_000, 2_000]],
+  ] as const)("waits as Retry-After asks: %s", async (_name, retryAfter, [least, most]) => {
+    const { result, waits } = run([
+      { status: 429, retryAfter, body: bodyOf(new Uint8Array()) },
+      { status: 200, body: bodyOf(bytes) },
+    ]);
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(waits).toHaveLength(1);
+    expect(waits[0]).toBeGreaterThanOrEqual(least);
+    expect(waits[0]).toBeLessThanOrEqual(most);
+  });
+
+  // Guards: a live response body left open when the partial file cannot be opened.
+  it("closes the body when the partial file cannot be opened", async () => {
+    failing.open = true;
+    const closed = vi.fn();
+    const { result } = run([{ status: 200, body: bodyOf(bytes, closed) }]);
+    expect(await result).toEqual({ ok: false, error: "failed" });
+    expect(closed).toHaveBeenCalledTimes(1);
   });
 
   // Guards: an HTTP error leaving its response body open.
