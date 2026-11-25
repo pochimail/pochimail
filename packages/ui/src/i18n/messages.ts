@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
@@ -8,7 +9,6 @@ import { summaryMessages } from "./summary-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
 export const USER_LOCALES = ["en", "fr", "ja"] as const;
-
 export type UserLocale = (typeof USER_LOCALES)[number];
 /** `pseudo` is a dev-only layout probe: never user-selectable, never shipped as a choice. */
 export type Locale = UserLocale | "pseudo";
@@ -189,6 +189,7 @@ export const messages = {
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
   ...appearanceMessages.en,
+  ...pochimailNotificationMessages.en,
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),

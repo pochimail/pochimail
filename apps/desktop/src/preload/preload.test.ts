@@ -5,7 +5,7 @@ vi.mock("electron", () => ({
   contextBridge: {
     exposeInMainWorld: (key: string, api: Record<string, unknown>) => void exposed.push([key, api]),
   },
-  ipcRenderer: { once: vi.fn(), invoke: vi.fn(async () => null) },
+  ipcRenderer: { once: vi.fn(), on: vi.fn(), invoke: vi.fn(async () => null) },
 }));
 
 beforeEach(() => {
@@ -22,6 +22,7 @@ describe("preload surface", () => {
     expect(key).toBe("pochimail");
     expect(Object.keys(api).sort()).toEqual([
       "chooseFolder",
+      "onOpenScreen",
       "openMailAppLink",
       "requestWorkerPort",
       "showInFinder",
@@ -101,5 +102,29 @@ describe("preload surface", () => {
     await expect(storage.unlock("short")).resolves.toBe("wrong-passphrase");
     vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("blocked");
     await expect(storage.status()).resolves.toBe("blocked");
+  });
+
+  // Guards: a notification click reaching the page with anything but a screen name, or being lost before the page subscribes.
+  it("hands the page only a known screen, including one that arrived before it subscribed", async () => {
+    const { ipcRenderer } = await import("electron");
+    await import("./preload.ts");
+    const api = exposed[0]?.[1] as { onOpenScreen: (l: (screen: string) => void) => () => void };
+    const deliver = vi
+      .mocked(ipcRenderer.on)
+      .mock.calls.find(([channel]) => channel === "notifications:open-screen")?.[1] as (
+      event: unknown,
+      screen: unknown,
+    ) => void;
+    const seen: string[] = [];
+
+    deliver({}, "review");
+    deliver({}, "https://evil.example");
+    const stop = api.onOpenScreen((screen) => void seen.push(screen));
+    deliver({}, "overview");
+    deliver({}, { screen: "overview" });
+    stop();
+    deliver({}, "review");
+
+    expect(seen).toEqual(["review", "overview"]);
   });
 });

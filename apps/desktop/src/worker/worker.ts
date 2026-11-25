@@ -169,6 +169,7 @@ const realHandlers = async (): Promise<Handlers> => {
     deviceName: () => platform.deviceName(),
     classifier: modelHost.classifier,
     power: power.monitor,
+    sendNotification: (message) => process.parentPort.postMessage(message),
     clearClassifierCache: () => void modelHost.clearCache(),
   });
   if (app === undefined) return unavailableHandlers;
