@@ -31,6 +31,11 @@ export const motionEntries: GalleryEntry[] = [
     render: () => <Mascot {...mascotArgs} {...mascotStories.Default.args} />,
   },
   {
+    id: "PochiIdleFlourish",
+    name: "PochiIdleFlourish",
+    render: () => <Mascot {...mascotArgs} {...mascotStories.Default.args} />,
+  },
+  {
     id: "PochiFindsSomething",
     name: "PochiFindsSomething",
     render: () => <Mascot {...mascotArgs} {...mascotStories.FoundReaction.args} />,

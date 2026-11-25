@@ -5,8 +5,8 @@ export type CopyOffense = { readonly file: string; readonly literal: string };
 
 // User copy in a screen is either JSX text, a string child, or a copy-bearing prop.
 // Class names, data-slot values and t("key") calls contain no three-letter word between tags.
-// A `>` next to `=` is an arrow or comparison operator, never the end of a JSX tag.
-const jsxText = /(?<!=)>(?!=)([^<>{}]*\p{L}{3,}[^<>{}]*)</gu;
+// Copy starts at the `>` closing a JSX opening tag (or a fragment), never at a bare comparison `>`.
+const jsxText = /<(?:[A-Za-z][\w.:-]*(?:\s[^<>]*)?)?>([^<>{}]*\p{L}{3,}[^<>{}]*)</gu;
 const stringChild = /\{\s*(['"])([^'"{}]*\p{L}{3,}[^'"{}]*)\1\s*\}/gu;
 const copyProp =
   /\b(?:title|label|alt|description|placeholder|headline|sentence|reason)\s*=\s*(['"])([^'"{}]*\p{L}{3,}[^'"{}]*)\1/gu;

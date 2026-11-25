@@ -133,6 +133,8 @@ describe("Connect screen", () => {
     const h = harness([{ status: "connected", accountId: "acc-1" }]);
     fireEvent.click(await screen.findByRole("button", { name: /Continue with Gmail/ }));
     await waitFor(() => expect(h.router.state.location.pathname).toBe("/setup"));
+    // Guards: a Setup form that throws "ResizeObserver is not defined" in jsdom, but only when it mounts before the test ends.
+    expect((await screen.findAllByRole("checkbox")).length).toBeGreaterThan(0);
   });
 
   it("adding an account to an existing setup skips Setup", async () => {

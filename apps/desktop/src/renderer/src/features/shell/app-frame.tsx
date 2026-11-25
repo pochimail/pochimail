@@ -36,7 +36,7 @@ import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import {
-  BellIcon,
+  AtSignIcon,
   ChevronDownIcon,
   FileTextIcon,
   KeyRoundIcon,
@@ -64,7 +64,7 @@ const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }>
   records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
   "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
   "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
-  notifications: { label: CATEGORY_LABELS.notifications, icon: BellIcon },
+  notifications: { label: CATEGORY_LABELS.notifications, icon: AtSignIcon },
   newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
   promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
 };

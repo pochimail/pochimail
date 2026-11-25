@@ -1,4 +1,4 @@
-// Guards: a cancel source that never fires, fires twice, or keeps a removed listener.
+// Guards: a cancel source that never fires, fires twice, keeps a removed listener, or stops on a throwing listener.
 import { describe, expect, it } from "vitest";
 import { createCancelSource } from "./common.ts";
 
@@ -22,5 +22,17 @@ describe("createCancelSource", () => {
     signal.removeEventListener("abort", listener);
     abort();
     expect(calls).toBe(0);
+  });
+
+  it("a throwing listener does not prevent later listeners (guards a broken handler blocking cancellation)", () => {
+    const { signal, abort } = createCancelSource();
+    let later = 0;
+    signal.addEventListener("abort", () => {
+      throw new Error("listener failed");
+    });
+    signal.addEventListener("abort", () => later++);
+    expect(() => abort()).not.toThrow();
+    expect(later).toBe(1);
+    expect(signal.aborted).toBe(true);
   });
 });

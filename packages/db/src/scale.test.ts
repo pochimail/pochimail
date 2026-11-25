@@ -4,12 +4,14 @@ import { ok, unwrap } from "@pochimail/kernel/result";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
 import { ACCOUNT_1, WS_A } from "@pochimail/testing/fixtures";
 import { describe, expect, it } from "vitest";
+import { overviewFiguresOver } from "./read-models/overview-figures.ts";
 import { harness, mail, put, sender } from "./test-support/harness.ts";
 
 describe("100,000 messages", () => {
-  it("keeps indexed top-50 and sender GROUP BY inside their budgets (guards a missing index or full scans)", {
+  it("keeps indexed top-50, sender GROUP BY and Overview figures inside their budgets (guards a missing index or full scans)", {
     timeout: 120_000,
   }, async () => {
+    // Guards: a missing index, a full scan, or per-message Overview figure reads at mailbox scale.
     const h = harness();
     const categories: Category[] = ["people", "newsletters", "promotions", "records"];
     const t0 = performance.now();
@@ -59,6 +61,7 @@ describe("100,000 messages", () => {
         limit: 50,
       }),
     );
+    const figures = await time(() => overviewFiguresOver(h.storage.reader)(WS_A, [ACCOUNT_1]));
     const plan = h.storage.reader
       .prepare(
         "EXPLAIN QUERY PLAN SELECT id FROM message WHERE workspace_id = ? AND account_id = ? AND category = ? ORDER BY received_at DESC, id LIMIT 50",
@@ -70,7 +73,7 @@ describe("100,000 messages", () => {
       )
       .all(WS_A, ACCOUNT_1, hash) as { detail: string }[];
     process.stderr.write(
-      `[M2-03 budgets] insert 100k ${insertMs.toFixed(0)} ms; top-50 ${top.ms.toFixed(1)} ms; sender GROUP BY ${bySender.ms.toFixed(1)} ms; stats list ${statsTop.ms.toFixed(1)} ms; hashed sender ${hashed.ms.toFixed(1)} ms\n`,
+      `[M2-03 budgets] insert 100k ${insertMs.toFixed(0)} ms; top-50 ${top.ms.toFixed(1)} ms; sender GROUP BY ${bySender.ms.toFixed(1)} ms; stats list ${statsTop.ms.toFixed(1)} ms; hashed sender ${hashed.ms.toFixed(1)} ms; overview figures ${figures.ms.toFixed(1)} ms\n`,
     );
 
     expect(unwrap(top.value).items).toHaveLength(50);
@@ -78,6 +81,9 @@ describe("100,000 messages", () => {
     expect(plan.map((p) => p.detail).join(" ")).toContain("message_by_category");
     expect(senderPlan.map((p) => p.detail).join(" ")).toContain("message_by_sender_hash");
     expect(top.ms).toBeLessThan(100);
+    // Guards: Overview figures regressing from one SQL aggregate to per-message reads at mailbox scale.
+    expect(unwrap(figures.value)).toHaveLength(1);
+    expect(figures.ms).toBeLessThan(2000);
     expect(bySender.ms).toBeLessThan(1500);
     expect(statsTop.ms).toBeLessThan(100);
     expect(hashed.ms).toBeLessThan(100);

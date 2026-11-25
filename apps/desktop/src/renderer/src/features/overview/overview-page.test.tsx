@@ -149,7 +149,7 @@ describe("overview", () => {
     expect(await screen.findByText("people are waiting on you")).toBeTruthy();
     expect(screen.getByText("The oldest has waited 9 days")).toBeTruthy();
     expect(screen.getByText("Unsubscribe from newsletters")).toBeTruthy();
-    expect(screen.getByText("Archive app and social notifications")).toBeTruthy();
+    expect(screen.getByText("Archive alert emails")).toBeTruthy();
     expect(
       screen.getByText(
         "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
@@ -327,7 +327,7 @@ describe("overview", () => {
         review: "delete",
       },
       {
-        label: "Archive app and social notifications",
+        label: "Archive alert emails",
         path: "/category/notifications",
         review: "archive",
       },

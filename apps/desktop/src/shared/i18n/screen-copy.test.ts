@@ -39,6 +39,25 @@ describe("no user-facing literals in screen components (M4-07)", () => {
     );
   });
 
+  // Guards: a comparison before JSX looking like the end of a JSX tag and flagging its operands as copy.
+  it("ignores bare comparison operators but still finds text inside JSX tags", () => {
+    writeFileSync(
+      join(sandbox, "comparison.tsx"),
+      'const over = count > max ? <p>{t("overview.tooMany")}</p> : null;\n',
+    );
+    expect(
+      screenCopyOffenses(sandbox).filter((offense) => offense.file === "comparison.tsx"),
+    ).toEqual([]);
+
+    writeFileSync(
+      join(sandbox, "jsx-text.tsx"),
+      "const over = count > max ? <p>Too many</p> : null;\n",
+    );
+    expect(
+      screenCopyOffenses(sandbox).filter((offense) => offense.file === "jsx-text.tsx"),
+    ).toEqual([{ file: "jsx-text.tsx", literal: "Too many" }]);
+  });
+
   it("keeps every real renderer screen free of hard-coded copy (guards a new screen bypassing t())", () => {
     expect(screenCopyOffenses(resolve(import.meta.dirname, "../../renderer/src"))).toEqual([]);
   });
