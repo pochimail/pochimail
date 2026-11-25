@@ -13,7 +13,7 @@ export function formatSummary(dataset: string, r: ScenarioResult): string[] {
     `sync        ${summary.accounts} accounts · ${n(summary.emails)} emails · ${n(scan.batches)} batches · ${scan.pauses} pauses · ${scan.deferred} deferred`,
     `classify    ${CATEGORIES.map((c) => `${c} ${n(summary.categories[c])}`).join(" · ")}`,
     `signals     ${SIGNAL_KINDS.map((k) => `${k} ${n(summary.signals[k])}`).join(" · ")}`,
-    `catch       ${summary.signals["needs-reply"]} people waiting (oldest ${summary.oldestWaitingDays} days) · ${summary.signals["time-sensitive"]} time-sensitive · ${summary.signals["important-sender"]} from important people · ${summary.signals["has-document"]} documents`,
+    `catch       ${summary.waiting} people waiting (oldest ${summary.oldestWaitingDays} days) · ${summary.signals["time-sensitive"]} time-sensitive · ${summary.signals["important-sender"]} from important people · ${summary.signals["has-document"]} documents`,
     `suggest     ${r.suggestions.archive} archive · ${r.suggestions.unsubscribe} unsubscribe (never sent: cannot be undone)`,
     `apply       approved as archives · ${count(r.applied, "applied")} applied · ${count(r.applied, "refused")} refused · ${count(r.applied, "failed")} failed`,
     `undo        ${count(r.undone, "undone")} undone · ${count(r.undone, "failed")} failed · mailbox restored: ${r.mailboxRestored ? "yes" : "NO"}`,
