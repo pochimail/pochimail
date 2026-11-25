@@ -2,24 +2,27 @@ import { type Message, messageSchema } from "@pochimail/mailbox/model/message";
 import type { Row } from "../shared/sql.ts";
 import { flag, json, placeholderAddress, text } from "../shared/values.ts";
 import type { DisplayFieldsCache } from "./display-fields-cache.ts";
+import { decodeReasons } from "./suspicious-reasons.ts";
 
 export const MESSAGE_COLUMNS =
   "workspace_id, id, account_id, thread_id, sender_hash, received_at, has_list_unsubscribe, opened, size, saved_count, saved_size, archived, topic_ids, suspicious_reason_code, suspicious_confidence, category";
 
-/** A row holds codes and counts; subject, addresses, recipients and snippet come from the cache. */
+/**
+ * A row holds codes and counts, the suspicious flag among them; subject, addresses, recipients and
+ * snippet come from the cache.
+ */
 export const messageOf = (r: Row, cache: DisplayFieldsCache): Message => {
   const ws = text(r.workspace_id);
   const id = text(r.id);
   const fields = cache.of(ws, id);
   const code = r.suspicious_reason_code === null ? undefined : text(r.suspicious_reason_code);
   const suspicious =
-    fields.suspicious ??
-    (code === undefined
+    code === undefined
       ? undefined
       : {
-          reasons: [code],
+          reasons: decodeReasons(code),
           confidence: typeof r.suspicious_confidence === "number" ? r.suspicious_confidence : 0.5,
-        });
+        };
   return messageSchema.parse({
     schemaVersion: 1,
     id,
@@ -41,5 +44,6 @@ export const messageOf = (r: Row, cache: DisplayFieldsCache): Message => {
     topicIds: json(r.topic_ids),
     ...(suspicious === undefined ? {} : { suspicious }),
     category: r.category,
+    senderHash: text(r.sender_hash),
   });
 };

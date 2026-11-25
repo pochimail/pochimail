@@ -61,7 +61,11 @@ function sqliteRoundTrip() {
       done(core.messages.upsertMany([m]));
       if (m.category !== undefined)
         done(core.messages.setCategory(m.workspaceId, m.id, m.category));
-      return done(core.messages.get(m.workspaceId, m.id));
+      const stored = done(core.messages.get(m.workspaceId, m.id));
+      // The sample carries a fake digest; the real one is checked here, then swapped in for the comparison.
+      if (stored.senderHash !== shared?.storage.senderHasher.hash(m.accountId, m.from))
+        throw new Error("The stored message lost its sender hash");
+      return { ...stored, senderHash: (v as { senderHash?: string }).senderHash };
     }
     if ("messageIds" in v && "lastMessageAt" in v) {
       done(core.threads.upsert(v as never));

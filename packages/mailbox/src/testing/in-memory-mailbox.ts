@@ -1,6 +1,7 @@
 import { NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
+import { fakeSenderHash } from "@pochimail/kernel/testing/fake-sender-hash";
 import type { IncomingMessage, Message } from "../model/message.ts";
 import type { SenderStats } from "../model/sender-stats.ts";
 import type { Thread } from "../model/thread.ts";
@@ -146,6 +147,7 @@ export function createInMemoryMailbox(): InMemoryMailbox {
                     ...copy(m),
                     category: before?.category ?? DEFAULT_LABEL,
                     topicIds: before?.topicIds ?? m.topicIds,
+                    senderHash: fakeSenderHash(m.accountId, m.from),
                     seq: before?.seq ?? ++draft.counter,
                   });
                 }

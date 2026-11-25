@@ -2,6 +2,7 @@ import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import { Cancelled, NotFound } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
+import { fakeSenderHash } from "@pochimail/kernel/testing/fake-sender-hash";
 import type { Suggestion } from "../model/suggestion.ts";
 import type { AccountFigures, DecisionFact, MessageFact } from "../ports/mailbox-facts.ts";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
@@ -176,19 +177,22 @@ export function createInMemoryCleanup(): InMemoryCleanup {
         const n = Number(key);
         const id = idOf(n);
         const existing = facts.get(`${WS_A}/${id}`);
+        const { from = "sender@example.com", ...message } = row.message ?? {};
         facts.set(`${WS_A}/${id}`, {
           id,
-          from: "sender@example.com",
+          senderHash: fakeSenderHash(ACCOUNT_1, from),
           category: row.category ?? "notification",
           receivedAt: new Date(Date.UTC(2026, 0, 1) + n * 60_000).toISOString(),
           opened: false,
           hasListUnsubscribe: false,
-          ...row.message,
+          ...message,
           seq: existing?.seq ?? ++counter,
-          decision: {
-            reason: row.reason ?? "Weekly newsletter, never opened",
-            confidence: row.confidence ?? 0.9,
-          },
+          decision: row.undecided
+            ? null
+            : {
+                reason: row.reason ?? "Weekly newsletter, never opened",
+                confidence: row.confidence ?? 0.9,
+              },
           signals: [
             ...(row.signals ?? []).map((kind) => ({ kind, confidence: 1 })),
             ...(row.unsureSignals ?? []).map((kind) => ({ kind, confidence: UNSURE_BELOW - 0.1 })),

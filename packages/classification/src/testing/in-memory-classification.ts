@@ -92,6 +92,14 @@ export function createInMemoryClassification(): InMemoryClassification {
         const d = data().derived.get(`${ws}/${id}`);
         return d ? ok(copy(d)) : err(new NotFound("Derived data"));
       },
+      listForMessages: async (ws, ids) => {
+        const wanted = new Set<string>(ids);
+        return ok(
+          [...data().derived.values()]
+            .filter((d) => d.workspaceId === ws && wanted.has(d.messageId))
+            .map(copy),
+        );
+      },
       list: async (ws, accountId, page) => {
         const rows = [...data().derived.values()]
           .filter((d) => d.workspaceId === ws && d.accountId === accountId)

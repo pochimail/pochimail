@@ -102,6 +102,19 @@ export function mailboxRepositoryContract(make: () => { uow: MailboxUnitOfWork }
       expect(mine.fromOwner).toBe(true);
       expect((await uow.reads.senders.ofMessage(WS_A, makeIncoming(9).id, owner)).ok).toBe(false);
     });
+    it("ofMessage matches the owner whatever the case of From or of the owner address (guards a false needs-reply on the owner's own mail)", async () => {
+      const { uow } = make();
+      await put(uow, [
+        makeIncoming(1, { from: "Owner@Example.COM" }),
+        makeIncoming(2, { from: "owner@example.com" }),
+        makeIncoming(3, { from: "Boss@Example.COM" }),
+      ]);
+      const fromOwner = async (n: number, owner: string) =>
+        unwrap(await uow.reads.senders.ofMessage(WS_A, makeIncoming(n).id, owner)).fromOwner;
+      expect(await fromOwner(1, "owner@example.com")).toBe(true);
+      expect(await fromOwner(2, "OWNER@example.com")).toBe(true);
+      expect(await fromOwner(3, "owner@example.com")).toBe(false);
+    });
     it("pages newest first and ends with a null cursor (guards skipped or repeated rows)", async () => {
       const { uow } = make();
       await put(uow, [makeIncoming(1), makeIncoming(2), makeIncoming(3)]);

@@ -7,7 +7,7 @@ import { makeAccount, makeIncomingMessage, makeSender, WS_A } from "@pochimail/t
 import { expect } from "vitest";
 import type { harness } from "./harness.ts";
 
-type Harness = ReturnType<typeof harness>;
+type Harness = Pick<ReturnType<typeof harness>, "uow" | "committedOutbox">;
 
 /** Stores the account once, then each message with its label and derived data, through one transaction. */
 async function store(
@@ -76,10 +76,12 @@ export const cleanupSeeder = (h: Harness): CleanupSeeder => ({
           {
             incoming: row.message ?? {},
             category: row.category ?? "notification",
-            derived: {
-              ...(row.reason === undefined ? {} : { reason: row.reason }),
-              ...(row.confidence === undefined ? {} : { confidence: row.confidence }),
-            },
+            derived: row.undecided
+              ? null
+              : {
+                  ...(row.reason === undefined ? {} : { reason: row.reason }),
+                  ...(row.confidence === undefined ? {} : { confidence: row.confidence }),
+                },
           },
         ]),
       ),

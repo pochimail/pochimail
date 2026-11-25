@@ -9,6 +9,12 @@ export interface TrustInput {
 
 const SUSPICIOUS_CONFIDENCE = 0.8;
 
+/** The fixed codes a suspicious flag can carry: never mail content, so they may be stored as they are (ADR 0014). */
+export const SUSPICIOUS_REASONS = {
+  punycode: "punycode-domain",
+  lookalike: "lookalike-domain",
+} as const;
+
 /** A 1 or 0 between letters imitates an l or an o ("examp1e"). */
 const LOOKALIKE_LABEL = /[a-z]{2,}[01][a-z]+/;
 
@@ -22,9 +28,9 @@ export function suspiciousDomainFlag(address: string): SuspiciousFlag | undefine
   if (domain === undefined || domain === "") return undefined;
   const labels = domain.split(".");
   const reasons: string[] = [];
-  if (labels.some((l) => l.startsWith("xn--"))) reasons.push("punycode-domain");
+  if (labels.some((l) => l.startsWith("xn--"))) reasons.push(SUSPICIOUS_REASONS.punycode);
   if (labels.some((l) => l.split("-").some((part) => LOOKALIKE_LABEL.test(part))))
-    reasons.push("lookalike-domain");
+    reasons.push(SUSPICIOUS_REASONS.lookalike);
   return reasons.length === 0 ? undefined : { reasons, confidence: SUSPICIOUS_CONFIDENCE };
 }
 

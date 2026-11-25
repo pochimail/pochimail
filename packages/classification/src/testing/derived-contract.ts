@@ -42,6 +42,16 @@ export const derivedChecks: readonly Check<DerivedHarness>[] = [
       );
     },
   ),
+  check(
+    "one read returns the rows of the asked messages only, leaves out a message with none and stays inside the workspace (guards a per-message read on every Overview load)",
+    async (h) => {
+      await save(h, makeDerived(1), makeDerived(2), makeDerived(3));
+      const ids = ["msg-1", "msg-3", "msg-9"] as MessageId[];
+      const got = unwrap(await h.uow.reads.derived.listForMessages(WS_A, ids));
+      expect(got.map((d) => d.messageId).sort()).toEqual(["msg-1", "msg-3"]);
+      expect(unwrap(await h.uow.reads.derived.listForMessages(WS_B, ids))).toEqual([]);
+    },
+  ),
 ];
 
 export function derivedContract(make: () => DerivedHarness | Promise<DerivedHarness>): void {

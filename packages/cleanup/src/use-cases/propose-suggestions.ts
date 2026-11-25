@@ -50,11 +50,12 @@ export type ProposeSuggestionsError =
 /**
  * Proposes sender-level clean-ups, each with a human-readable reason and a confidence (brief §3).
  *
- * Only archive and unsubscribe are ever proposed (delete moves to Trash with approval, ADR 0012),
- * and only for senders whose every email is of a cleanable type and carries no protecting signal
- * (ADR 0012): protection reads signals, never a type name. The reason and confidence come from
- * what the classifier recorded for the sender's messages. Re-running creates nothing twice and never
- * resets a suggestion the user already approved or dismissed.
+ * Mail is grouped and each suggestion is keyed by the sender hash, never the address (ADR 0014), so
+ * the id is the same after a restart. Only archive and unsubscribe are ever proposed (delete moves
+ * to Trash with approval, ADR 0012), and only for senders whose every email is of a cleanable type
+ * and carries no protecting signal (ADR 0012): protection reads signals, never a type name. The
+ * reason and confidence come from what the classifier recorded for the sender's messages. Re-running
+ * creates nothing twice and never resets a suggestion the user already approved or dismissed.
  */
 export class ProposeSuggestions {
   constructor(private readonly deps: ProposeSuggestionsDeps) {}
@@ -69,11 +70,11 @@ export class ProposeSuggestions {
 
     const createdAt = clock.now().toISOString();
     const proposals: Suggestion[] = [];
-    for (const [sender, rows] of [...collected.value].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    for (const [senderHash, rows] of [...collected.value].sort(([a], [b]) => (a < b ? -1 : 1))) {
       if (!mayPropose(rows)) continue;
       const proposal = propose(rows);
       if (!proposal) continue;
-      const id = SuggestionId(`sug:${request.accountId}:${sender}:${proposal.kind}`);
+      const id = SuggestionId(`sug:${request.accountId}:${senderHash}:${proposal.kind}`);
       if (!id.ok) return id;
       const recommendation: Recommendation = {
         kind: proposal.kind,
@@ -173,8 +174,11 @@ async function collect(
     if (!page.ok) return page;
     const rows = await rowsOf(facts, request, page.value.items, now);
     if (!rows.ok) return rows;
-    for (const row of rows.value)
-      bySender.set(row.message.from, [...(bySender.get(row.message.from) ?? []), row]);
+    for (const row of rows.value) {
+      // No hash means the sender is unknown: such mail has no sender to propose a clean-up for.
+      if (row.message.senderHash === "") continue;
+      bySender.set(row.message.senderHash, [...(bySender.get(row.message.senderHash) ?? []), row]);
+    }
     cursor = page.value.nextCursor ?? undefined;
   } while (cursor !== undefined);
   return ok(bySender);
