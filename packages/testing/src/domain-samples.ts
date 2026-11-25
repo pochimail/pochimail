@@ -1,6 +1,7 @@
 import { PROVIDER_KINDS } from "@pochimail/accounts/model/account";
 import { ACTION_KINDS } from "@pochimail/actions/model/action";
 import { CATEGORIES, SIGNAL_KINDS } from "@pochimail/classification/model/category";
+import { SUSPICIOUS_REASONS } from "@pochimail/classification/policies/suspicious-rules";
 import { RECOMMENDATION_KINDS } from "@pochimail/cleanup/model/suggestion";
 import { fakeSenderHash } from "@pochimail/kernel/testing/fake-sender-hash";
 
@@ -61,7 +62,18 @@ export const sampleBuilders = {
     hasListUnsubscribe: r.bool(),
     opened: r.bool(),
     topicIds: Array.from({ length: r.int(3) }, () => id(r, "topic")),
-    ...(r.bool() ? { suspicious: { reasons: reasons(r), confidence: confidence(r) } } : {}),
+    ...(r.bool()
+      ? {
+          suspicious: {
+            reasons: r.pick([
+              [SUSPICIOUS_REASONS.punycode],
+              [SUSPICIOUS_REASONS.lookalike],
+              [SUSPICIOUS_REASONS.punycode, SUSPICIOUS_REASONS.lookalike],
+            ]),
+            confidence: confidence(r),
+          },
+        }
+      : {}),
   }),
   message: (r: Rng) => {
     const incoming = sampleBuilders.incomingMessage(r);

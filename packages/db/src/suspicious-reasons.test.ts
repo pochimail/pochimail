@@ -1,6 +1,6 @@
 import { SUSPICIOUS_REASONS } from "@pochimail/classification/policies/suspicious-rules";
 import { ok, unwrap } from "@pochimail/kernel/result";
-import { makeIncomingMessage, WS_A } from "@pochimail/testing/fixtures";
+import { ACCOUNT_1, makeAccount, makeIncomingMessage, WS_A } from "@pochimail/testing/fixtures";
 import { describe, expect, it } from "vitest";
 import { createSqliteUnitOfWork } from "./sqlite-unit-of-work.ts";
 import { freshPath, key, open } from "./test-support/storage.ts";
@@ -11,6 +11,7 @@ const connect = (path: string) => {
 };
 const store = async (c: ReturnType<typeof connect>, reasons: string[]) => {
   const stored = await c.uow.run(async (tx) => {
+    unwrap(await tx.repositories.accounts.save(makeAccount()));
     unwrap(
       await tx.repositories.messages.upsertMany([
         makeIncomingMessage(1, { suspicious: { reasons, confidence: 0.8 } }),
@@ -41,5 +42,17 @@ describe("stored suspicious reasons", () => {
       .prepare("SELECT suspicious_reason_code AS code FROM message")
       .get();
     expect(row).toEqual({ code: "other" });
+  });
+
+  // Guards: the flag living only in the display cache, so it is gone when classification asks after a restart (#246).
+  it("reach classification's view of the message after a restart", async () => {
+    const path = freshPath();
+    const reasons = [SUSPICIOUS_REASONS.lookalike];
+    await store(connect(path), reasons);
+    const restarted = connect(path);
+    const [facts] = unwrap(
+      await restarted.uow.reads.signalFacts.forMessages(WS_A, ACCOUNT_1, ["msg-1" as never]),
+    );
+    expect(facts?.suspicious).toEqual({ reasons, confidence: 0.8 });
   });
 });

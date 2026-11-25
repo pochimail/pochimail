@@ -10,5 +10,6 @@ const known = (reason: string) => (KNOWN.includes(reason) ? reason : OTHER);
 export const encodeReasons = (reasons: readonly string[]): string =>
   [...new Set(reasons.map(known))].join(",");
 
-export const decodeReasons = (stored: string): string[] =>
-  [...new Set(stored.split(",").map(known))];
+export const decodeReasons = (stored: string): string[] => [
+  ...new Set(stored.split(",").map(known)),
+];
