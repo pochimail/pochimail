@@ -1,6 +1,6 @@
 import type { Clock } from "@pochimail/kernel/clock";
 import type { CancelSignal } from "@pochimail/kernel/common";
-import { Cancelled, type DomainError, InvalidStateError } from "@pochimail/kernel/errors";
+import { Cancelled, type DomainError } from "@pochimail/kernel/errors";
 import type { IdGenerator } from "@pochimail/kernel/id-generator";
 import { unwrap } from "@pochimail/kernel/result";
 import type { PolicyDenialReason, PolicyDenied } from "../errors.ts";
@@ -8,9 +8,10 @@ import type { ActionId, ActionLogId } from "../ids.ts";
 import { ActionLogId as makeLogId } from "../ids.ts";
 import { type Action, type ActionLog, inverseOf } from "../model/action.ts";
 import { type AuthorizationContext, authorize } from "../policies/authorize.ts";
-import { type MailCommands, PartiallyApplied } from "../ports/mail-commands.ts";
+import type { MailCommands } from "../ports/mail-commands.ts";
 import type { ActionsUnitOfWork } from "../ports/unit-of-work.ts";
 import { RecordEntry } from "./record-entry.ts";
+import { settleProviderResult } from "./settle-provider-result.ts";
 
 export interface ApplyActionDeps {
   readonly uow: ActionsUnitOfWork;
@@ -60,9 +61,10 @@ export interface ApplyActionReport {
  * - Idempotent: a key with an `applied` (or `undone`) entry never reaches the provider again.
  *   To re-apply after an undo, issue a new action with a new key. A key with only `failed` or
  *   `refused` entries may be retried.
- * - The provider call sits outside the transaction (no network I/O inside a DB transaction); the
- *   log entry and its outbox event commit together right after. A crash in between leaves a
- *   mutation without an entry; the replay is then safe because provider commands are idempotent.
+ * - The provider call sits outside the transaction (no network I/O inside a DB transaction). A
+ *   `pending` entry is written before it; the `applied` or `failed` entry and its outbox event
+ *   commit together right after. A crash in between leaves the `pending` entry, which
+ *   `ResolvePendingActions` settles on the next start.
  * - Partial failure: one failing action is logged `failed` and the batch continues.
  */
 export class ApplyAction {
@@ -137,55 +139,30 @@ export class ApplyAction {
     }
 
     if (signal.aborted) return "cancelled";
-    const result = await provider.applyCommands([action.command], signal);
-    if (!result.ok) {
-      const partial = result.error instanceof PartiallyApplied ? result.error : null;
-      const cause = partial === null ? result.error : partial.failure;
-      // What the provider did before failing is logged as applied, each with its own inverse, so
-      // undo reverses exactly that part; the failure of the rest is logged next to it.
-      for (const done of partial?.applied ?? []) {
-        const entry: ActionLog = {
-          ...base(),
-          outcome: "applied",
-          command: done.command,
-          inverse: done.inverse ?? inverseOf(done.command),
-          irreversible: false,
-        };
-        const saved = await record.execute({ entry, type: "ActionApplied" });
-        if (!saved.ok) return failed(saved.error);
-      }
-      if (cause instanceof Cancelled) return "cancelled";
-      const entry: ActionLog = {
-        ...base(),
-        outcome: "failed",
-        command: action.command,
-        inverse: null,
-        irreversible: false,
-        errorCode: result.error.code,
-      };
-      const saved = await record.execute({
-        entry,
-        type: "ActionFailed",
-        errorCode: result.error.code,
-      });
-      return saved.ok ? failed(result.error, entry.id) : failed(saved.error);
-    }
-
-    const applied = result.value[0];
-    if (result.value.length !== 1 || !applied) {
-      return failed(new InvalidStateError("Provider must answer one result per command"));
-    }
+    // Written before the call: a crash after the provider acted still leaves this entry, which
+    // `ResolvePendingActions` settles on the next start (so the change shows in Activity and undoes).
     const irreversible = action.command.kind === "unsubscribe";
-    const entry: ActionLog = {
+    const pending: ActionLog = {
       ...base(),
-      outcome: "applied",
-      command: applied.command,
-      // The provider reports what it really did; the pure inverse is the fallback.
-      inverse: irreversible ? null : (applied.inverse ?? inverseOf(applied.command)),
+      outcome: "pending",
+      command: action.command,
+      inverse: irreversible ? null : inverseOf(action.command),
       irreversible,
       ...(irreversible ? { irreversibleReason: "An unsubscribe request cannot be recalled" } : {}),
     };
-    const saved = await record.execute({ entry, type: "ActionApplied" });
-    return saved.ok ? { status: "applied", actionId, logId: entry.id } : failed(saved.error);
+    const written = await uow.run((tx) => tx.repositories.actionLog.append(pending), signal);
+    if (!written.ok)
+      return written.error instanceof Cancelled ? "cancelled" : failed(written.error);
+
+    const result = await provider.applyCommands([action.command], signal);
+    const settled = await settleProviderResult({
+      record,
+      base,
+      command: action.command,
+      result,
+    });
+    if (settled.status === "cancelled") return "cancelled";
+    if (settled.status === "applied") return { status: "applied", actionId, logId: settled.logId };
+    return failed(settled.error, settled.logId);
   }
 }

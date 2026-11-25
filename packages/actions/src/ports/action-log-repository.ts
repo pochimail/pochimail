@@ -19,6 +19,11 @@ export interface ActionLogReader {
   ): AsyncResult<readonly ActionLog[], StorageError>;
   /** Every entry of a batch, oldest first, so undo can reverse the whole batch after a restart. */
   listForBatch(ws: WorkspaceId, batchId: string): AsyncResult<readonly ActionLog[], StorageError>;
+  /**
+   * `pending` entries whose key has no later `applied`, `failed`, `undone` or `refused` entry: the
+   * provider call may have happened without being recorded. Oldest first.
+   */
+  listPending(ws: WorkspaceId): AsyncResult<readonly ActionLog[], StorageError>;
   list(ws: WorkspaceId, page: PageRequest): AsyncResult<Page<ActionLog>, StorageError>;
 }
 export interface ActionLogWriter {

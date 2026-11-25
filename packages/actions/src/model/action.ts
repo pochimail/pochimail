@@ -83,7 +83,8 @@ export const actionLogSchema = z
     idempotencyKey: z.string().min(1),
     /** Groups the actions of one batch so the whole batch can be undone. */
     batchId: z.string().min(1).optional(),
-    outcome: z.enum(["applied", "failed", "undone", "refused"]),
+    /** `pending` is written before the provider call, so a crash after it leaves a trace to recover from. */
+    outcome: z.enum(["pending", "applied", "failed", "undone", "refused"]),
     command: commandSchema,
     inverse: commandSchema.nullable(),
     irreversible: z.boolean(),
@@ -111,3 +112,14 @@ export const actionLogSchema = z
     }
   });
 export type ActionLog = z.infer<typeof actionLogSchema>;
+
+/**
+ * The `pending` entries whose idempotency key has no `applied`, `failed`, `undone` or `refused`
+ * entry: the provider call may have happened without being recorded. The one definition the
+ * in-memory adapters use; SQL repeats it and the contract suite keeps them equal.
+ */
+export function unresolvedPending(entries: readonly ActionLog[]): ActionLog[] {
+  const settled = new Set(entries.filter((e) => e.outcome !== "pending").map(settleKey));
+  return entries.filter((e) => e.outcome === "pending" && !settled.has(settleKey(e)));
+}
+const settleKey = (e: ActionLog) => `${e.workspaceId}\u0000${e.idempotencyKey}`;

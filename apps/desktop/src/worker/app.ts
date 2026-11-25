@@ -24,6 +24,7 @@ import type { SettingsStore } from "../shared/settings.ts";
 import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers } from "./handlers.ts";
 import { ManageSettings } from "./manage-settings.ts";
+import { resolvePendingActions } from "./pending-actions.ts";
 
 /**
  * Everything the worker needs from the outside, as ports. The fixture bundle (dev/E2E) and M2's SQLite and real
@@ -73,6 +74,8 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     return draining;
   };
   void flush(); // events committed before a restart still go out
+  // Settles actions a crash left pending; its events go out with the next flush.
+  const recovery = resolvePendingActions(adapters).then(flush);
 
   const tally = createDigestTally();
   const recordDigest = new RecordDigestReady({ tally });
@@ -107,5 +110,11 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     events: bus,
     deviceName: adapters.deviceName,
   });
-  return { handlers, idle: () => scans.idle() };
+  return {
+    handlers,
+    idle: async () => {
+      await recovery;
+      await scans.idle();
+    },
+  };
 }

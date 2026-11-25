@@ -61,6 +61,13 @@ export function createActionLogRepository(db: Database) {
     listForAction: (ws: string, actionId: string) => logs("action_id = ?", ws, actionId),
     listForKey: (ws: string, key: string) => logs("idempotency_key = ?", ws, key),
     listForBatch: (ws: string, batchId: string) => logs("batch_id = ?", ws, batchId),
+    listPending: (ws: string) =>
+      logs(
+        `outcome = 'pending' AND NOT EXISTS (
+           SELECT 1 FROM action_log o WHERE o.workspace_id = action_log.workspace_id
+             AND o.idempotency_key = action_log.idempotency_key AND o.outcome <> 'pending')`,
+        ws,
+      ),
     list: (ws: string, p: { limit: number; cursor?: string }) =>
       guard(() => {
         const after = p.cursor === undefined ? undefined : decodeCursor(p.cursor, 1)[0];

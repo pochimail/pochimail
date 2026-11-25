@@ -83,6 +83,7 @@ export function createSqliteRepositories(db: Database): {
     listForAction: lift(core.actionLog.listForAction),
     listForKey: lift(core.actionLog.listForKey),
     listForBatch: lift(core.actionLog.listForBatch),
+    listPending: lift(core.actionLog.listPending),
     list: lift(core.actionLog.list),
   };
   const topics = { get: lift(core.topics.get), list: lift(core.topics.list) };

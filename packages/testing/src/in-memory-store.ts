@@ -1,4 +1,4 @@
-import type { ActionLog } from "@pochimail/actions/model/action";
+import { type ActionLog, unresolvedPending } from "@pochimail/actions/model/action";
 import { CATEGORIES } from "@pochimail/classification/model/category";
 import type { AsyncResult, CancelSignal, Page, PageRequest } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
@@ -153,11 +153,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
         get: (ws, id) => found(data().actionLog, key(ws, id), "Action log entry"),
         listForAction: (ws, actionId) =>
           guarded(() =>
-            ok(
-              [...data().actionLog.values()]
-                .filter((l) => l.workspaceId === ws && l.actionId === actionId)
-                .map(copy),
-            ),
+            ok(oldestFirst(data().actionLog, ws, (l) => l.actionId === actionId)),
           ) as never,
         listForKey: (ws, idempotencyKey) =>
           guarded(() =>
@@ -166,6 +162,10 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
         listForBatch: (ws, batchId) =>
           guarded(() =>
             ok(oldestFirst(data().actionLog, ws, (l) => l.batchId === batchId)),
+          ) as never,
+        listPending: (ws) =>
+          guarded(() =>
+            ok(unresolvedPending(oldestFirst(data().actionLog, ws, () => true))),
           ) as never,
         list: (ws, page) =>
           guarded(() => {
