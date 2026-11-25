@@ -3,6 +3,7 @@ import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { cn } from "@pochimail/ui/lib/utils";
 import { Outlet, useRouter, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef } from "react";
+import { isMacDesktop } from "../../lib/platform.ts";
 
 /** Onboarding screens in order; the step indicator shows on these only. */
 const ONBOARDING_PATHS = ["/welcome", "/connect", "/setup"] as const;
@@ -45,11 +46,19 @@ export function OnboardingLayout({
 
   return (
     <div className="@container flex min-h-screen flex-col">
-      <header className="relative flex h-11 items-center justify-center">
-        {/* Appearance stays reachable during onboarding. Absolute in the header's right spacer so the
-            step indicator remains optically centered and the reference geometry is unchanged. */}
+      <header
+        className={cn(
+          "relative flex h-11 items-center justify-center",
+          // The inset title bar leaves no native drag area; the controls opt back out below.
+          isMacDesktop() && "[-webkit-app-region:drag] [app-region:drag]",
+        )}
+      >
+        {/* Appearance stays reachable during onboarding. Pinned to the window's right edge, 16px in like
+            the traffic lights on the left, so the step indicator remains optically centered. */}
         {controls === undefined ? null : (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 @phone:right-8">{controls}</div>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 [-webkit-app-region:no-drag] [app-region:no-drag]">
+            {controls}
+          </div>
         )}
         <ol
           aria-label={t("onboarding.progress", { current, total })}

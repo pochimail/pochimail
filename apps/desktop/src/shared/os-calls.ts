@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * The only calls that go through main (ADR 0002): three OS integrations, none of them mail related. Each is validated in
+ * The OS calls that go through main (ADR 0002): three integrations, none of them mail related (the storage prompt's calls are in storage-calls.ts). Each is validated in
  * the preload before it leaves the page and again in main before it touches the OS.
  */
 export const osChannels = {

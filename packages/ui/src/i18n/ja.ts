@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /**
@@ -118,6 +119,7 @@ export const ja = {
   "onboarding.progress": entry("ステップ{current}／{total}", ["current", "total"]),
 
   ...connectMessages.ja,
+  ...storageMessages.ja,
   "setup.title": entry("設定", []),
   "setup.description": entry("Pochiにどのように手伝ってほしいか選んでください。", []),
   "setup.bubble": entry(

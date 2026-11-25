@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
@@ -135,6 +136,7 @@ export const messages = {
   "welcome.openSource": entry("Free and open source", []),
   "onboarding.progress": entry("Step {current} of {total}", ["current", "total"]),
   ...connectMessages.en,
+  ...storageMessages.en,
   "setup.title": entry("Set up", []),
   "setup.description": entry("Choose how Pochi can help.", []),
   "setup.bubble": entry(

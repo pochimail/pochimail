@@ -1,5 +1,7 @@
 import { accountRepositoryContract } from "@pochimail/accounts/testing/account-repository-contract";
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
+import { describeActionUseCases } from "@pochimail/actions/testing/action-contract";
+import { BASE_CAPABILITIES, createActionHarness } from "@pochimail/actions/testing/action-harness";
 import { AiUnavailable } from "@pochimail/classification/errors";
 import { type Category, PROTECTED_CATEGORIES } from "@pochimail/classification/model/category";
 import { derivedContract } from "@pochimail/classification/testing/derived-contract";
@@ -33,6 +35,9 @@ keepRuleRepositoryContract(() => sqliteKeepRules(harness()));
 
 // The domain packages' own repository contracts, then every exported contract suite, unchanged, against SQLite (none skipped).
 accountRepositoryContract(uowHarness);
+describeActionUseCases("sqlite", () =>
+  createActionHarness({ ...BASE_CAPABILITIES, batchModify: null }, harness().uow),
+);
 mailboxRepositoryContract(uowHarness);
 repositoriesContract(uowHarness);
 figuresContract(uowHarness);

@@ -46,10 +46,11 @@ it("connecting starts the first scan on the real database, tells the renderer an
   }
 
   const secrets = createInMemorySecretStore();
+  const handedKey = Buffer.from(key);
   const runtime = createAccountsRuntime(
     {
       databasePath,
-      databaseKey: key,
+      databaseKey: handedKey,
       secrets: Object.assign(secrets, {
         protection: async () => ({ level: "os-keychain" as const, backend: "test" }),
       }),
@@ -88,6 +89,8 @@ it("connecting starts the first scan on the real database, tells the renderer an
   const events: EventOf<"app.events">[] = [];
   runtime.handlers.subscriptions["app.events"]?.(undefined, (event) => events.push(event));
 
+  // Guards: the key staying readable in the worker's memory after the database is open.
+  expect(handedKey.every((byte) => byte === 0)).toBe(true);
   const outcome = await runtime.handlers.procedures["accounts.connect"]?.({ provider: "google" });
   expect(outcome?.status).toBe("connected");
   await runtime.idle();

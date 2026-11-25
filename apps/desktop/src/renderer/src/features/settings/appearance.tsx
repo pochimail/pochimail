@@ -9,11 +9,18 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { type AppSettings, DEFAULT_APP_SETTINGS, type Theme } from "#shared/settings.ts";
 import { useAppLocale } from "../../lib/locale.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
-import { applyTheme, followSystemTheme } from "../../lib/theme.ts";
+import {
+  applyTheme,
+  followSystemTheme,
+  prefersDark,
+  resolveTheme,
+  subscribeSystemDark,
+} from "../../lib/theme.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 // Named aliases keep this .tsx free of type-only generics; the copy guard scans raw source as JSX.
@@ -26,6 +33,8 @@ type PendingAppearance = Partial<Pick<AppSettings, "theme" | "locale">>;
 
 type Appearance = {
   readonly theme: Theme;
+  /** The theme on screen: "system" resolved against the OS. */
+  readonly resolvedTheme: "light" | "dark";
   readonly locale: UserLocale;
   readonly selectTheme: (theme: Theme) => Persist;
   readonly selectLocale: (locale: UserLocale) => Persist;
@@ -48,6 +57,8 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingAppearance>({});
   const theme = pending.theme ?? settings.data?.theme ?? DEFAULT_APP_SETTINGS.theme;
   const locale = pending.locale ?? settings.data?.locale ?? systemLocale;
+  const systemDark = useSyncExternalStore(subscribeSystemDark, prefersDark);
+  const resolvedTheme = resolveTheme(theme, systemDark);
 
   // Before paint: a saved choice arriving later and an OS switch must repaint in the same frame too.
   useLayoutEffect(() => followSystemTheme(theme), [theme]);
@@ -77,11 +88,12 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Appearance>(
     () => ({
       theme,
+      resolvedTheme,
       locale,
       selectTheme: (theme) => select({ theme }),
       selectLocale: (locale) => select({ locale }),
     }),
-    [theme, locale, select],
+    [theme, resolvedTheme, locale, select],
   );
 
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
