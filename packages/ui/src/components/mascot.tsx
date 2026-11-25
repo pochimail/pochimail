@@ -4,6 +4,7 @@ import happyPose2x from "@pochimail/ui/assets/mascot/pochi-happy@2x.png";
 import happyPose from "@pochimail/ui/assets/mascot/pochi-happy.png";
 import nightPose2x from "@pochimail/ui/assets/mascot/pochi-night@2x.png";
 import nightPose from "@pochimail/ui/assets/mascot/pochi-night.png";
+import nightRim from "@pochimail/ui/assets/mascot/pochi-night-rim@2x.png";
 import readingPose2x from "@pochimail/ui/assets/mascot/pochi-reading@2x.png";
 import readingPose from "@pochimail/ui/assets/mascot/pochi-reading.png";
 import savingPose2x from "@pochimail/ui/assets/mascot/pochi-saving@2x.png";
@@ -23,6 +24,9 @@ const poses = {
 } as const;
 
 export type MascotPose = keyof typeof poses;
+
+/** Silhouette masks (alpha only) for charcoal poses: painted behind the art with the `mascot-rim` token, so they stay readable on dark surfaces. */
+const rims: Partial<Record<MascotPose, string>> = { night: nightRim };
 
 /** Only these poses have open eyes; smiles and sleeping faces must never blink. */
 const OPEN_EYE_POSES: ReadonlySet<MascotPose> = new Set<MascotPose>(["default", "reading"]);
@@ -138,6 +142,7 @@ function Mascot({
   }
 
   const [x1, x2] = poses[pose];
+  const rim = rims[pose];
   const found = reaction === "found" && animationsEnabled;
   const blinking = animationsEnabled && OPEN_EYE_POSES.has(pose);
 
@@ -164,15 +169,23 @@ function Mascot({
       >
         <span
           data-slot="mascot-breathe"
-          className={cn("block", animationsEnabled && "animate-pochi-breathe")}
+          className={cn("relative block", animationsEnabled && "animate-pochi-breathe")}
           style={{ transformOrigin: "50% 92%" }}
         >
+          {rim ? (
+            <span
+              data-slot="mascot-rim"
+              aria-hidden="true"
+              className="absolute inset-0 bg-mascot-rim"
+              style={{ maskImage: `url(${rim})`, maskSize: "100% 100%" }}
+            />
+          ) : null}
           <img
             data-slot="mascot-image"
             src={x1}
             srcSet={`${x1} 1x, ${x2} 2x`}
             alt={alt}
-            className="block h-auto w-full"
+            className="relative block h-auto w-full"
           />
         </span>
         {blinking ? (

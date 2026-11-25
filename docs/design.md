@@ -76,8 +76,8 @@ No cards inside cards, icon-tile stacks, numbered section labels, eyebrow chips,
 - Every empty, error, offline and update state, and every motion, is a feature with its own tests. Required states: sign-in cancelled, offline (a status line, never a pop-up), account needs reconnecting, model download failed (rules fallback), rate limit (auto-resume), empty list, update ready.
 
 ## Pochi
-A soft plush felt envelope: puffy body, stitched flap seam, two glossy bead eyes, no mouth. Cream by default; charcoal for dark mode; stone and sage exist. Poses: default, happy, reading (glasses), saving (paperclip), sleepy, oops, night, selected through `Mascot`'s `pose` prop.
+A soft plush felt envelope: puffy body, stitched flap seam, two glossy bead eyes, no mouth. Cream by default; charcoal for dark mode, rimmed by `mascot-rim` (3:1); stone and sage exist. Poses: default, happy, reading (glasses), saving (paperclip), sleepy, oops, night, selected through `Mascot`'s `pose` prop.
 
 Pochi mirrors the real app state through events, one pose at a time: curious at Welcome, patient while the browser sign-in runs, happy on success, calm when cancelled ("I didn't get access to anything"), reading while sorting, found on discoveries, happy at the summary and after a cleanup ("You can undo it anytime"), sleepy when paused or offline, oops on errors with one small shrink.
 
-Mascot uses PNG placeholders with CSS keyframes (breathing, blink, found, one-shot glance/nod/tilt); final art stays a 3D render. It plays only when visible, pauses when the window is hidden, and is static under reduced motion. Settings lets people turn Animations off or hide Pochi everywhere.
+Mascot uses PNG placeholders with CSS keyframes (breathing, blink, found, one-shot glance/nod/tilt); final art stays a 3D render. It plays only when visible and pauses when hidden. Settings lets people turn Animations off or hide Pochi everywhere.

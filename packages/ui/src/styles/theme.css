@@ -37,6 +37,7 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-frame: var(--frame);
+  --color-mascot-rim: var(--mascot-rim);
   --color-category-people: var(--category-people);
   --color-category-records: var(--category-records);
   --color-category-purchases: var(--category-purchases);

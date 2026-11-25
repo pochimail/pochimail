@@ -70,6 +70,8 @@ const graphicPairs: [string, string][] = [
   // Composites (M4-03): hatched storage segment and ledger bar fill on the muted track, progress fill on its track.
   ["foreground-tertiary", "muted"],
   ["primary", "muted"],
+  // Pochi's rim light against every surface the mascot sits on (the night pose is charcoal; see docs/design.md › Pochi).
+  ...surfaces.map((s): [string, string] => ["mascot-rim", s]),
   ...categories.map((c): [string, string] => [c, "muted"]),
   ...categories.flatMap((c): [string, string][] => [
     [c, "background"],
@@ -114,6 +116,7 @@ it("tokens.css matches tokens.json in both themes", () => {
     focus: "ring",
     danger: "destructive",
     frame: "frame",
+    mascotRim: "mascot-rim",
   };
   const mismatches: string[] = [];
   for (const theme of ["light", "dark"] as const) {
