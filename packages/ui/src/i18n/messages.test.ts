@@ -12,12 +12,12 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     expect(messages["overview.email.count"].text).toMatch(/\bemails\b/);
   });
 
-  // Guards: the archive-notifications card must say which emails, why, and what Review does (#183).
-  it("explains the archive-notifications card in every locale", () => {
+  // Guards: the archive-alert-emails card must say which emails, why, and what Review does (#183).
+  it("explains the archive-alert-emails card in every locale", () => {
     const cases = [
       {
         catalog: messages,
-        sentence: /app and social notifications/i,
+        sentence: /archive alert emails/i,
         reason: [
           /automated alerts/i,
           /not emails from people/i,
@@ -27,7 +27,7 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
       },
       {
         catalog: fr,
-        sentence: /notifications d’applications et de réseaux sociaux/i,
+        sentence: /archiver les emails d’alerte/i,
         reason: [
           /alertes automatiques/i,
           /pas des emails de personnes/i,
@@ -37,9 +37,9 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
       },
       {
         catalog: ja,
-        sentence: /アプリやSNSからの通知/,
+        sentence: /通知メールをアーカイブ/,
         reason: [
-          /自動送信された通知/,
+          /自動送信された通知メール/,
           /個人からのメールではありません/,
           /確認する.*一覧が開き/,
           /承認するまで何もアーカイブされません/,
@@ -124,26 +124,26 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
     );
   });
 
-  // Guards: a vague or sprawling Notifications empty state (#224).
-  it("explains what Notifications holds, where the mail stays and what appears later", () => {
+  // Guards: a vague or sprawling Alert emails empty state (#224).
+  it("explains what Alert emails holds, where the mail stays and what appears later", () => {
     const placeholders = [
       {
         text: messages["category.notifications.placeholder"].text,
-        source: /app and social alerts/iu,
+        source: /alert emails from apps and social networks/iu,
         approval: /after you approve/iu,
         label: /only label them/iu,
         inbox: /in your inbox/iu,
       },
       {
         text: fr["category.notifications.placeholder"].text,
-        source: /alertes d’applications et de réseaux sociaux/u,
+        source: /emails d’alerte d’applications et de réseaux sociaux/u,
         approval: /après votre accord/u,
         label: /je les étiquette/u,
         inbox: /boîte de réception/u,
       },
       {
         text: ja["category.notifications.placeholder"].text,
-        source: /アプリやSNSからの通知/u,
+        source: /アプリやSNSからの通知メール/u,
         approval: /承認/u,
         label: /ラベルを付けるだけ/u,
         inbox: /受信トレイ/u,

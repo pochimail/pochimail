@@ -76,7 +76,7 @@ const PAGES = [
   ["/activity", "Activity"],
   ["/documents", "Documents"],
   ["/settings", "Settings"],
-  ["/category/notifications", "Notifications"],
+  ["/category/notifications", "Alert emails"],
 ] as const;
 
 describe("screen titles", () => {
