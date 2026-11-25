@@ -18,6 +18,7 @@ import {
   encodeQuotedPrintable,
   quoteFromLines,
 } from "./mbox.ts";
+import { plantNegatives } from "./negatives.ts";
 import { apportion, createRng, type Rng } from "./prng.ts";
 import { assignThreadSignals, markRecentRecordsRead } from "./signal-labels.ts";
 
@@ -260,7 +261,7 @@ function planAll(rng: Rng, total: number): Plan[] {
   return plans;
 }
 
-function assignSignals(rng: Rng, plans: Plan[], total: number): void {
+function assignSignals(rng: Rng, plans: Plan[], total: number, hardCases: boolean): void {
   // Deadlines this week: the first 3 records messages become recent notices.
   let deadlines = 0;
   for (const plan of plans) {
@@ -286,7 +287,8 @@ function assignSignals(rng: Rng, plans: Plan[], total: number): void {
   for (const plan of plans)
     if (isBulk(plan) && !plan.opened && FIXTURE_NOW - plan.at >= OLD_AFTER_DAYS * DAY)
       plan.signals.add("old-never-opened");
-  assignThreadSignals(plans, FIXTURE_NOW, DEFAULT_SIGNAL_SETTINGS);
+  const noReply = plantNegatives(plans, FIXTURE_NOW, DEFAULT_SIGNAL_SETTINGS.recentDays, hardCases);
+  assignThreadSignals(plans, FIXTURE_NOW, DEFAULT_SIGNAL_SETTINGS, noReply);
 }
 
 const isBulk = (plan: Plan) => BULK_CATEGORIES.includes(plan.category);
@@ -394,11 +396,15 @@ function renderMessage(
  * Same options, byte-identical output. Nothing here reads the clock, the environment or
  * `Math.random`.
  */
-export function generateMailbox(options: { seed: number; scale: MailboxScale }): GeneratedMailbox {
+export function generateMailbox(options: {
+  seed: number;
+  scale: MailboxScale;
+  hardCases?: boolean;
+}): GeneratedMailbox {
   const total = MAILBOX_SCALES[options.scale];
   const rng = createRng(options.seed);
   const plans = planAll(rng, total);
-  assignSignals(rng, plans, total);
+  assignSignals(rng, plans, total, options.hardCases === true);
   plans.sort((a, b) => a.at - b.at || a.seq - b.seq);
 
   // Ids follow delivery order, per account.

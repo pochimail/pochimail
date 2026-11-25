@@ -2,7 +2,7 @@ pochi run fixtures/mock (seed 20261117, small), all in memory
 sync        2 accounts · 483 emails · 6 batches · 0 pauses · 0 deferred
 classify    people 68 · records 21 · purchases-travel 36 · sign-ins-security 20 · notifications 142 · newsletters 104 · promotions 92
 signals     needs-reply 19 · waiting-on-them 4 · important-sender 12 · has-document 4 · time-sensitive 3 · old-never-opened 257
-catch       19 people waiting (oldest 9 days) · 3 time-sensitive · 12 from important people · 4 documents
+catch       7 people waiting (oldest 9 days) · 3 time-sensitive · 12 from important people · 4 documents
 suggest     2 archive · 0 unsubscribe (never sent: cannot be undone)
 apply       approved as archives · 2 applied · 0 refused · 0 failed
 undo        2 undone · 0 failed · mailbox restored: yes

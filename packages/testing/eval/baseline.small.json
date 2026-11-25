@@ -76,11 +76,11 @@
     "needs-reply": {
       "support": 19,
       "truePositives": 19,
-      "falsePositives": 0,
+      "falsePositives": 3,
       "falseNegatives": 0,
-      "precision": 1,
+      "precision": 0.8636,
       "recall": 1,
-      "f1": 1
+      "f1": 0.9268
     },
     "waiting-on-them": {
       "support": 4,
@@ -112,11 +112,11 @@
     "time-sensitive": {
       "support": 3,
       "truePositives": 3,
-      "falsePositives": 0,
+      "falsePositives": 3,
       "falseNegatives": 0,
-      "precision": 1,
+      "precision": 0.5,
       "recall": 1,
-      "f1": 1
+      "f1": 0.6667
     },
     "old-never-opened": {
       "support": 257,
@@ -129,12 +129,12 @@
     }
   },
   "suspicious": {
-    "support": 1,
-    "truePositives": 1,
-    "falsePositives": 0,
-    "falseNegatives": 0,
-    "precision": 1,
-    "recall": 1,
-    "f1": 1
+    "support": 4,
+    "truePositives": 3,
+    "falsePositives": 1,
+    "falseNegatives": 1,
+    "precision": 0.75,
+    "recall": 0.75,
+    "f1": 0.75
   }
 }

@@ -10,7 +10,7 @@ export interface SignalPlan {
   readonly threadKey: number;
   readonly pos: number;
   readonly inbound: boolean;
-  readonly at: number;
+  at: number;
   opened: boolean;
   readonly signals: Set<SignalKind>;
 }
@@ -24,6 +24,7 @@ export function assignThreadSignals(
   plans: readonly SignalPlan[],
   now: number,
   settings: SignalSettings,
+  noReply: ReadonlySet<number> = new Set(),
 ): void {
   const lastOfThread = new Map<number, SignalPlan>();
   for (const plan of plans) {
@@ -32,7 +33,7 @@ export function assignThreadSignals(
       lastOfThread.set(plan.threadKey, plan);
   }
   for (const plan of lastOfThread.values()) {
-    if (plan.category !== "people") continue;
+    if (plan.category !== "people" || noReply.has(plan.threadKey)) continue;
     const age = (now - plan.at) / DAY;
     if (age > settings.recentDays) continue;
     if (plan.inbound) plan.signals.add("needs-reply");

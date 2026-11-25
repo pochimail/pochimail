@@ -24,7 +24,11 @@ describe(`eval gate (${scale})`, () => {
   it("matches the committed baseline within tolerance", async () => {
     if (scale !== "small" && scale !== "full") throw new Error("EVAL_SCALE is small or full");
     if (!baselinePath) throw new Error("EVAL_BASELINE is required");
-    const mailbox = generateMailbox({ seed: SEED, scale: scale as MailboxScale });
+    const mailbox = generateMailbox({
+      seed: SEED,
+      scale: scale as MailboxScale,
+      hardCases: true,
+    });
     const labels = new Map<string, Category>(
       mailbox.labels.messages.map((l) => [l.messageId, l.category]),
     );
