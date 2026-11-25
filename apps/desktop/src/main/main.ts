@@ -84,6 +84,7 @@ const processSecretVault = (): SecretVault => {
     vault: safeStorage,
     file: join(app.getPath("userData"), "secrets.json"),
     platform: process.platform,
+    passphraseKey: () => processStorageGate().passphraseKey(),
     logger,
   });
   return secretVault;

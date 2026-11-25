@@ -61,7 +61,7 @@ describe("secret store behind the main process", () => {
   });
 
   // Guards: silently storing under Linux's hard-coded basic_text password; nothing may hit the disk.
-  it("refuses to set a secret on basic-text without an explicit user choice and writes nothing", async () => {
+  it("refuses to set a secret on basic-text without a passphrase and writes nothing", async () => {
     const path = file();
     const vault = createSecretVault({ vault: linux("basic_text"), file: path, platform: "linux" });
     const { client } = workerStore(vault);
@@ -70,14 +70,6 @@ describe("secret store behind the main process", () => {
     expect(result.ok).toBe(false);
     expect(!result.ok && result.error).toMatchObject({ reason: "protection-unavailable" });
     expect(() => readFileSync(path)).toThrow();
-    // After the user chose it (M4-20), the same store accepts the value.
-    const chosen = createSecretVault({
-      vault: linux("basic_text"),
-      file: path,
-      platform: "linux",
-      allowBasicText: () => true,
-    });
-    expect((await chosen.set("refresh-token", SECRET)).ok).toBe(true);
   });
 
   // Guards: a damaged entry or file crashing the worker, or being "repaired" by silently overwriting other secrets.
@@ -144,32 +136,24 @@ describe("secret store behind the main process", () => {
 });
 
 describe("secret vault write safety", () => {
-  const consenting = (path: string, overrides: Partial<KeyVault> = {}) =>
-    createSecretVault({
-      vault: fakeSafeStorage({ getSelectedStorageBackend: () => "basic_text", ...overrides }),
-      file: path,
-      platform: "linux",
-      allowBasicText: () => true,
-    });
-
-  // Guards: a plain read re-wrapping (writing) secrets under the weak basic_text backend without the user's choice.
-  it("a read on basic-text without consent writes nothing", async () => {
+  // Guards: a plain read re-wrapping (writing) secrets under the weak basic_text backend.
+  it("a read on basic-text writes nothing", async () => {
     const path = file();
-    await consenting(path).set("refresh-token", SECRET);
+    await darwinVault(path).set("refresh-token", SECRET);
     const before = readFileSync(path);
-    const reWrapping: Partial<KeyVault> = {
-      getSelectedStorageBackend: () => "basic_text",
-      decryptStringAsync: async (cipher) => ({
-        result: Buffer.from(cipher.toString().slice(8), "hex").toString(),
-        shouldReEncrypt: true,
-      }),
-    };
-    const noConsent = createSecretVault({
-      vault: fakeSafeStorage(reWrapping),
+    const reWrapping = linux("basic_text");
+    const noPassphrase = createSecretVault({
+      vault: {
+        ...reWrapping,
+        decryptStringAsync: async (cipher) => ({
+          ...(await reWrapping.decryptStringAsync(cipher)),
+          shouldReEncrypt: true,
+        }),
+      },
       file: path,
       platform: "linux",
     });
-    expect(await noConsent.get("refresh-token")).toEqual({ ok: true, value: SECRET });
+    expect(await noPassphrase.get("refresh-token")).toEqual({ ok: true, value: SECRET });
     expect(readFileSync(path).equals(before)).toBe(true);
   });
 
