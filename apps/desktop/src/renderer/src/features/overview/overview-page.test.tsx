@@ -171,7 +171,7 @@ describe("overview", () => {
     ).toBeTruthy();
     expect(screen.queryByText("Delete old promotions")).toBeNull();
     expect(screen.getByText("Emails that look important are never selected for you.")).toBeTruthy();
-    expect(screen.queryByText(/counts, not sizes/)).toBeNull();
+    expect(screen.getByText("I have counts, not sizes, so I can’t show GB freed.")).toBeTruthy();
   });
 
   // Guards: the cumulative archived/saved/unsubscribed figures and the deletable GB headline (#114).
@@ -370,7 +370,7 @@ describe("overview", () => {
     const cases = [
       { label: "Delete old promotions", path: "/category/promotions", review: "delete" },
       {
-        label: "Delete sign-in codes and login alerts",
+        label: "Delete expired sign-in codes",
         path: "/category/sign-ins-security",
         review: "delete",
       },

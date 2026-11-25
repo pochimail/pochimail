@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -18,18 +19,7 @@ export const fr = {
     "{count, plural, =0 {Aucun email} one {# email} other {# emails}}",
     ["count"],
   ),
-  "overview.size.gb": entry("{size, number} Go", ["size"]),
-  "overview.size.mb": entry("{size, number} Mo", ["size"]),
-  "overview.size.underTenthMb": entry("< 0,1 Mo", []),
-  "overview.size.free": entry("{size, number} Go à libérer, sur {total, number} Go", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeMb": entry("{size, number} Mo à libérer, sur {total, number} Mo", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeUnderTenthMb": entry("< 0,1 Mo à libérer, sur {total, number} Mo", ["total"]),
+  ...sizeMessages.fr,
   "overview.figure.archived": entry("emails archivés", []),
   "overview.figure.saved": entry("pièces jointes enregistrées", []),
   "overview.figure.unsubscribed": entry("newsletters désabonnées", []),
@@ -68,6 +58,7 @@ export const fr = {
   "overview.clean.summary": entry("{total, number} emails triés", ["total"]),
   "overview.clean.keep": entry("Restent", []),
   "overview.clean.free": entry("À supprimer", []),
+  "overview.clean.sizeUnknown": entry("Je n’ai que des nombres, pas de Go libéré.", []),
   "overview.clean.noFreeing": entry("Ceux-ci ne libèrent pas d’espace", []),
   "overview.clean.never": entry(
     "Les emails qui semblent importants ne sont jamais sélectionnés pour vous.",
@@ -82,10 +73,7 @@ export const fr = {
     "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
   ),
-  "overview.rec.signins.sentence": entry(
-    "Supprimer les codes de connexion et les alertes de connexion",
-    [],
-  ),
+  "overview.rec.signins.sentence": entry("Supprimer les codes de connexion expirés", []),
   "overview.rec.signins.reason": entry("Des codes à usage unique et des alertes de connexion", []),
   "overview.scan.progress": entry("{processed, number} emails triés sur {total, number}", [
     "processed",

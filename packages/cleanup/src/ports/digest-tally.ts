@@ -22,4 +22,6 @@ export interface DigestTally {
   /** Counts a delivered `DigestReady` once; the same event id again changes nothing. */
   record(eventId: string, digest: DigestTallyInput): void;
   status(accountId: AccountId): DigestStatus;
+  /** Each account's newest digest, for the All-accounts Summary. */
+  statuses(): readonly DigestStatus[];
 }

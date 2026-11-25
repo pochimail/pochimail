@@ -36,15 +36,9 @@ const scanStatusLine = (scan: ScanStatus, t: T): string => {
   return t("overview.scan.progress", { processed: scan.processed, total: scan.total });
 };
 
-/** The Overview contract accepts no input for all accounts, an id for one (#110). */
-const overviewInput = (accountId: string | undefined): { accountId?: string } =>
+/** The route's account scopes both reads; no account means All accounts (#110). */
+const scopeInput = (accountId: string | undefined): { accountId?: string } =>
   accountId === undefined ? {} : { accountId };
-
-/** The route's account wins; before it is set the first connected account feeds the Summary (#110). */
-const selectedAccount = (
-  account: string | undefined,
-  accounts: readonly { id: string }[] | undefined,
-): string | undefined => account ?? accounts?.[0]?.id;
 
 type SectionProps = {
   t: T;
@@ -82,6 +76,7 @@ function CleanUpSection({
               {t("overview.clean.headline", { total: data.scanned })}
             </span>
           </p>
+          <p className="text-ui text-muted-foreground">{t("overview.clean.sizeUnknown")}</p>
           <StorageBar
             summary={t("overview.clean.summary", { total: data.scanned })}
             segments={[
@@ -180,14 +175,14 @@ export function OverviewPage() {
     queryKey: queryKeys.accounts(),
     queryFn: () => client.call("accounts.list"),
   });
-  const summary = useSummarySheet(client, queryClient, selectedAccount(account, accounts.data));
+  const summary = useSummarySheet(client, queryClient, scopeInput(account));
   const deviceName = useQuery({
     queryKey: queryKeys.deviceName(),
     queryFn: () => client.call("device.name"),
   });
   const overview = useQuery({
     queryKey: queryKeys.overview(account),
-    queryFn: () => client.call("overview.get", overviewInput(account)),
+    queryFn: () => client.call("overview.get", scopeInput(account)),
   });
   const scopedAccounts = (accounts.data ?? []).filter(
     (a) => account === undefined || a.id === account,

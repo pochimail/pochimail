@@ -55,7 +55,7 @@ it("fills the three Summary slots from a real scan without hand-injected figures
     "summary.figure.unsubscribed",
   ]);
   expect(digest.generatedAt).toBeTypeOf("string");
-  for (const label of ["can be archived", "attachments to save", "newsletters to unsubscribe"])
+  for (const label of ["notifications to archive", "records to review", "newsletters"])
     expect(within(dialog).getByText(label)).toBeTruthy();
   const otherAccount = mailbox.accounts.find((a) => a.id !== accountId)?.id;
   if (otherAccount !== undefined)

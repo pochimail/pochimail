@@ -19,10 +19,11 @@ export const suggestionApprovedEvent = defineEvent(
   "SuggestionApproved",
   z.object({ suggestionId: suggestionIdSchema }),
 );
-// Partial figures keep older events valid; a missing count means "none new", never a cumulative total.
+// Older events omit figures and the account field (its id was `digest:<account>:<since>`); a missing
+// count means "none new", never a cumulative total.
 export const digestReadyEvent = defineEvent(
   "DigestReady",
-  digestFiguresSchema.partial().extend({ itemCount: count, accountId: accountIdSchema }),
+  digestFiguresSchema.partial().extend({ itemCount: count, accountId: accountIdSchema.optional() }),
 );
 export const cleanupEvents = [
   suggestionCreatedEvent,

@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -35,21 +36,8 @@ export const messages = {
   "overview.email.count": entry("{count, plural, =0 {No emails} one {# email} other {# emails}}", [
     "count",
   ]),
-  /** One size for a figure (#114): unit follows the rounded value, never a raw byte count. */
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
-  "overview.size.mb": entry("{size, number} MB", ["size"]),
-  "overview.size.underTenthMb": entry("< 0.1 MB", []),
-  "overview.size.free": entry("{size, number} GB you can free, out of {total, number} GB", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeMb": entry("{size, number} MB you can free, out of {total, number} MB", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeUnderTenthMb": entry("< 0.1 MB you can free, out of {total, number} MB", [
-    "total",
-  ]),
+  /** One size per figure (#114): each rounded value picks its own unit, never a raw byte count. */
+  ...sizeMessages.en,
   /** Cumulative Overview actions (#114); the Summary's figures are proposals, not these. */
   "overview.figure.archived": entry("emails archived", []),
   "overview.figure.saved": entry("attachments saved", []),
@@ -89,6 +77,7 @@ export const messages = {
   "overview.clean.summary": entry("{total, number} emails sorted", ["total"]),
   "overview.clean.keep": entry("Stays", []),
   "overview.clean.free": entry("Can be deleted", []),
+  "overview.clean.sizeUnknown": entry("I have counts, not sizes, so I can’t show GB freed.", []),
   "overview.clean.noFreeing": entry("These don’t free space", []),
   "overview.clean.never": entry("Emails that look important are never selected for you.", []),
   "overview.rec.newsletters.sentence": entry("Unsubscribe from newsletters", []),
@@ -100,7 +89,7 @@ export const messages = {
     "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
   ),
-  "overview.rec.signins.sentence": entry("Delete sign-in codes and login alerts", []),
+  "overview.rec.signins.sentence": entry("Delete expired sign-in codes", []),
   "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [
     "processed",

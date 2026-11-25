@@ -59,10 +59,11 @@ describe("overview figures", () => {
   });
 
   // Guards: raw-byte thresholds disagreeing with the rounded value (999.96e6 and 1e9).
-  it("picks the unit from the rounded value, using the freed size for both figures", () => {
+  it("picks each figure's unit from its rounded value, even when the units differ", () => {
     expect(sizeLabel(999.96e6, t)).toBe("1 GB");
     expect(sizeLabel(1e9, t)).toBe("1 GB");
     expect(freeSizeLabel(999.96e6, 1e9, t)).toBe("1 GB you can free, out of 1 GB");
-    expect(freeSizeLabel(12e6, 999.96e6, t)).toBe("12 MB you can free, out of 1,000 MB");
+    expect(freeSizeLabel(12e6, 999.96e6, t)).toBe("12 MB you can free, out of 1 GB");
+    expect(freeSizeLabel(1024, 1e9, t)).toBe("< 0.1 MB you can free, out of 1 GB");
   });
 });

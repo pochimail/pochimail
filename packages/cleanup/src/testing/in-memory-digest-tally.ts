@@ -34,5 +34,6 @@ export function createInMemoryDigestTally(): DigestTally {
       });
     },
     status: (accountId) => byAccount.get(accountId) ?? empty(),
+    statuses: () => [...byAccount.values()],
   };
 }

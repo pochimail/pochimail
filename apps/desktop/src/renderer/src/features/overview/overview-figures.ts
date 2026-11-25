@@ -146,13 +146,19 @@ export const sizeLabel = (bytes: number, t: T): string => {
     : t("overview.size.mb", { size: mb });
 };
 
-/** The freed size picks the unit for both figures, so a small size never reads as 0 GB. */
+/** Each figure picks its own rounded unit: a 12 MB freed size beside a 1 GB total stays readable. */
 export const freeSizeLabel = (sizeBytes: number, totalBytes: number, t: T): string => {
   const gb = toGb(sizeBytes);
-  if (gb >= 1) return t("overview.size.free", { size: gb, total: toGb(totalBytes) });
+  const totalGb = toGb(totalBytes);
+  if (gb >= 1) return t("overview.size.free", { size: gb, total: totalGb });
   const mb = toMb(sizeBytes);
+  const underTenth = isUnderTenthMb(sizeBytes, mb);
+  if (totalGb >= 1)
+    return underTenth
+      ? t("overview.size.freeUnderTenthMixed", { total: totalGb })
+      : t("overview.size.freeMixed", { size: mb, total: totalGb });
   const totalMb = toMb(totalBytes);
-  return isUnderTenthMb(sizeBytes, mb)
+  return underTenth
     ? t("overview.size.freeUnderTenthMb", { total: totalMb })
     : t("overview.size.freeMb", { size: mb, total: totalMb });
 };

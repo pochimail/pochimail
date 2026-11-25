@@ -99,7 +99,9 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       "scan.status": ({ accountIds }) =>
         deps.scans.live(accountIds.map((id) => unwrapOrThrow(AccountId(id)))),
       "digest.get": ({ accountId }) =>
-        deps.digestStatus.execute(unwrapOrThrow(AccountId(accountId))),
+        deps.digestStatus.execute(
+          accountId === undefined ? undefined : unwrapOrThrow(AccountId(accountId)),
+        ),
       "settings.get": async () => unwrapOrThrow(await deps.settings.get(workspaceId)),
       "settings.update": async (patch) => {
         unwrapOrThrow(await deps.settings.update(workspaceId, patch));

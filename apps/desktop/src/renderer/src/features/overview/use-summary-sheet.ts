@@ -1,7 +1,7 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
-import type { OutputOf } from "#shared/ipc/contract.ts";
+import type { InputOf, OutputOf } from "#shared/ipc/contract.ts";
 import { type AppSettings, DEFAULT_APP_SETTINGS, type TidyCadence } from "#shared/settings.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 
@@ -22,13 +22,11 @@ export type SummarySheetController = {
 export function useSummarySheet(
   client: RpcClient,
   queryClient: QueryClient,
-  accountId: string | undefined,
+  scope: InputOf<"digest.get">,
 ): SummarySheetController {
   const digest = useQuery({
-    queryKey: queryKeys.digest(accountId),
-    // The empty id is unreachable while disabled; it only keeps the queryFn's input typed.
-    queryFn: () => client.call("digest.get", { accountId: accountId ?? "" }),
-    enabled: accountId !== undefined,
+    queryKey: queryKeys.digest(scope.accountId),
+    queryFn: () => client.call("digest.get", scope),
   });
   // The same key as AppearanceProvider: one read, one cache, two independent choices in it.
   const settings = useQuery({

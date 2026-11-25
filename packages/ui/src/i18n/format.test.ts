@@ -52,6 +52,22 @@ describe("t() (design › Writing, P13)", () => {
     ).toBe("attachments saved · 2.4 MB");
   });
 
+  // Guards: a small freed size beside a rounded GB total losing its unit in any locale.
+  it("formats mixed MB/GB free-space copy per locale", () => {
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 })).toBe(
+      "12 MB you can free, out of 1 GB",
+    );
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 }, { locale: "fr" })).toBe(
+      "12 Mo à libérer, sur 1 Go",
+    );
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 }, { locale: "ja" })).toBe(
+      "合計1 GBのうち、12 MBを空けられます。",
+    );
+    expect(t("overview.size.freeUnderTenthMixed", { total: 1 })).toBe(
+      "< 0.1 MB you can free, out of 1 GB",
+    );
+  });
+
   // Guards: locale keys for the rounded boundaries (1023/1024 bytes and 999.96e6/1e9 bytes).
   it("formats the rounded unit boundaries per locale", () => {
     expect(t("overview.size.underTenthMb")).toBe("< 0.1 MB");

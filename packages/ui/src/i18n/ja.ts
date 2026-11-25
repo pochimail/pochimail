@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -17,21 +18,7 @@ export const ja = {
   "overview.email.count": entry("{count, plural, =0 {メールはありません} other {#件のメール}}", [
     "count",
   ]),
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
-  "overview.size.mb": entry("{size, number} MB", ["size"]),
-  "overview.size.underTenthMb": entry("0.1 MB未満", []),
-  "overview.size.free": entry("合計{total, number} GBのうち、{size, number} GBを空けられます。", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeMb": entry("合計{total, number} MBのうち、{size, number} MBを空けられます。", [
-    "size",
-    "total",
-  ]),
-  "overview.size.freeUnderTenthMb": entry(
-    "合計{total, number} MBのうち、0.1 MB未満を空けられます。",
-    ["total"],
-  ),
+  ...sizeMessages.ja,
   "overview.figure.archived": entry("アーカイブしたメール", []),
   "overview.figure.saved": entry("保存した添付ファイル", []),
   "overview.figure.unsubscribed": entry("登録解除したニュースレター", []),
@@ -66,6 +53,7 @@ export const ja = {
   "overview.clean.summary": entry("{total, number}件を整理済み", ["total"]),
   "overview.clean.keep": entry("残すもの", []),
   "overview.clean.free": entry("削除できるもの", []),
+  "overview.clean.sizeUnknown": entry("件数しかないため、空いた容量は示せません。", []),
   "overview.clean.noFreeing": entry("これらは容量を空けません", []),
   "overview.clean.never": entry("重要そうなメールは、あなたのために選択しません。", []),
   "overview.rec.newsletters.sentence": entry("ニュースレターの配信を停止する", []),
@@ -77,7 +65,7 @@ export const ja = {
     "自動送信された通知メールで、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
     [],
   ),
-  "overview.rec.signins.sentence": entry("ログインコードとログインアラートを削除する", []),
+  "overview.rec.signins.sentence": entry("期限切れのログインコードを削除する", []),
   "overview.rec.signins.reason": entry("ワンタイムコードとログインの通知です", []),
   "overview.scan.progress": entry("{total, number}件中{processed, number}件を整理しました", [
     "processed",

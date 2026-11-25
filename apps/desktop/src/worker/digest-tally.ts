@@ -34,5 +34,6 @@ export function createDigestTally(): DigestTally {
       });
     },
     status: (accountId) => byAccount.get(accountId) ?? empty(),
+    statuses: () => [...byAccount.values()],
   };
 }
