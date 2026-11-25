@@ -104,6 +104,70 @@ describe("createLlmProvider", () => {
     expect((await llm.complete({ prompt: "p" }, live())).ok).toBe(true);
   });
 
+  // Guards: a cancel that arrives while the model loads being ignored, so the generation runs to its timeout.
+  it("honours a cancel that arrives while the model is loading", async () => {
+    const { runtime, llm } = setup();
+    runtime.holdLoad();
+    const cancel = createCancelSource();
+    const running = llm.complete({ prompt: "p" }, cancel.signal);
+    await vi.waitFor(() => expect(runtime.stats.loads).toBe(0));
+    cancel.abort();
+    runtime.releaseLoad();
+    const out = await running;
+    expect(out.ok ? undefined : out.error.code).toBe("operation.cancelled");
+    expect(runtime.generations).toHaveLength(0);
+    expect((await llm.complete({ prompt: "p" }, live())).ok).toBe(true);
+  });
+
+  // Guards: a second model loaded while the first is still being freed (both in memory at once).
+  it("waits for a model being freed before it loads the next", async () => {
+    const { runtime, llm } = setup();
+    await llm.complete({ prompt: "p" }, live());
+    runtime.holdDispose();
+    const unloading = llm.unload();
+    const next = llm.complete({ prompt: "p" }, live());
+    await vi.waitFor(() => expect(runtime.stats.alive).toBe(1));
+    await Promise.resolve();
+    expect(runtime.stats.loads).toBe(1);
+    runtime.releaseDispose();
+    await unloading;
+    expect((await next).ok).toBe(true);
+    expect(runtime.stats).toMatchObject({ loads: 2, peakAlive: 1 });
+  });
+
+  // Guards: a model that ignores its abort keeping the slot, and every later request, forever.
+  it.each([
+    ["its timeout", undefined, "ai.unavailable"],
+    ["a cancel", createCancelSource, "operation.cancelled"],
+  ])(
+    "gives up a model that ignores %s, discards it and loads a fresh one",
+    async (_name, source, code) => {
+      vi.useFakeTimers();
+      const { runtime, llm } = setup({ timeoutMs: 1000 });
+      runtime.hangNextGeneration();
+      const cancel = source?.();
+      const running = llm.complete({ prompt: "p" }, cancel?.signal ?? live());
+      await vi.advanceTimersByTimeAsync(cancel === undefined ? 1000 : 10);
+      cancel?.abort();
+      await vi.advanceTimersByTimeAsync(5000);
+      const out = await running;
+      expect(out.ok ? undefined : out.error.code).toBe(code);
+      expect(runtime.stats.disposed).toBe(1);
+      expect((await llm.complete({ prompt: "p" }, live())).ok).toBe(true);
+      expect(runtime.stats.loads).toBe(2);
+    },
+  );
+
+  // Guards: a request the runtime cannot serve (a schema it cannot decode) unloading a healthy model.
+  it("keeps the model when only the request was rejected", async () => {
+    const { runtime, llm } = setup();
+    runtime.rejectNextGeneration();
+    const out = await llm.complete({ prompt: "p" }, live());
+    expect(out.ok ? undefined : out.error.code).toBe("ai.unavailable");
+    expect((await llm.complete({ prompt: "p" }, live())).ok).toBe(true);
+    expect(runtime.stats).toMatchObject({ loads: 1, disposed: 0 });
+  });
+
   // Guards: more generations than the context has sequences, or a cancelled waiter that still runs.
   it("never runs more generations than the bound, and a waiter that cancels never starts", async () => {
     const { runtime, llm } = setup({ concurrency: 2 });

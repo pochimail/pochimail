@@ -8,8 +8,11 @@ export interface Generation {
   readonly jsonSchema?: JsonSchema;
 }
 
+/** Thrown by `generate` for a request the runtime cannot serve (a schema it cannot decode): the loaded model is fine. */
+export class RequestRejected extends Error {}
+
 export interface LoadedLlm {
-  /** Throws when the runtime fails. Aborting stops decoding and frees the context sequence. */
+  /** Throws when the runtime fails (`RequestRejected` when the request itself is at fault). Aborting stops decoding and frees the context sequence. */
   generate(generation: Generation, signal: AbortSignal): Promise<string>;
   dispose(): Promise<void>;
 }

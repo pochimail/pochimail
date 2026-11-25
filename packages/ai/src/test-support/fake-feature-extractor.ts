@@ -5,6 +5,8 @@ export interface FakeFeatureExtractor {
   readonly loader: (modelDir: string) => Promise<FeatureExtractor>;
   /** Each call's texts, as the model would see them. */
   readonly calls: string[][];
+  /** Extractors freed so far. */
+  readonly stats: { disposed: number };
   failNextExtract(): void;
 }
 
@@ -21,9 +23,11 @@ const vectorOf = (text: string): Float32Array => {
 
 export const createFakeFeatureExtractor = (): FakeFeatureExtractor => {
   const calls: string[][] = [];
+  const stats = { disposed: 0 };
   let fails = false;
   return {
     calls,
+    stats,
     failNextExtract: () => {
       fails = true;
     },
@@ -36,7 +40,9 @@ export const createFakeFeatureExtractor = (): FakeFeatureExtractor => {
         }
         return texts.map(vectorOf);
       },
-      async dispose() {},
+      async dispose() {
+        stats.disposed++;
+      },
     }),
   };
 };

@@ -8,9 +8,14 @@ import { z } from "zod";
  */
 const id = z.number().int().nonnegative();
 const MAX_SCHEMA_CHARS = 20_000;
-const jsonSchema = z
-  .record(z.string(), z.unknown())
-  .refine((schema) => JSON.stringify(schema).length <= MAX_SCHEMA_CHARS);
+const jsonSchema = z.record(z.string(), z.unknown()).refine((schema) => {
+  try {
+    return JSON.stringify(schema).length <= MAX_SCHEMA_CHARS;
+  } catch {
+    // A cycle or a BigInt: not JSON, so not a schema.
+    return false;
+  }
+});
 
 export const hostRequestSchema = z.discriminatedUnion("method", [
   z.object({

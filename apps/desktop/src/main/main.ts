@@ -29,6 +29,7 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
+import { focusOrCreateWindow, holdSingleInstanceLock } from "./single-instance.ts";
 import { smokeRuntimes } from "./smoke-runtimes.ts";
 import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
@@ -225,68 +226,65 @@ app.on("web-contents-created", (_event, contents) =>
   hardenWebContents(contents, (url) => isAppUrl(url, { devServerOrigin, rendererFile })),
 );
 
-void app.whenReady().then(() => {
-  nativeTheme.themeSource = "system";
-  if (devIconPath !== undefined && process.platform === "darwin")
-    app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
-  lockDownSession();
-  registerOsCalls({
-    ipc: ipcMain,
-    openExternal: (url) => shell.openExternal(url),
-    showItemInFolder: (path) => shell.showItemInFolder(path),
-    chooseFolder: async () => {
-      const result = await dialog.showOpenDialog({
-        properties: ["openDirectory", "createDirectory"],
-      });
-      return result.canceled ? null : (result.filePaths[0] ?? null);
-    },
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-    appDataDirs: () => [app.getPath("userData")],
+const openOrFocus = (): void => focusOrCreateWindow(BrowserWindow.getAllWindows(), createWindow);
+// Before anything opens the database: a refused process starts nothing (#320).
+const holdsLock = holdSingleInstanceLock(app, openOrFocus);
+
+if (holdsLock)
+  void app.whenReady().then(() => {
+    nativeTheme.themeSource = "system";
+    if (devIconPath !== undefined && process.platform === "darwin")
+      app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
+    lockDownSession();
+    registerOsCalls({
+      ipc: ipcMain,
+      openExternal: (url) => shell.openExternal(url),
+      showItemInFolder: (path) => shell.showItemInFolder(path),
+      chooseFolder: async () => {
+        const result = await dialog.showOpenDialog({
+          properties: ["openDirectory", "createDirectory"],
+        });
+        return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
+      isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
+      appDataDirs: () => [app.getPath("userData")],
+    });
+    registerStorageCalls({
+      ipc: ipcMain,
+      gate: processStorageGate(),
+      isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
+    });
+    createWindow();
+    const locale = localeFromLanguages(app.getPreferredSystemLanguages());
+    // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
+    const trayImages = app.isPackaged
+      ? join(process.resourcesPath, "tray")
+      : join(import.meta.dirname, "../../resources/tray");
+    const appTray = createAppTray({
+      platform: process.platform,
+      imagesDir: trayImages,
+      theme: nativeTheme,
+      createTray: (image) => new Tray(image),
+      imageFromPath: (path, template) => {
+        const image = nativeImage.createFromPath(path);
+        image.setTemplateImage(template);
+        return image;
+      },
+      buildMenu: (items) => Menu.buildFromTemplate([...items]),
+      labels: {
+        tooltip: t("nav.brand", undefined, { locale }),
+        open: t("tray.open", undefined, { locale }),
+        quit: t("tray.quit", undefined, { locale }),
+      },
+      openApp: openOrFocus,
+      quit: () => app.quit(),
+    });
+    app.on("will-quit", appTray.dispose);
+    app.on("will-quit", () => processStorageGate().dispose());
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-  registerStorageCalls({
-    ipc: ipcMain,
-    gate: processStorageGate(),
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-  });
-  createWindow();
-  const locale = localeFromLanguages(app.getPreferredSystemLanguages());
-  // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
-  const trayImages = app.isPackaged
-    ? join(process.resourcesPath, "tray")
-    : join(import.meta.dirname, "../../resources/tray");
-  const appTray = createAppTray({
-    platform: process.platform,
-    imagesDir: trayImages,
-    theme: nativeTheme,
-    createTray: (image) => new Tray(image),
-    imageFromPath: (path, template) => {
-      const image = nativeImage.createFromPath(path);
-      image.setTemplateImage(template);
-      return image;
-    },
-    buildMenu: (items) => Menu.buildFromTemplate([...items]),
-    labels: {
-      tooltip: t("nav.brand", undefined, { locale }),
-      open: t("tray.open", undefined, { locale }),
-      quit: t("tray.quit", undefined, { locale }),
-    },
-    openApp: () => {
-      const [window] = BrowserWindow.getAllWindows();
-      if (window === undefined) createWindow();
-      else {
-        if (window.isMinimized()) window.restore();
-        window.show();
-        window.focus();
-      }
-    },
-    quit: () => app.quit(),
-  });
-  app.on("will-quit", appTray.dispose);
-  app.on("will-quit", () => processStorageGate().dispose());
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

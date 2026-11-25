@@ -61,7 +61,9 @@ export const createEmbedder = (options: EmbedderOptions): Embedder => {
           .run(signal, () => loaded.extract(inputs.slice(from, from + batchSize)))
           .catch(() => undefined);
         if (ran === undefined) {
+          // The runtime may be broken: free its native memory now, the next request loads a fresh one.
           extractor = undefined;
+          void loaded.dispose().catch(() => {});
           return err(new AiUnavailable());
         }
         if (!ran.ok || signal.aborted) return err(new Cancelled());

@@ -1,7 +1,7 @@
 import { createFakeLlmProvider } from "@pochimail/classification/testing/fake-ai";
 import { live } from "@pochimail/classification/testing/samples";
 import { describe, expect, it } from "vitest";
-import { type DeadlineInput, extractDeadline } from "./deadline-extraction.ts";
+import { type DeadlineInput, extractDeadline, MAX_TEXT_CHARS } from "./deadline-extraction.ts";
 
 const input = (text: string): DeadlineInput => ({
   type: "purchases-travel",
@@ -10,10 +10,10 @@ const input = (text: string): DeadlineInput => ({
   text,
 });
 
-const ask = async (text: string, answer: string) => {
+const ask = async (text: string, answer: string, received = "2027-02-20") => {
   const llm = createFakeLlmProvider();
   llm.reply(answer);
-  const out = await extractDeadline(llm, input(text), live());
+  const out = await extractDeadline(llm, { ...input(text), received }, live());
   return { out, prompt: llm.prompts()[0] ?? "" };
 };
 
@@ -56,5 +56,42 @@ describe("extractDeadline", () => {
     const { prompt } = await ask("Due 3 March.", '{"deadline":null}');
     expect(prompt.indexOf("Type: purchases-travel")).toBe(0);
     expect(prompt.indexOf("Signals: shipping")).toBeLessThan(prompt.indexOf("Due 3 March."));
+  });
+
+  // Guards: a 10k-character email overflowing the 2048-token context, and the model being asked about text it never saw.
+  it("sends only the first characters of a long email, and ignores a date past them", async () => {
+    const long = `Due 3 March. ${"x".repeat(10_000)} Also 9 April.`;
+    const { prompt } = await ask(long, '{"deadline":"2027-03-03"}');
+    expect(prompt.length).toBeLessThan(MAX_TEXT_CHARS + 200);
+    const past = await ask(long, '{"deadline":"2027-04-09"}');
+    expect(past.out).toEqual({ ok: true, value: null });
+  });
+
+  // Guards: "January 5" in a December mail becoming a date a year in the past.
+  it.each([
+    [
+      "moves a yearless date far behind the mail to the next year",
+      "Offer ends January 5.",
+      "2027-01-05",
+      "2027-12-20",
+      "2028-01-05",
+    ],
+    [
+      "keeps a date a few days behind the mail",
+      "Paid on 18 December.",
+      "2027-12-18",
+      "2027-12-20",
+      "2027-12-18",
+    ],
+    [
+      "keeps a year the text writes",
+      "Expired January 5, 2027.",
+      "2027-01-05",
+      "2027-12-20",
+      "2027-01-05",
+    ],
+  ])("%s", async (_name, text, answered, received, expected) => {
+    const { out } = await ask(text, `{"deadline":"${answered}"}`, received);
+    expect(out).toEqual({ ok: true, value: expected });
   });
 });

@@ -69,7 +69,7 @@ describe("createEmbedder", () => {
     expect((await embedder.embed(["a"], aborted())).ok).toBe(false);
   });
 
-  // Guards: a missing or crashing model escaping as an exception (the host must keep serving) or staying dead.
+  // Guards: a missing or crashing model escaping as an exception (the host must keep serving), staying dead, or leaking its native memory.
   it("answers unavailable without a model and recovers after a runtime failure", async () => {
     const missing = await setup({ modelDir: undefined }).embedder.embed(["a"], live());
     expect(missing.ok ? undefined : missing.error.code).toBe("ai.unavailable");
@@ -79,5 +79,6 @@ describe("createEmbedder", () => {
     const failed = await embedder.embed(["a"], live());
     expect(failed.ok ? undefined : failed.error.code).toBe("ai.unavailable");
     expect((await embedder.embed(["a"], live())).ok).toBe(true);
+    expect(fake.stats.disposed).toBe(1);
   });
 });

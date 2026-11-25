@@ -21,12 +21,6 @@ describe("runtime smoke output", () => {
     ]);
   });
 
-  // Guards: a skip hiding a runtime that failed, or a skip not showing in the log.
-  it("passes a runtime that says why it was skipped, and prints the reason", () => {
-    const out = checkRuntimesOutput(line({ ...good, llama: { skipped: "no fork" } }));
-    expect(out[2]).toBe("llama: skipped, no fork");
-  });
-
   it.each([
     ["no line at all", "app started\n", /printed no runtime result/],
     [
@@ -38,6 +32,11 @@ describe("runtime smoke output", () => {
       "a runtime that is missing",
       line({ onnx: good.onnx, llama: good.llama }),
       /transformers: missing/,
+    ],
+    [
+      "a runtime that was skipped",
+      line({ ...good, llama: { skipped: "no fork" } }),
+      /llama: missing/,
     ],
     ["a worker that died", line({ error: "runtime worker exited with 1" }), /exited with 1/],
   ])("fails on %s", (_name, output, message) => {

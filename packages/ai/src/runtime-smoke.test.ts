@@ -8,10 +8,7 @@ describe("proveRuntimes", () => {
     expect(proof).toEqual({
       onnx: { ok: true, detail: "identity graph ran" },
       transformers: { ok: true, detail: "imported" },
-      llama:
-        process.platform === "linux"
-          ? { skipped: expect.stringContaining("runAsNode") }
-          : { ok: true, detail: "binding loaded" },
+      llama: { ok: true, detail: "binding loaded" },
     });
   });
 });

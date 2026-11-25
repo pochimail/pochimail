@@ -10,22 +10,15 @@ export const checkRuntimesOutput = (output: string): string[] => {
     throw new Error(`The packaged app printed no runtime result. Output: ${output}`);
   const proof = JSON.parse(line.slice("smoke:runtimes ".length)) as Record<
     string,
-    { ok?: boolean; detail?: string; error?: string; skipped?: string } | undefined
+    { ok?: boolean; detail?: string; error?: string } | undefined
   > & { error?: string };
   if (proof.error !== undefined) throw new Error(`Runtime proof failed: ${proof.error}`);
-  const failed = RUNTIMES.filter(
-    (name) => proof[name]?.ok !== true && proof[name]?.skipped === undefined,
-  );
+  const failed = RUNTIMES.filter((name) => proof[name]?.ok !== true);
   if (failed.length > 0)
     throw new Error(
       `Runtime proof failed: ${failed.map((name) => `${name}: ${proof[name]?.error ?? "missing"}`).join("; ")}`,
     );
-  return RUNTIMES.map((name) => {
-    const skipped = proof[name]?.skipped;
-    return skipped === undefined
-      ? `${name}: ${proof[name]?.detail}`
-      : `${name}: skipped, ${skipped}`;
-  });
+  return RUNTIMES.map((name) => `${name}: ${proof[name]?.detail}`);
 };
 
 /** onnxruntime-node folders the target OS ships: one per CPU it supports (macOS has no x64 build upstream). */

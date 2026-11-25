@@ -4,7 +4,7 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 
 ## Decision
 - **Layers**, cheapest first: rules → decision heads (embeddings and calibrated classifiers) → generative LLM. Each decision stores its reason and confidence; all output is zod-validated.
-- **Generative runtime**: `node-llama-cpp` 3.22.3 (GGUF; Metal, CUDA or Vulkan, CPU) in the model-host process ([ADR 0002](0002-electron-process-model-and-ipc.md)), with JSON-schema grammar-constrained decoding.
+- **Generative runtime**: `node-llama-cpp` 3.22.3 (GGUF; Metal on macOS, CPU elsewhere, [ADR 0018](0018-patched-llama-binary-test-and-cpu-only-v1.md)) in the model-host process ([ADR 0002](0002-electron-process-model-and-ipc.md)), with JSON-schema grammar-constrained decoding.
 - **Embeddings and heads**: Transformers.js 4.3.2 on `onnxruntime-node`. Heads are small classifiers over embedding plus sender features, temperature-scaled on held-out data.
 - **Models** (Apache-2.0 or MIT; benchmark in `packages/ai/bench/results/`):
   - Tier T2 (16 GB or more, GPU or Apple Silicon): Gemma 4 E4B-it, Q4_K_M (about 5 GB). Fallback: Qwen3.5-4B.

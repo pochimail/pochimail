@@ -1,16 +1,13 @@
 import { startLlama } from "./llm/llama-runtime.ts";
 
-export type Proof =
-  | { ok: true; detail: string }
-  | { ok: false; error: string }
-  | { skipped: string };
+export type Proof = { ok: true; detail: string } | { ok: false; error: string };
 
 export interface RuntimeProof {
   /** onnxruntime-node ran a one-node graph: the embeddings runtime works. */
   readonly onnx: Proof;
   /** Transformers.js imported with its native dependencies (onnxruntime-node, sharp). */
   readonly transformers: Proof;
-  /** node-llama-cpp loaded its prebuilt binding (the app's own start-up, GPU when usable) and shut down again. */
+  /** node-llama-cpp loaded its prebuilt binding (the app's own start-up: Metal when usable on macOS, CPU elsewhere) and shut down again. */
   readonly llama: Proof;
 }
 
@@ -38,9 +35,6 @@ const identityModel = (): Uint8Array => {
   return Uint8Array.from([0x08, 8, ...field(0x3a, graph), ...field(0x42, [0x10, 13])]);
 };
 
-const LINUX_FORK_LIMIT =
-  "the Linux binary test forks a child process, which a utility process cannot do with the runAsNode fuse off";
-
 const prove = async (run: () => Promise<string>): Promise<Proof> => {
   try {
     return { ok: true, detail: await run() };
@@ -65,14 +59,9 @@ export const proveRuntimes = async (): Promise<RuntimeProof> => ({
     await import("@huggingface/transformers");
     return "imported";
   }),
-  // On Linux node-llama-cpp tests every prebuilt binary in a forked child process, and a utility process cannot fork
-  // while the runAsNode fuse is off (it must stay off). The binary's presence is still checked by packaging/smoke.ts.
-  llama:
-    process.platform === "linux"
-      ? { skipped: LINUX_FORK_LIMIT }
-      : await prove(async () => {
-          const llama = await startLlama(await import("node-llama-cpp"));
-          await llama.dispose();
-          return "binding loaded";
-        }),
+  llama: await prove(async () => {
+    const llama = await startLlama(await import("node-llama-cpp"));
+    await llama.dispose();
+    return "binding loaded";
+  }),
 });

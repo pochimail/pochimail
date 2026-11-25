@@ -179,6 +179,9 @@ overrides:
   glob: 14.0.4
   minimatch: 11.0.4
 
+patchedDependencies:
+  node-llama-cpp@3.22.3: dbe6b789ce02a466aa57ffdde9750a66828589d313e371392d2893b0478eb8f7
+
 importers:
 
   .:
@@ -252,7 +255,7 @@ importers:
         version: 13.1.1
       node-llama-cpp:
         specifier: 3.22.3
-        version: 3.22.3(supports-color@7.2.0)(typescript@7.0.2)
+        version: 3.22.3(patch_hash=dbe6b789ce02a466aa57ffdde9750a66828589d313e371392d2893b0478eb8f7)(supports-color@7.2.0)(typescript@7.0.2)
       onnxruntime-node:
         specifier: 1.30.0
         version: 1.30.0
@@ -435,7 +438,7 @@ importers:
         version: link:../kernel
       node-llama-cpp:
         specifier: 3.22.3
-        version: 3.22.3(supports-color@7.2.0)(typescript@7.0.2)
+        version: 3.22.3(patch_hash=dbe6b789ce02a466aa57ffdde9750a66828589d313e371392d2893b0478eb8f7)(supports-color@7.2.0)(typescript@7.0.2)
       onnxruntime-node:
         specifier: 1.30.0
         version: 1.30.0
@@ -9492,7 +9495,7 @@ snapshots:
 
   node-int64@0.4.0: {}
 
-  node-llama-cpp@3.22.3(supports-color@7.2.0)(typescript@7.0.2):
+  node-llama-cpp@3.22.3(patch_hash=dbe6b789ce02a466aa57ffdde9750a66828589d313e371392d2893b0478eb8f7)(supports-color@7.2.0)(typescript@7.0.2):
     dependencies:
       '@huggingface/jinja': 0.5.13
       async-retry: 1.3.3

@@ -116,6 +116,17 @@ describe("local engine behind the model host", () => {
     port1.postMessage({ id: 2, method: "complete", prompt: "p" });
     await vi.waitFor(() => expect(raw).toEqual([{ id: 2, ok: true, result: '{"answer":"yes"}' }]));
   });
+
+  // Guards: a schema that survives the port (cycles and BigInt do) but cannot be measured, throwing in the validator.
+  it("drops a structured request whose schema cannot be serialised", async () => {
+    const { port1, raw } = wire();
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    port1.postMessage({ id: 1, method: "completeJson", prompt: "p", jsonSchema: cycle });
+    port1.postMessage({ id: 2, method: "completeJson", prompt: "p", jsonSchema: { n: 1n } });
+    port1.postMessage({ id: 3, method: "complete", prompt: "p" });
+    await vi.waitFor(() => expect(raw).toEqual([{ id: 3, ok: true, result: '{"answer":"yes"}' }]));
+  });
 });
 
 describe("loadEngine", () => {

@@ -1,5 +1,13 @@
 import { spawn } from "node:child_process";
-import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FuseState, FuseV1Options, getCurrentFuseWire } from "@electron/fuses";
 import { fuses } from "../src/main/fuses.ts";
@@ -68,10 +76,16 @@ if (Object.keys(expected).length !== Object.keys(fuses).filter((k) => /^\d+$/.te
 console.log("fuses: ok");
 
 // Headless launch: Linux CI wraps this script in xvfb-run and its chrome-sandbox helper is not setuid, hence --no-sandbox there only. The app quits itself once the window has loaded.
-const child = spawn(binary, process.platform === "linux" ? ["--no-sandbox"] : [], {
-  env: { ...process.env, POCHIMAIL_SMOKE: "1" },
-  stdio: ["ignore", "pipe", "inherit"],
-});
+// Its own user data folder: Electron keys the single-instance lock on it, so the smoke neither fails while a real Pochimail runs nor touches its data.
+const userData = mkdtempSync(join(tmpdir(), "pochimail-smoke-"));
+const child = spawn(
+  binary,
+  [`--user-data-dir=${userData}`, ...(process.platform === "linux" ? ["--no-sandbox"] : [])],
+  {
+    env: { ...process.env, POCHIMAIL_SMOKE: "1" },
+    stdio: ["ignore", "pipe", "inherit"],
+  },
+);
 let output = "";
 child.stdout.on("data", (chunk: Buffer) => {
   output += chunk.toString();
@@ -79,6 +93,7 @@ child.stdout.on("data", (chunk: Buffer) => {
 const timer = setTimeout(() => child.kill(), 60_000);
 const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
 clearTimeout(timer);
+rmSync(userData, { recursive: true, force: true });
 if (code !== 0 || !output.includes("smoke:window-loaded")) {
   throw new Error(`App did not start cleanly (exit ${code}). Output: ${output}`);
 }

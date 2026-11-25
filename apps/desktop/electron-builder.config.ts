@@ -37,14 +37,15 @@ const config: Configuration = {
   // The electron-vite output ships. Renderer deps are devDependencies bundled by Vite, so node_modules only carries the
   // production dependencies that stay external: the SQLite driver (M0-12).
   // Not needed at run time: Transformers.js bundles its web runtime, so onnxruntime-web (145 MB) is dead weight, and
-  // node-llama-cpp's git bundle of llama.cpp is only for source builds, which the app never does. CUDA backends (200 and
-  // 400 MB) stay out until the installer size budget is decided; Vulkan covers NVIDIA GPUs.
+  // node-llama-cpp's git bundle of llama.cpp is only for source builds, which the app never does. Linux and Windows run
+  // the model on the CPU in v1 (ADR 0006), so the CUDA and Vulkan backends stay out.
   files: [
     "out/**",
     "package.json",
     "!node_modules/onnxruntime-web/**",
     "!node_modules/node-llama-cpp/llama/gitRelease.bundle",
     "!node_modules/@node-llama-cpp/*-cuda*/**",
+    "!node_modules/@node-llama-cpp/*-vulkan*/**",
   ],
   // dlopen cannot read a .node file inside app.asar. The driver ships Node-API prebuilds for all six OS/CPU pairs.
   // The same holds for the local model runtimes: onnxruntime-node (embeddings), node-llama-cpp's per-platform binary
