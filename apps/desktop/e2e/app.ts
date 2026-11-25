@@ -63,6 +63,13 @@ export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
     env: environment(options),
   });
   const page = await app.firstWindow();
+  const problems: string[] = [];
+  page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
+  page.on("console", (message) => {
+    // AppErrorBoundary logs this event when a screen fails to render.
+    if (message.type() === "error" && message.text().includes('"renderer-error"'))
+      problems.push(`boundary: ${message.text()}`);
+  });
   // The window shows on ready-to-show; its size and the colour scheme are then fixed before anything is read from it.
   await app.evaluate(
     ({ BrowserWindow }, size) =>
@@ -81,13 +88,6 @@ export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
       WINDOW,
     );
   await page.emulateMedia({ colorScheme: options.colorScheme ?? "light", reducedMotion: "reduce" });
-  const problems: string[] = [];
-  page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
-  page.on("console", (message) => {
-    // AppErrorBoundary logs this event when a screen fails to render.
-    if (message.type() === "error" && message.text().includes('"renderer-error"'))
-      problems.push(`boundary: ${message.text()}`);
-  });
   const base = page.url().split("#")[0] ?? page.url();
   return {
     app,
@@ -98,8 +98,11 @@ export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
       await page.reload();
     },
     close: async () => {
-      await app.close();
-      rmSync(userData, { recursive: true, force: true });
+      try {
+        await app.close();
+      } finally {
+        rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      }
     },
   };
 }

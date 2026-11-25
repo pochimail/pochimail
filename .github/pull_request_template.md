@@ -17,6 +17,7 @@ Closes #…
 <!-- Each acceptance criterion → the command or test that proves it, and its result. -->
 
 ## Checklist
+- [ ] UI PRs: e2e baselines regenerated (delete PNG, push, commit from `e2e-screenshots` artifact).
 - [ ] `pnpm check` is green locally (typecheck, lint, knip, test, arch, quality, manypkg).
 - [ ] No new dependency, or it is justified here and approved.
 - [ ] No new package, folder convention, pattern or abstraction, or it has an ADR.

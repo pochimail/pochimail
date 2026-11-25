@@ -36,3 +36,16 @@ test("an uncaught error in a screen is reported", async () => {
     await running.close();
   }
 });
+
+// Guards: the smoke passing while a screen fails to render, because the boundary's report is not picked up.
+test("an error-boundary report is reported", async () => {
+  const running = await launchApp();
+  try {
+    await running.page.evaluate(() => {
+      console.error(JSON.stringify({ event: "renderer-error", message: "screen failed" }));
+    });
+    await expect.poll(() => running.problems).toEqual([expect.stringContaining("screen failed")]);
+  } finally {
+    await running.close();
+  }
+});

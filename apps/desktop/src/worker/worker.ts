@@ -127,10 +127,14 @@ const withDemoConnect = (demo: Handlers, firstRun: boolean): Handlers => {
     procedures: {
       ...demo.procedures,
       "accounts.list": list,
-      "app.state": async () => ({
-        status: "ready" as const,
-        hasConnectedAccount: (await list()).length > 0,
-      }),
+      ...(firstRun
+        ? {
+            "app.state": async () => ({
+              status: "ready" as const,
+              hasConnectedAccount: (await list()).length > 0,
+            }),
+          }
+        : {}),
       "accounts.connect": async () => {
         connected = true;
         const [first] = await list();
