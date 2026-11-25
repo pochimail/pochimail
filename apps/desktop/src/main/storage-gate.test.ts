@@ -2,11 +2,14 @@ import { mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createLogger, type LogRecord } from "@pochimail/logger/logger";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { basicTextVault, fakeVault } from "../test-support/fake-key-vault.ts";
 import { openEncrypted } from "../worker/storage-proof.ts";
 import { createStorageGate } from "./storage-gate.ts";
 import type { KeyVault } from "./storage-key.ts";
+
+// Each passphrase check runs the real scrypt (128 MiB); a loaded CI machine needs more than the default 5 seconds.
+vi.setConfig({ testTimeout: 60_000 });
 
 const PASSPHRASE = "correct horse battery staple";
 const WRONG = "wrong horse battery staple";
