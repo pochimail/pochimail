@@ -15,7 +15,7 @@ function fakeApp(notifications: boolean) {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
-  const state = { notifications, failUpdates: false };
+  const state = { notifications, failUpdates: false, gate: undefined as Promise<void> | undefined };
   const updates: object[] = [];
   serveRpc(fromDomPort(port2), {
     procedures: {
@@ -30,8 +30,9 @@ function fakeApp(notifications: boolean) {
         notifications: state.notifications,
         locale: "en" as const,
       }),
-      "settings.update": (patch) => {
+      "settings.update": async (patch) => {
         updates.push(patch);
+        await state.gate;
         if (state.failUpdates) throw new Error("storage");
         state.notifications = patch.notifications ?? state.notifications;
         return undefined;
@@ -79,6 +80,26 @@ describe("Settings › Notifications", () => {
     expect(await screen.findByText("I couldn't save that setting. Please try again.")).toBeTruthy();
     await waitFor(() => expect(isOn(toggle)).toBe(true));
     expect(fake.state.notifications).toBe(true);
+  });
+
+  // Guards: a failed save restoring the opposite of the click instead of the stored value when two changes overlap.
+  it("two overlapping failed saves both go back to the stored value", async () => {
+    const fake = fakeApp(false);
+    const toggle = await notificationsSwitch();
+    await waitFor(() => expect(isEnabled(toggle)).toBe(true));
+    let release = () => {};
+    fake.state.gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    fake.state.failUpdates = true;
+
+    await userEvent.click(toggle);
+    await userEvent.click(toggle);
+    await waitFor(() => expect(fake.updates).toHaveLength(2));
+    release();
+
+    await waitFor(() => expect(screen.getAllByText(/couldn't save/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(isOn(toggle)).toBe(false));
   });
 
   // Guards: the section's copy promising more than ships (quiet hours, names and subjects).

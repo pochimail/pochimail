@@ -4,6 +4,7 @@ import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { cn } from "@pochimail/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellIcon } from "lucide-react";
+import { useRef } from "react";
 import { type AppSettings, DEFAULT_APP_SETTINGS } from "#shared/settings.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
@@ -19,6 +20,7 @@ export function NotificationsSection() {
     queryKey: queryKeys.settings(),
     queryFn: () => client.call("settings.get"),
   });
+  const saved = useRef<boolean | undefined>(undefined);
   const enabled = settings.data?.notifications ?? DEFAULT_APP_SETTINGS.notifications;
 
   const setNotifications = (notifications: boolean) =>
@@ -28,12 +30,15 @@ export function NotificationsSection() {
     }));
 
   const change = async (next: boolean) => {
+    // The last value the worker confirmed, so overlapping changes that fail all go back to it.
+    saved.current ??= enabled;
     setNotifications(next);
     try {
       await client.call("settings.update", { notifications: next });
+      saved.current = next;
     } catch {
       // Only this field goes back: a theme or language chosen meanwhile stays.
-      setNotifications(!next);
+      setNotifications(saved.current);
       toast.error(t("settings.saveFailed"));
     }
   };

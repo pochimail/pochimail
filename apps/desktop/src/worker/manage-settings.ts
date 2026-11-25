@@ -2,6 +2,7 @@ import type { AsyncResult } from "@pochimail/kernel/common";
 import type { StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
+import type { Logger } from "@pochimail/logger/logger";
 import { z } from "zod";
 import {
   type AppSettings,
@@ -23,11 +24,22 @@ const isUnreadableRow = (error: StorageError): boolean =>
 export class ManageSettings {
   private readonly queues = new Map<WorkspaceId, Promise<unknown>>();
 
-  constructor(private readonly deps: { readonly store: SettingsStore }) {}
+  private readonly reported = new Set<WorkspaceId>();
 
+  constructor(private readonly deps: { readonly store: SettingsStore; readonly logger?: Logger }) {}
+
+  /** A row that cannot be parsed reads as the defaults, without writing, and is logged once per workspace. */
   async get(workspaceId: WorkspaceId): AsyncResult<AppSettings, StorageError> {
     const stored = await this.deps.store.get(workspaceId);
-    return stored.ok ? ok(normalizeSettings(stored.value)) : stored;
+    if (stored.ok) return ok(normalizeSettings(stored.value));
+    if (!isUnreadableRow(stored.error)) return stored;
+    if (!this.reported.has(workspaceId)) {
+      this.reported.add(workspaceId);
+      this.deps.logger?.warn("settings row unreadable, using defaults", {
+        code: stored.error.code,
+      });
+    }
+    return ok(DEFAULT_APP_SETTINGS);
   }
 
   update(workspaceId: WorkspaceId, patch: Patch): AsyncResult<AppSettings, StorageError> {
@@ -51,9 +63,8 @@ export class ManageSettings {
     patch: Patch,
   ): AsyncResult<AppSettings, StorageError> {
     const read = await this.get(workspaceId);
-    // A row that cannot be parsed would block every save for good, so it is replaced from the defaults.
-    if (!read.ok && !isUnreadableRow(read.error)) return read;
-    const current = read.ok ? read.value : DEFAULT_APP_SETTINGS;
+    if (!read.ok) return read;
+    const current = read.value;
     const next: AppSettings = {
       autonomy: patch.autonomy ?? current.autonomy,
       capabilities: patch.capabilities ?? current.capabilities,

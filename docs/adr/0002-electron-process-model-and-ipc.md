@@ -11,7 +11,7 @@ The UI must stay instant while a 100k-message sync and model inference run. Mail
 - **model host**: a second `utilityProcess` for `node-llama-cpp` and embeddings, so a model crash never takes the worker down. Main supervises it (ping, restart with back-off, a new private port per restart); the worker re-sends in-flight requests.
 - **renderer**: React 19 SPA (electron-vite, TanStack, React Compiler). No Node access.
 - **Transport**: main creates a `MessageChannelMain` and gives one port to the worker and one to the renderer through the preload. Renderer and worker traffic bypasses main.
-- **Preload**: exposes `requestWorkerPort` and a few OS calls (`openMailAppLink` for `mailto:` and `message:` only, `showInFinder`, `chooseFolder`), each validated; main refuses senders that are not the app page. Nothing mail-related goes through main.
+- **Preload**: exposes `requestWorkerPort` and a few OS calls (`openMailAppLink` for `mailto:` and `message:` only, `showInFinder`, `chooseFolder`), `onOpenScreen` (a notification click), each validated; main refuses senders that are not the app page. Nothing mail-related goes through main.
 - **Protocol**: an in-house typed RPC and subscription layer over the port, with zod schemas shared by both sides in `apps/desktop/src/shared/ipc/`.
 - **Streaming**: the worker flushes batched events every 50 ms (max batch 500), with at most 2 unacknowledged batches; latest-state events (progress) are coalesced per key. Nothing is dropped.
 - **Renderer data**: TanStack Query caches updated from events, no polling; optimistic mutations are reconciled on `ActionApplied` or `ActionFailed`.

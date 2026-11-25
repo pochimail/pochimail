@@ -88,6 +88,8 @@ export const createCachingClassifier = (
           const settled = answer.finally(() => {
             if (inFlight.get(key) === settled) inFlight.delete(key);
           });
+          // The awaiting loop below stops at the first failure; the others must not become unhandled rejections.
+          settled.catch(() => {});
           inFlight.set(key, settled);
           pending.set(key, settled);
         }

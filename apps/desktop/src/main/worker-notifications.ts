@@ -11,6 +11,14 @@ export const COALESCE_WINDOW_MS = 15 * 60_000;
 export const DAILY_CAP = 10;
 const DAY_MS = 24 * 60 * 60_000;
 
+/** Quiet hours (ADR 0008): from 22:00 to 08:00 local time nothing is shown. */
+const QUIET_FROM_HOUR = 22;
+const QUIET_UNTIL_HOUR = 8;
+const isQuiet = (at: number): boolean => {
+  const hour = new Date(at).getHours();
+  return hour >= QUIET_FROM_HOUR || hour < QUIET_UNTIL_HOUR;
+};
+
 const SCREEN_OF_KIND: Record<NotifyMessage["kind"], NotificationScreen> = {
   "scan-complete": "overview",
   "digest-ready": "review",
@@ -18,7 +26,7 @@ const SCREEN_OF_KIND: Record<NotifyMessage["kind"], NotificationScreen> = {
 };
 
 export interface ShownNotification {
-  on(event: "click", listener: () => void): unknown;
+  on(event: "click" | "close", listener: () => void): unknown;
   show(): void;
 }
 
@@ -36,12 +44,15 @@ export const showWorkerNotifications = (options: {
   readonly open: (screen: NotificationScreen) => void;
 }): void => {
   const lastByKind = new Map<string, number>();
+  // The OS may drop its click and close events when the object is garbage collected, so each one is kept until it ends.
+  const alive = new Set<ShownNotification>();
   let shownAt: number[] = [];
   options.worker.on("message", (message) => {
     const parsed = notifyMessageSchema.safeParse(message);
     if (!parsed.success) return;
     const { kind, count, locale } = parsed.data;
     const now = options.now();
+    if (isQuiet(now)) return;
     shownAt = shownAt.filter((at) => now - at < DAY_MS);
     const last = lastByKind.get(kind);
     if (shownAt.length >= DAILY_CAP || (last !== undefined && now - last < COALESCE_WINDOW_MS))
@@ -54,7 +65,12 @@ export const showWorkerNotifications = (options: {
     if (notification === undefined) return;
     lastByKind.set(kind, now);
     shownAt.push(now);
-    notification.on("click", () => options.open(SCREEN_OF_KIND[kind]));
+    alive.add(notification);
+    notification.on("click", () => {
+      alive.delete(notification);
+      options.open(SCREEN_OF_KIND[kind]);
+    });
+    notification.on("close", () => void alive.delete(notification));
     notification.show();
   });
 };

@@ -12,7 +12,7 @@ const setup = () => {
   const os = { supported: true };
   const worker = new EventEmitter();
   const shown: { title: string; body: string; click: () => void }[] = [];
-  let now = 1_000_000;
+  let now = new Date(2026, 10, 26, 12, 0).getTime();
   const open = vi.fn();
   showWorkerNotifications({
     worker,
@@ -20,8 +20,8 @@ const setup = () => {
       if (!os.supported) return undefined;
       const entry = { ...content, click: () => {} };
       const notification: ShownNotification = {
-        on: (_event, listener) => {
-          entry.click = listener;
+        on: (event, listener) => {
+          if (event === "click") entry.click = listener;
         },
         show: () => void shown.push(entry),
       };
@@ -42,6 +42,9 @@ const setup = () => {
     notify,
     advance: (ms: number) => {
       now += ms;
+    },
+    setLocalTime: (hour: number, minute = 0) => {
+      now = new Date(2026, 10, 26, hour, minute).getTime();
     },
   };
 };
@@ -118,5 +121,54 @@ describe("showWorkerNotifications", () => {
     notify("scan-complete");
 
     expect(shown).toHaveLength(1);
+  });
+
+  it("shows nothing from 22:00 to 08:00 local time and resumes after (guards a night-time notification)", () => {
+    const { shown, notify, setLocalTime } = setup();
+
+    setLocalTime(22);
+    notify("scan-complete");
+    setLocalTime(3, 30);
+    notify("digest-ready");
+    setLocalTime(7, 59);
+    notify("review-waiting");
+    expect(shown).toEqual([]);
+
+    setLocalTime(8);
+    notify("scan-complete");
+    setLocalTime(21, 59);
+    notify("digest-ready");
+    expect(shown).toHaveLength(2);
+  });
+
+  it("does not let a quiet-hours message use up the window or the cap (guards the first message after 08:00 being swallowed)", () => {
+    const { shown, notify, setLocalTime } = setup();
+
+    setLocalTime(23);
+    notify("scan-complete");
+    setLocalTime(8);
+    notify("scan-complete");
+
+    expect(shown).toHaveLength(1);
+  });
+
+  it("listens for both click and close, the two events that end its retention (guards a notification kept for ever, or its click dropped by garbage collection)", () => {
+    const listeners = new Map<string, () => void>();
+    const worker = new EventEmitter();
+    showWorkerNotifications({
+      worker,
+      create: () => {
+        return {
+          on: (event, listener) => void listeners.set(event, listener),
+          show: () => {},
+        };
+      },
+      now: () => new Date(2026, 10, 26, 12, 0).getTime(),
+      osLocale: "en",
+      open: () => {},
+    });
+    worker.emit("message", { type: "notify", kind: "scan-complete", count: 1, locale: null });
+    expect(listeners.has("click")).toBe(true);
+    expect(listeners.has("close")).toBe(true);
   });
 });

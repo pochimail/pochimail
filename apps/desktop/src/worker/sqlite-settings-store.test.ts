@@ -6,7 +6,8 @@ import { openStorage, type Storage } from "@pochimail/db/open-storage";
 import { createSqliteSettingsRepository } from "@pochimail/db/sqlite-settings-repository";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
-import { afterEach, expect, it } from "vitest";
+import type { Logger } from "@pochimail/logger/logger";
+import { afterEach, expect, it, vi } from "vitest";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
 import { settingsStoreContract } from "../test-support/settings-store-contract.ts";
 import { ManageSettings } from "./manage-settings.ts";
@@ -46,15 +47,22 @@ it("a legacy row reads through normalizeSettings (guards normalizeSettings only,
   });
 });
 
-it("a corrupt row is replaced by the next update (guards one bad row blocking settings saves for good)", async () => {
+it("a corrupt row reads as the defaults without a write and is replaced by the next update (guards one bad row blocking settings saves or the screen for good)", async () => {
   const storage = freshStorage();
   const workspace = "ws-1" as WorkspaceId;
   storage.writer
     .prepare("INSERT INTO settings (workspace_id, data) VALUES (?, ?)")
     .run(workspace, "{not json");
-  const settings = new ManageSettings({ store: createSqliteSettingsStore(storage) });
+  const warn = vi.fn();
+  const logger = { warn, child: () => logger } as unknown as Logger;
+  const settings = new ManageSettings({ store: createSqliteSettingsStore(storage), logger });
 
-  expect((await settings.get(workspace)).ok).toBe(false);
+  expect(unwrap(await settings.get(workspace))).toEqual(DEFAULT_APP_SETTINGS);
+  expect(unwrap(await settings.get(workspace))).toEqual(DEFAULT_APP_SETTINGS);
+  expect(warn).toHaveBeenCalledTimes(1);
+  expect(
+    storage.writer.prepare("SELECT data FROM settings WHERE workspace_id = ?").get(workspace),
+  ).toEqual({ data: "{not json" });
   const updated = unwrap(await settings.update(workspace, { autonomy: "autopilot" }));
 
   expect(updated).toEqual({ ...DEFAULT_APP_SETTINGS, autonomy: "autopilot" });

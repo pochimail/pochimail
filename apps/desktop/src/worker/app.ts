@@ -97,7 +97,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     if (event.payload.state === "disconnected") adapters.clearClassifierCache?.();
   });
 
-  const settings = new ManageSettings({ store: adapters.settings });
+  const settings = new ManageSettings({ store: adapters.settings, logger: adapters.logger });
   const { sendNotification } = adapters;
   if (sendNotification) {
     const notifier = createMainNotifier({ settings, workspaceId, send: sendNotification });
