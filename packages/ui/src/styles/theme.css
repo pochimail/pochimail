@@ -80,8 +80,6 @@
   --radius-bar: 3px;
   --radius-check: 4px;
 
-  --blur-hairline: 0.5px;
-
   /* Named container widths: `@max-phone:`, `@min-desktop:`, `@tablet:`. "Narrower than" pairs with "from" with no gap. */
   --container-narrow: 480px;
   --container-phone: 560px;
