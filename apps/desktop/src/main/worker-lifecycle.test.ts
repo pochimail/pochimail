@@ -27,6 +27,7 @@ const fakeWindow = () => {
     webContents: Object.assign(new EventEmitter(), {
       postMessage: vi.fn(),
       reload: vi.fn(),
+      isDestroyed: vi.fn(() => false),
     }),
   });
 };
@@ -77,7 +78,7 @@ const setup = (vault = fakeVault(), platform: NodeJS.Platform = "darwin") => {
   const fire = (ms: number) => {
     for (const timer of timers.filter((entry) => entry.ms === ms && !entry.cancelled)) timer.fn();
   };
-  return { gate, records, workers, handedKeys, build, fire };
+  return { gate, records, workers, handedKeys, timers, build, fire };
 };
 const workerAt = (workers: ReturnType<typeof fakeProcess>[], index: number) => {
   const worker = workers[index];
@@ -131,6 +132,30 @@ describe("worker lifecycle", () => {
     );
     expect(window.webContents.reload).toHaveBeenCalledTimes(1);
     expect(window.webContents.listenerCount("did-finish-load")).toBe(1);
+  });
+
+  // Guards: a restart reloading a window that was destroyed meanwhile, which throws in main.
+  it("does not reload a destroyed window when restarting", async () => {
+    const { workers, build } = setup();
+    const window = fakeWindow();
+    window.webContents.isDestroyed.mockReturnValue(true);
+    build().connect(window as never);
+    await vi.waitFor(() => expect(workerAt(workers, 0).starts()).toHaveLength(1));
+
+    workerAt(workers, 0).emit("exit", 139);
+    await vi.waitFor(() => expect(workerAt(workers, 1).starts()).toHaveLength(1));
+    expect(window.webContents.reload).not.toHaveBeenCalled();
+  });
+
+  // Guards: the restart budget recovering while the worker is still waiting for the person's storage choice.
+  it("starts the stable-run timer when the worker boots, not when it is forked", async () => {
+    const { gate, timers, build } = setup(basicTextVault(), "linux");
+    build().connect(fakeWindow() as never);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(timers.filter((entry) => entry.ms === 60_000)).toEqual([]);
+
+    expect(await gate.storeUnprotected()).toBe("ready");
+    await vi.waitFor(() => expect(timers.filter((entry) => entry.ms === 60_000)).toHaveLength(1));
   });
 
   // Guards: a worker that crashes at once in a loop, burning the CPU forever.
@@ -193,11 +218,16 @@ describe("worker lifecycle", () => {
       expect(workerAt(workers, 1).starts()).toHaveLength(1);
     });
 
-    const done = lifecycle.shutdown();
+    let finished = false;
+    const done = lifecycle.shutdown().then(() => {
+      finished = true;
+    });
     expect(workers.map((worker) => worker.posted.at(-1))).toEqual([
       { type: "shutdown" },
       { type: "shutdown" },
     ]);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(finished).toBe(false);
     fire(3_000);
     await done;
     expect(workers.every((worker) => worker.kill.mock.calls.length === 1)).toBe(true);

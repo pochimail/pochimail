@@ -91,11 +91,16 @@ const launch = async (env: Record<string, string>): Promise<string> => {
 // Two launches share one wrapped key file: the second reads back, through the real OS keychain, the key the first created.
 const keyDir = mkdtempSync(join(tmpdir(), "pochimail-smoke-key-"));
 const keyEnv = { POCHIMAIL_SMOKE_KEY_FILE: join(keyDir, "db.key") };
-const output = await launch(keyEnv);
-console.log("launch: ok");
-const restartOutput = await launch(keyEnv);
-rmSync(keyDir, { recursive: true, force: true });
-console.log("restart: ok");
+let output: string;
+let restartOutput: string;
+try {
+  output = await launch(keyEnv);
+  console.log("launch: ok");
+  restartOutput = await launch(keyEnv);
+  console.log("restart: ok");
+} finally {
+  rmSync(keyDir, { recursive: true, force: true });
+}
 
 // M0-12: the packaged app opened an encrypted WAL database with FTS5 in a utility process, with the key from safeStorage.
 const storage = checkStorageOutput(output);

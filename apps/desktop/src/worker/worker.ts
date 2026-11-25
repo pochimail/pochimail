@@ -36,9 +36,8 @@ const requestShutdown = (): void => {
   shuttingDown = true;
   const close = closeDatabase;
   closeDatabase = undefined;
-  if (close === undefined) return;
-  close();
-  // Main waits for this before it stops the process, so the handle is never cut off mid-close.
+  close?.();
+  // Main waits for this before it stops the process, so the handle is never cut off mid-close. Also sent when no database is open, so main never waits out the grace period for nothing.
   process.parentPort.postMessage(DATABASE_CLOSED);
 };
 

@@ -127,6 +127,14 @@ describe("worker entry", () => {
     expect(sent).toEqual([{ type: "database-closed" }]);
   });
 
+  // Guards: main waiting out the whole grace period on a worker that has no database open.
+  it("tells main at once when a shutdown finds no database open", async () => {
+    const { client, sent, close } = await boot(tempDir(), randomBytes(32));
+    await client.call("accounts.connect", { provider: "google" });
+    close();
+    expect(sent).toEqual([{ type: "database-closed" }]);
+  });
+
   // Guards: a genuinely unusable database still gets a clear, closed failure.
   it("answers storage-unavailable when the handed path cannot be opened", async () => {
     const databasePath = tempDir(); // a directory, not a database file

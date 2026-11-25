@@ -270,6 +270,7 @@ void app.whenReady().then(() => {
       event.preventDefault();
       void processWorkerLifecycle()
         .shutdown()
+        .catch(() => undefined)
         .finally(() => {
           workersStopped = true;
           app.quit();

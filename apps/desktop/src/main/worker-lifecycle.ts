@@ -16,7 +16,7 @@ const STABLE_MS = 60_000;
 const SHUTDOWN_GRACE_MS = 3_000;
 
 export type WindowPort = {
-  webContents: Pick<WebContents, "on" | "off" | "postMessage" | "reload">;
+  webContents: Pick<WebContents, "on" | "off" | "postMessage" | "reload" | "isDestroyed">;
   once: (event: "closed", listener: () => void) => unknown;
 };
 
@@ -66,9 +66,8 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
         logger,
       });
       const unlink = linkWorkerOnEveryLoad(window.webContents, worker, ports.createChannel);
-      const cancelStable = timer.set(() => {
-        restarts = 0;
-      }, STABLE_MS);
+      let cancelStable = (): void => undefined;
+      let stopped = false;
       let markExited = (): void => undefined;
       let markClosed = (): void => undefined;
       const running: Running = {
@@ -76,6 +75,7 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
         stop: () => {
           modelHost.stop();
           unlink();
+          stopped = true;
           cancelStable();
         },
         exited: new Promise((resolve) => (markExited = resolve)),
@@ -88,9 +88,19 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
           createChannel: ports.createChannel,
           openExternal: ports.openExternal,
           logger,
+        }).catch(() => {
+          logger.error("worker start failed", { operation: "start", code: "storage.failed" });
+          return false;
         }),
       };
       current = running;
+      // The budget recovers once a worker has stayed up for STABLE_MS since it was started, not since it was forked.
+      void running.booted.then((started) => {
+        if (!started || stopped) return;
+        cancelStable = timer.set(() => {
+          restarts = 0;
+        }, STABLE_MS);
+      });
       worker.on("message", (message) => {
         if (databaseClosedSchema.safeParse(message).success) markClosed();
       });
@@ -114,7 +124,7 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
       logger.warn("worker exited, restarting", { operation: "worker" });
       launch();
       // The old page port died with the worker; a load hands the page a new one.
-      window.webContents.reload();
+      if (!window.webContents.isDestroyed()) window.webContents.reload();
     };
 
     const close = (): Promise<void> => {

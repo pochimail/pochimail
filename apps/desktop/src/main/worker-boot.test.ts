@@ -83,4 +83,20 @@ describe("worker boot", () => {
     await bootWorker({ ...t.options, loadKey: async () => ok(key) });
     expect(key.every((byte) => byte === 0)).toBe(true);
   });
+
+  // Guards: the key staying readable in main's memory when handing it to the worker throws.
+  it("zeroes the key buffer even when handing it over fails", async () => {
+    const t = setup();
+    const key = Buffer.alloc(32, 1);
+    const worker = {
+      ...t.options.worker,
+      postMessage: () => {
+        throw new Error("channel closed");
+      },
+    };
+    await expect(
+      bootWorker({ ...t.options, worker, loadKey: async () => ok(key) }),
+    ).rejects.toThrow("channel closed");
+    expect(key.every((byte) => byte === 0)).toBe(true);
+  });
 });
