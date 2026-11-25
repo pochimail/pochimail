@@ -98,4 +98,14 @@ describe("update notice wiring", () => {
     expect(manifest).not.toMatch(/"publish"\s*:/);
     expect(manifest).not.toMatch(/latest[^"]*\.yml/);
   });
+
+  // Guards: a renamed repository leaving the Download button and the version request on the old address.
+  it("keeps its two URLs on the repository named in the root package.json", () => {
+    const root = JSON.parse(
+      readFileSync(join(import.meta.dirname, "../../../../../package.json"), "utf8"),
+    ) as { repository: { url: string } };
+    const repository = root.repository.url.replace(/^git\+/, "").replace(/\.git$/, "");
+    expect(RELEASES_URL).toBe(`${repository}/releases/latest`);
+    expect(VERSION_FILE_URL).toBe(`${repository}/releases/latest/download/latest.json`);
+  });
 });

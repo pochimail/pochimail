@@ -9,7 +9,7 @@ Pochimail handles a whole mailbox. Local only: no Pochimail server, no telemetry
 - **Email is hostile**: never execute or render remote content, block remote images, never follow links in bodies. Unsubscribe only through RFC 8058 one-click or `mailto:`. Attachments are hashed and written only when the user saves them, never opened automatically. Never persist bodies, subjects, snippets or addresses ([ADR 0014](adr/0014-store-reports-and-actions-not-mail.md)).
 - **The model never acts**: it classifies and explains, with schema-constrained output validated by zod. Actions come from policies and user approval.
 - **Supply chain**: pinned lockfile, few dependencies (ask before a heavy one), `osv-scanner` in CI, an SBOM per release. pnpm's `minimumReleaseAge` stays on; add no exclusion without an ADR note.
-- **Releases**: signed and notarized builds, signed update metadata, SHA-256 checks on model files, an external security review before 1.0.
+- **Releases**: a SHA-256 checksum file with every release and SHA-256 checks on model files. v1 builds are not code-signed; signing is prepared and switches on when the signing secrets exist ([release.md](release.md)). The update notice reads a version file from GitHub Releases and opens the download page: nothing installs itself. An external security review before 1.0.
 - **Logs** redact names, addresses, subjects, attachment names and tokens. No crash reporting in v1.
 
 ## Assets and trust boundaries
@@ -20,7 +20,7 @@ Pochimail handles a whole mailbox. Local only: no Pochimail server, no telemetry
 | Mailbox integrity | The promise is in [product.md](product.md). Every action is logged with its inverse |
 | Saved documents | The user's own folder, kept when an account is removed |
 | Models | SHA-256 pinned in a signed manifest |
-| App and updates | Signed builds from GitHub Releases |
+| App and updates | SHA-256 checksums on GitHub Releases; the update notice only opens the download page; code signing follows |
 
 Boundaries: main holds no mail and hands a `MessagePort` to renderer and worker, which talk directly. The renderer is treated as compromisable by email content, so the worker validates every message with zod. The model host has no network and no database. Secrets cross only the `SecretStore` port. OAuth runs in the system browser with PKCE, a `state` check and a loopback listener that closes after one request.
 
@@ -38,7 +38,7 @@ Boundaries: main holds no mail and hands a `MessagePort` to renderer and worker,
 | Unlisted host contacted | Allow-list in the session filter and the worker client, exact hosts, no wildcard |
 | Token theft on the loopback port | PKCE, `state`, random port on `127.0.0.1`, one request |
 | Phishing app or fork using our client id | Ids from config, verified publisher status |
-| Compromised dependency, release or model | Pinned versions, release-age gate, signing, hashes |
+| Compromised dependency, release or model | Pinned versions, release-age gate, release checksums (signing once enabled), model hashes |
 | Tampered models | Manifest signature and SHA-256 before use |
 
 Accepted risks: a same-user process can write the database file, and decrypted memory can reach swap. Out of scope: a compromised OS account, an unlocked stolen machine, a compromised provider.
