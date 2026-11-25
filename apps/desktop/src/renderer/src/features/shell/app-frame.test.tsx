@@ -244,6 +244,42 @@ describe("app frame", () => {
     ).toBeNull();
   });
 
+  it("shows the selected account's provider logo in the trigger and the users icon for All accounts (guards a trigger that ignores the account)", async () => {
+    setup();
+    await sidebar();
+    const trigger = () => screen.getByRole("button", { name: /^Account: / });
+    expect(trigger().querySelector("[data-slot=provider-icon]")).toBeNull();
+
+    await userEvent.click(trigger());
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "ann@work.example.test" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Account: ann@work.example.test" })
+          .querySelector(
+            '[data-slot="provider-icon"][data-provider="microsoft"][aria-hidden="true"]',
+          ),
+      ).not.toBeNull(),
+    );
+
+    await userEvent.click(trigger());
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "ann@example.test" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Account: ann@example.test" })
+          .querySelector('[data-slot="provider-icon"][data-provider="google"]'),
+      ).not.toBeNull(),
+    );
+
+    await userEvent.click(trigger());
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "All accounts" }));
+    await waitFor(() => expect(trigger().querySelector("[data-slot=provider-icon]")).toBeNull());
+    expect(trigger().querySelector("svg.lucide-users")).not.toBeNull();
+  });
+
   it("marks only the current screen with aria-current (guards a wrong or missing active item)", async () => {
     setup("/documents");
     const nav = await sidebar();

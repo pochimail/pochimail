@@ -155,7 +155,8 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
     enabled: accounts.isSuccess,
   });
   const categories = visibleCategories(counts.data);
-  const currentLabel = accountList.find((a) => a.id === selected)?.displayName ?? t("switcher.all");
+  const current = accountList.find((a) => a.id === selected);
+  const currentLabel = current?.displayName ?? t("switcher.all");
   const selectAccount = (next: string) =>
     void navigate({
       to: ".",
@@ -186,7 +187,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
             </SidebarBrand>
             <AccountSwitcher>
               <AccountSwitcherTrigger aria-label={`${t("switcher.menu")}: ${currentLabel}`}>
-                <UsersIcon aria-hidden="true" />
+                {current ? <ProviderIcon provider={current.provider} /> : <UsersIcon aria-hidden />}
                 <AccountSwitcherLabel>{currentLabel}</AccountSwitcherLabel>
                 <ChevronDownIcon aria-hidden="true" className="@min-phone:@max-desktop:hidden" />
               </AccountSwitcherTrigger>
