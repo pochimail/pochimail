@@ -3,7 +3,7 @@
 Pochimail is a private assistant that gives you the big picture of your email accounts, flags what needs you, clears clutter and saves your documents. Everything runs on your computer. Pochi (from *pochi-bukuro* ポチ袋, the small Japanese gift envelope) is the assistant; the site is getpochimail.com.
 
 ## What it is, and is not
-- **Is**: an overview and cleanup assistant for one or several Gmail and Outlook / Microsoft 365 accounts. Other providers (IMAP) come in v1.1 ([ADR 0011](adr/0011-v1-providers-google-and-microsoft.md)).
+- **Is**: an overview and cleanup assistant for one or several Gmail accounts. Outlook / Microsoft 365 and other providers (IMAP) come in v1.1 ([ADR 0011](adr/0011-v1-providers-google-and-microsoft.md)).
 - **Is not**: a mail client. Nobody reads or writes email in Pochimail; a single email opens in the user's mail app.
 - **Users**: non-technical people with years of email across accounts who want to stop missing what matters, free space, find documents and trust that nothing is lost.
 
@@ -37,7 +37,7 @@ Pochimail is a private assistant that gives you the big picture of your email ac
 5. Privacy is the first message wherever data is processed.
 
 ## Flow
-Welcome → Connect (Google, Microsoft) → Set up (two questions: what to help with, how much to do) → Overview while sorting → a Summary sheet when the first scan ends → the everyday loop: notification or menu bar → Overview → Review → act → Undo. Other screens: Documents, Activity and undo, Settings, Autopilot summary, menu-bar popover. Keep it tidy runs the same loop on a cadence: as it arrives, daily, weekly or only when asked.
+Welcome → Connect (Google) → Set up (two questions: what to help with, how much to do) → Overview while sorting → a Summary sheet when the first scan ends → the everyday loop: notification or menu bar → Overview → Review → act → Undo. Other screens: Documents, Activity and undo, Settings, Autopilot summary, menu-bar popover. Keep it tidy runs the same loop on a cadence: as it arrives, daily, weekly or only when asked.
 
 ## Scope
 - **v1**: macOS first, then Windows and Linux; light and dark; keyboard shortcuts; WCAG AA; multiple accounts with a unified view and per-account filters.

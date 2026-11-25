@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@pochimail/ui/components/dialog";
+import { TextField } from "@pochimail/ui/components/text-field";
 import { t } from "@pochimail/ui/i18n/format.ts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { XIcon } from "lucide-react";
@@ -27,6 +28,7 @@ const meta = {
           <DialogTitle>Archive 24 emails?</DialogTitle>
           <DialogDescription>Nothing is deleted. You can undo this at any time.</DialogDescription>
         </DialogHeader>
+        <TextField label="Note" hint="Shown in Activity." />
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>
@@ -49,4 +51,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Open: Story = { args: { defaultOpen: true } };
+// A dialog is portalled to <body>, outside any story wrapper: the theme comes from the toolbar global, not a `.dark` decorator.
+export const OpenDark: Story = { args: { defaultOpen: true }, globals: { theme: "dark" } };
 export const Closed: Story = {};

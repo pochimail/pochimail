@@ -96,7 +96,7 @@ function MascotProvider({
 
 const mascotVariants = cva("block h-auto select-none", {
   variants: {
-    size: { xs: "w-10", sm: "w-16", md: "w-32", lg: "w-45" },
+    size: { xs: "w-10", sm: "w-16", md: "w-32", lg: "w-60" },
   },
   defaultVariants: { size: "md" },
 });

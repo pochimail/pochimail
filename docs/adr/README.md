@@ -14,7 +14,7 @@ One file per decision. Accepted ADRs win.
 | 0008 | Notifications and privacy | Accepted |
 | 0009 | Store metadata, not mail | Superseded by 0014 |
 | 0010 | Saved attachments in user storage | Accepted |
-| 0011 | v1 providers: Google, Microsoft | Accepted |
+| 0011 | v1 providers: Gmail only | Accepted |
 | 0012 | Delete to Trash, with approval | Accepted |
 | 0013 | Unsubscribe: user decides | Accepted |
 | 0014 | Store reports, not mail | Accepted |

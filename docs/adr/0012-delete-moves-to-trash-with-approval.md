@@ -6,7 +6,7 @@ Status: Accepted (2026-11-19) · Changes "never delete" · Related: [ADR 0007](0
 Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that impossible.
 
 ## Decision
-- Pochimail can delete email. **Delete always means moving to the provider's Trash**: Gmail `users.messages.trash` (`gmail.modify`), Microsoft Graph move to Deleted Items (`Mail.ReadWrite`). No new scope.
+- Pochimail can delete email. **Delete always means moving to the provider's Trash**: Gmail `users.messages.trash` (`gmail.modify`), Microsoft Graph (v1.1) move to Deleted Items (`Mail.ReadWrite`). No new scope.
 - Never permanent deletion, never emptying the Trash, never Gmail's full-access scope (`https://mail.google.com/`).
 - **Every deletion is approved by the user** in a Review list (preview, checkboxes, one confirm). Autopilot never deletes.
 - **Protection comes from detected signals, not category names.** An email is never pre-selected for deletion when any is true; the user may still select it manually:

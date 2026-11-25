@@ -88,6 +88,7 @@ export const ALLOWED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
     "last_message_at",
     "vip",
   ],
+  settings: ["workspace_id", "data"],
   signal: ["workspace_id", "message_id", "kind", "confidence", "detected_at", "reason_code"],
   suggestion: [
     "workspace_id",

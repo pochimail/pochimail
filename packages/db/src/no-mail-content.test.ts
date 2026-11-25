@@ -216,10 +216,10 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     const failed = migrate(db);
     expect(failed.ok).toBe(false);
     if (!failed.ok) expect(failed.error.message).toBe("Database cleanup after migration failed");
-    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    expect(db.pragma("user_version", { simple: true })).toBe(7);
     reader.close();
 
-    expect(unwrap(migrate(db))).toEqual({ from: 6, to: 6 });
+    expect(unwrap(migrate(db))).toEqual({ from: 7, to: 7 });
     for (const marker of Object.values(OLD)) expect(fileBytes(path)).not.toContain(marker);
     db.close();
   });
@@ -234,7 +234,7 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     old.close();
 
     const storage = open(path);
-    expect(storage.writer.pragma("user_version", { simple: true })).toBe(6);
+    expect(storage.writer.pragma("user_version", { simple: true })).toBe(7);
     const objects = storage.writer
       .prepare(
         "SELECT name FROM sqlite_master WHERE name LIKE 'message_search%' OR name LIKE 'signal_search%'",

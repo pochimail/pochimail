@@ -72,8 +72,8 @@ const welcomeMetrics = (canvas: HTMLElement) => {
 };
 
 /**
- * Guards Welcome against docs/design/screens/html/Main.html (identical geometry in DarkWelcome.html and,
- * with the display step at 32px, PhoneWelcome.html). Runs in a real browser so Tailwind's computed
+ * Guards Welcome against docs/design/screens/html/Main.html (identical geometry in DarkWelcome.html and
+ * PhoneWelcome.html). Runs in a real browser so Tailwind's computed
  * measurements are authoritative. Only viewport-independent gaps/sizes are checked: the reference HTML
  * draws its own 24px window frame, which the real app leaves to Electron.
  */
@@ -116,8 +116,8 @@ const assertWelcomeGeometry = (canvas: HTMLElement) => {
   const header = box("header");
   const step = box("[aria-current=step]");
 
-  check("headline size", px("h1", "font-size"), phone ? 32 : 40);
-  check("headline leading", px("h1", "line-height"), phone ? 35.2 : 44);
+  check("headline size", px("h1", "font-size"), 40);
+  check("headline leading", px("h1", "line-height"), 44);
   check("mascot width", mascot?.width, 240, 1);
   check("mascot height", mascot?.height, 204, 1);
   check("description width", description?.width, descriptionWidth, 1);

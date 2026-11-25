@@ -8,13 +8,9 @@ export async function walkToSetup(page: Page): Promise<void> {
   await expect(page.getByRole("button", { name: copy("setup.start") })).toBeVisible();
 }
 
-/**
- * Setup's title is visible only while it has focus, so the first press anywhere else hides it and moves the page up by
- * its height: a click that lands on the button's top edge is lost. Focusing the button first lets the layout settle.
- */
+/** Setup → Overview: the click on Start needs no prior focus, because focus changes do not move the page. */
 export async function startSorting(page: Page): Promise<void> {
   const start = page.getByRole("button", { name: copy("setup.start") });
-  await start.focus();
   await start.click();
   await expect(page.getByRole("heading", { level: 1, name: copy("overview.title") })).toBeVisible();
 }
