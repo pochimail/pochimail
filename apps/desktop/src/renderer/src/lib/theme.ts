@@ -2,15 +2,23 @@ import type { Theme } from "#shared/settings.ts";
 
 const darkScheme = "(prefers-color-scheme: dark)";
 
-const prefersDark = (): boolean =>
+export const prefersDark = (): boolean =>
   typeof window.matchMedia === "function" && window.matchMedia(darkScheme).matches;
+
+/** What the screen actually shows for a preference: "system" resolves to the OS appearance. */
+export const resolveTheme = (theme: Theme, systemDark: boolean): "light" | "dark" =>
+  theme === "dark" || (theme === "system" && systemDark) ? "dark" : "light";
+
+/** For `useSyncExternalStore`: re-render when the OS appearance changes. */
+export const subscribeSystemDark = (onChange: () => void): (() => void) => {
+  const query = typeof window.matchMedia === "function" ? window.matchMedia(darkScheme) : undefined;
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+};
 
 /** The single synchronous writer of the root `.dark` class; safe to call inside a click handler. */
 export const applyTheme = (theme: Theme): void => {
-  document.documentElement.classList.toggle(
-    "dark",
-    theme === "dark" || (theme === "system" && prefersDark()),
-  );
+  document.documentElement.classList.toggle("dark", resolveTheme(theme, prefersDark()) === "dark");
 };
 
 /**

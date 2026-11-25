@@ -2,6 +2,8 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /**
@@ -27,6 +29,15 @@ export const fr = {
     [],
   ),
   "overview.review": entry("Examiner", []),
+  "review.counts.title": entry("Ce que j’ai trouvé", []),
+  "review.counts.toReview": entry("À examiner", []),
+  "review.counts.waiting": entry("Qui vous attendent", []),
+  "review.counts.deadlines": entry("Avec une échéance", []),
+  "review.counts.important": entry("De personnes importantes", []),
+  "review.cleanable.title": entry("À nettoyer sans risque", []),
+  ...reviewMessages.fr,
+  "review.loading": entry("Chargement de votre examen", []),
+  "review.error.title": entry("Je n’ai pas pu charger votre examen.", []),
   "overview.pause": entry("Pause", []),
   "overview.resume": entry("Reprendre", []),
   "overview.viewSummary": entry("Voir le résumé", []),
@@ -67,10 +78,7 @@ export const fr = {
   "overview.rec.newsletters.reason": entry("Des expéditeurs réguliers que vous pouvez quitter", []),
   "overview.rec.promotions.sentence": entry("Supprimer les anciennes promotions", []),
   "overview.rec.promotions.reason": entry("Des emails de ventes et de marketing", []),
-  "overview.rec.notifications.sentence": entry(
-    "Archiver les notifications d’applications et de réseaux sociaux",
-    [],
-  ),
+  "overview.rec.notifications.sentence": entry("Archiver les emails d’alerte", []),
   "overview.rec.notifications.reason": entry(
     "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
@@ -119,6 +127,7 @@ export const fr = {
   "onboarding.progress": entry("Étape {current} sur {total}", ["current", "total"]),
 
   ...connectMessages.fr,
+  ...storageMessages.fr,
   "setup.title": entry("Configuration", []),
   "setup.description": entry("Choisissez comment Pochi peut vous aider.", []),
   "setup.bubble": entry(
@@ -199,7 +208,7 @@ export const fr = {
   "category.records": entry("Documents officiels", []),
   "category.purchasesTravel": entry("Achats et voyages", []),
   "category.signInsSecurity": entry("Connexions et sécurité", []),
-  "category.notifications": entry("Notifications", []),
+  "category.notifications": entry("Emails d’alerte", []),
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Les emails de cette catégorie apparaîtront ici.", []),

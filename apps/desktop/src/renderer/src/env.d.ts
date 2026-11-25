@@ -7,6 +7,15 @@ interface Window {
     openMailAppLink: (link: string) => Promise<void>;
     showInFinder: (path: string) => Promise<void>;
     chooseFolder: () => Promise<string | null>;
+    /** The storage-protection prompt's calls (src/shared/storage-calls.ts); answers never carry key material. */
+    storage: {
+      status: () => Promise<import("#shared/storage-calls.ts").StorageStatus>;
+      setPassphrase: (
+        passphrase: string,
+      ) => Promise<import("#shared/storage-calls.ts").StorageOutcome>;
+      storeUnprotected: () => Promise<import("#shared/storage-calls.ts").StorageOutcome>;
+      unlock: (passphrase: string) => Promise<import("#shared/storage-calls.ts").StorageOutcome>;
+    };
   };
 }
 

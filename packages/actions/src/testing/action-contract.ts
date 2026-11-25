@@ -1,65 +1,13 @@
-import type { Clock } from "@pochimail/kernel/clock";
-import type { CancelSignal } from "@pochimail/kernel/common";
-import type { IdGenerator } from "@pochimail/kernel/id-generator";
-import { MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
 import { ActionId } from "../ids.ts";
-import type { Action, Command } from "../model/action.ts";
-import type { MailCommands } from "../ports/mail-commands.ts";
-import type { ActionsUnitOfWork } from "../ports/unit-of-work.ts";
-import { ApplyAction, type ApplyActionItem } from "../use-cases/apply-action.ts";
+import { ApplyAction } from "../use-cases/apply-action.ts";
 import { UndoAction } from "../use-cases/undo-action.ts";
-
-/**
- * What the suite needs from a mailbox + storage pair. Adapters (SQLite, real providers against
- * fixtures) implement it and run `describeActionUseCases` unchanged.
- */
-export interface ActionHarness {
-  readonly uow: ActionsUnitOfWork;
-  readonly provider: MailCommands;
-  readonly clock: Clock;
-  readonly ids: IdGenerator;
-  /** Mailbox state as the provider sees it. */
-  isArchived(messageId: string): Promise<boolean>;
-  /** Number of mutations the provider actually performed (replays must not add any). */
-  mutations(): number;
-  /** Makes the provider fail for every command touching one of these messages. */
-  failFor(messageIds: readonly string[]): void;
-}
-
-const signal: CancelSignal = {
-  aborted: false,
-  addEventListener() {},
-  removeEventListener() {},
-};
-const ws = unwrap(WorkspaceId("wsp_1"));
-const confirmed: ApplyActionItem["authorization"] = {
-  autonomy: "suggest",
-  categories: ["newsletters"],
-  protectedCategories: ["people"],
-  confidence: 0.95,
-  userConfirmed: true,
-};
-
-function item(
-  n: number,
-  kind: Command["kind"],
-  authorization: ApplyActionItem["authorization"] = confirmed,
-  key = `key-${n}`,
-): ApplyActionItem {
-  const action: Action = {
-    schemaVersion: 1,
-    id: unwrap(ActionId(`act_${n}`)),
-    workspaceId: ws,
-    idempotencyKey: key,
-    command: { kind, messageIds: [unwrap(MessageId(`m${n}`))] },
-    createdAt: "2026-11-17T10:00:00.000Z",
-  };
-  return { action, authorization };
-}
+import { type ActionHarness, confirmed, item, signal, ws } from "./contract-support.ts";
+import { describeCrashRecovery } from "./crash-recovery-contract.ts";
 
 export function describeActionUseCases(name: string, create: () => ActionHarness): void {
+  describeCrashRecovery(name, create);
   describe(`action use cases: ${name}`, () => {
     const usecases = (h: ActionHarness) => ({
       apply: new ApplyAction(h),
@@ -100,7 +48,14 @@ export function describeActionUseCases(name: string, create: () => ActionHarness
       );
       expect(report.outcomes.map((o) => o.status)).toEqual(["applied", "failed", "applied"]);
       const logged = unwrap(await h.uow.reads.actionLog.listForBatch(ws, "b1"));
-      expect(logged.map((e) => e.outcome)).toEqual(["applied", "failed", "applied"]);
+      expect(logged.map((e) => e.outcome)).toEqual([
+        "pending",
+        "applied",
+        "pending",
+        "failed",
+        "pending",
+        "applied",
+      ]);
 
       const before = h.mutations();
       const undone = unwrap(await undo.execute({ workspaceId: ws, batchId: "b1" }, signal));

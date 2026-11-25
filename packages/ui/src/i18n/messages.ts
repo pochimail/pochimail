@@ -1,6 +1,8 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
@@ -45,6 +47,15 @@ export const messages = {
     [],
   ),
   "overview.review": entry("Review", []),
+  "review.counts.title": entry("What I found", []),
+  "review.counts.toReview": entry("To review", []),
+  "review.counts.waiting": entry("Waiting on you", []),
+  "review.counts.deadlines": entry("With deadlines", []),
+  "review.counts.important": entry("From important people", []),
+  "review.cleanable.title": entry("Safe to clean up", []),
+  ...reviewMessages.en,
+  "review.loading": entry("Loading your review", []),
+  "review.error.title": entry("I could not load your review.", []),
   "overview.pause": entry("Pause", []),
   "overview.resume": entry("Resume", []),
   "overview.viewSummary": entry("View summary", []),
@@ -82,7 +93,7 @@ export const messages = {
   "overview.rec.newsletters.reason": entry("Regular senders you can leave", []),
   "overview.rec.promotions.sentence": entry("Delete old promotions", []),
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
-  "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
+  "overview.rec.notifications.sentence": entry("Archive alert emails", []),
   "overview.rec.notifications.reason": entry(
     "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
@@ -122,6 +133,7 @@ export const messages = {
   "welcome.openSource": entry("Free and open source", []),
   "onboarding.progress": entry("Step {current} of {total}", ["current", "total"]),
   ...connectMessages.en,
+  ...storageMessages.en,
   "setup.title": entry("Set up", []),
   "setup.description": entry("Choose how Pochi can help.", []),
   "setup.bubble": entry(
@@ -189,7 +201,7 @@ export const messages = {
   "category.records": entry("Records", []),
   "category.purchasesTravel": entry("Purchases & travel", []),
   "category.signInsSecurity": entry("Sign-ins & security", []),
-  "category.notifications": entry("Notifications", []),
+  "category.notifications": entry("Alert emails", []),
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Emails in this category will appear here.", []),

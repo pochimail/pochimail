@@ -88,6 +88,23 @@ export function createHandlers(deps: HandlerDeps): Handlers {
         );
         return { ...overview, cleanable: [...overview.cleanable] };
       },
+      "review.get": async (input) => {
+        const account =
+          input.accountId === undefined ? undefined : unwrapOrThrow(AccountId(input.accountId));
+        const overview = unwrapOrThrow(await deps.getOverview.execute(workspaceId, account));
+        const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
+        // This only knows whether an account is stored for the selection; there is no session probe
+        // here, so say so plainly instead of claiming a connection is needed or missing (ADR 0002).
+        const hasAccount = accounts.some((item) => account === undefined || item.id === account);
+        return {
+          toReview: overview.toReview,
+          waiting: overview.waiting,
+          deadlines: overview.deadlines,
+          important: overview.important,
+          cleanable: [...overview.cleanable],
+          noAccount: !hasAccount,
+        };
+      },
       "mailbox.categories": async ({ accountIds }) => {
         return unwrapOrThrow(
           await deps.categories.execute(

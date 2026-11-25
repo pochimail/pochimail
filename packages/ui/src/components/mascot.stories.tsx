@@ -1,6 +1,7 @@
 import { MotionProvider } from "@pochimail/ui/components/motion-provider";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Mascot, MascotProvider } from "./mascot";
+import { darkDecorator } from "./story-utils";
 
 const meta = {
   title: "Components/Mascot",
@@ -16,6 +17,8 @@ export const Happy: Story = { args: { pose: "happy" } };
 export const Reading: Story = { args: { pose: "reading" } };
 export const Saving: Story = { args: { pose: "saving" } };
 export const Night: Story = { args: { pose: "night" } };
+
+export const NightDark: Story = { args: { pose: "night" }, decorators: [darkDecorator] };
 
 export const Small: Story = { args: { size: "sm" } };
 export const Large: Story = { args: { size: "lg" } };

@@ -1,12 +1,11 @@
-import type { OutputOf } from "#shared/ipc/contract.ts";
-
-type Provider = OutputOf<"accounts.list">[number]["provider"];
+import { MailIcon } from "lucide-react";
 
 /**
- * The provider marks from the account-switcher reference (docs/design/screens/html).
+ * The provider marks from the account-switcher reference (docs/design/screens/html); any other
+ * provider gets a generic mail icon.
  * Decorative: the account name beside it stays the accessible name of the row.
  */
-export function ProviderIcon({ provider }: { provider: Provider }) {
+export function ProviderIcon({ provider }: { provider: string }) {
   if (provider === "google") {
     return (
       <svg
@@ -34,6 +33,16 @@ export function ProviderIcon({ provider }: { provider: Provider }) {
           d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
         />
       </svg>
+    );
+  }
+  if (provider !== "microsoft") {
+    return (
+      <MailIcon
+        aria-hidden="true"
+        className="size-4 shrink-0"
+        data-provider="generic"
+        data-slot="provider-icon"
+      />
     );
   }
   return (

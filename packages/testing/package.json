@@ -20,6 +20,7 @@
     "./event-samples": "./src/event-samples.ts",
     "./exporter-contract": "./src/exporter-contract.ts",
     "./fake-clock": "./src/fake-clock.ts",
+    "./fake-display-fields-reader": "./src/fake-display-fields-reader.ts",
     "./fake-exporter": "./src/fake-exporter.ts",
     "./fake-gmail-server": "./src/fake-gmail-server.ts",
     "./fake-mail-provider": "./src/fake-mail-provider.ts",

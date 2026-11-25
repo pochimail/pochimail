@@ -16,6 +16,7 @@
     "./ports/unit-of-work": "./src/ports/unit-of-work.ts",
     "./use-cases/apply-action": "./src/use-cases/apply-action.ts",
     "./use-cases/record-entry": "./src/use-cases/record-entry.ts",
+    "./use-cases/resolve-pending-actions": "./src/use-cases/resolve-pending-actions.ts",
     "./use-cases/undo-action": "./src/use-cases/undo-action.ts",
     "./testing/*": "./src/testing/*.ts"
   },

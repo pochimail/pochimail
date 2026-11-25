@@ -1,5 +1,7 @@
 import { accountRepositoryContract } from "@pochimail/accounts/testing/account-repository-contract";
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
+import { describeActionUseCases } from "@pochimail/actions/testing/action-contract";
+import { BASE_CAPABILITIES, createActionHarness } from "@pochimail/actions/testing/action-harness";
 import { AiUnavailable } from "@pochimail/classification/errors";
 import { type Category, PROTECTED_CATEGORIES } from "@pochimail/classification/model/category";
 import { derivedContract } from "@pochimail/classification/testing/derived-contract";
@@ -7,8 +9,11 @@ import { createGroundTruthClassifier } from "@pochimail/classification/testing/g
 import { signalRepositoryContract } from "@pochimail/classification/testing/signal-repository-contract";
 import { signalsContract } from "@pochimail/classification/testing/signals-contract";
 import { signalsSafetyContract } from "@pochimail/classification/testing/signals-safety-contract";
+import type { KeepRuleRepository } from "@pochimail/cleanup/ports/keep-rule-repository";
 import { digestContract } from "@pochimail/cleanup/testing/digest-contract";
 import { digestStateContract } from "@pochimail/cleanup/testing/digest-state-contract";
+import { createInMemoryKeepRuleRepository } from "@pochimail/cleanup/testing/in-memory-keep-rule-repository";
+import { keepRuleRepositoryContract } from "@pochimail/cleanup/testing/keep-rule-repository-contract";
 import { suggestionRepositoryContract } from "@pochimail/cleanup/testing/suggestion-repository-contract";
 import { suggestionsContract } from "@pochimail/cleanup/testing/suggestions-contract";
 import type { ProviderError } from "@pochimail/kernel/errors";
@@ -21,8 +26,19 @@ import { runSyncContract } from "@pochimail/testing/sync-contract";
 import { harness, uowHarness } from "./test-support/harness.ts";
 import { classificationSeeder, cleanupSeeder } from "./test-support/seeders.ts";
 
+// Keep rules are a standalone port: prove the in-memory adapter and the SQLite one agree.
+const sqliteKeepRules = (h: ReturnType<typeof harness>): KeepRuleRepository => ({
+  list: (ws, account, hash) => h.uow.run((tx) => tx.keepRules.list(ws, account, hash)),
+  save: (rule) => h.uow.run((tx) => tx.keepRules.save(rule)),
+});
+keepRuleRepositoryContract(createInMemoryKeepRuleRepository);
+keepRuleRepositoryContract(() => sqliteKeepRules(harness()));
+
 // The domain packages' own repository contracts, then every exported contract suite, unchanged, against SQLite (none skipped).
 accountRepositoryContract(uowHarness);
+describeActionUseCases("sqlite", () =>
+  createActionHarness({ ...BASE_CAPABILITIES, batchModify: null }, harness().uow),
+);
 mailboxRepositoryContract(uowHarness);
 repositoriesContract(uowHarness);
 figuresContract(uowHarness);

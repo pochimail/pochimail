@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
 import type { EventOf, OutputOf } from "#shared/ipc/contract.ts";
 import { serveRpc } from "#shared/ipc/server.ts";
@@ -9,7 +9,10 @@ import { fromDomPort } from "#shared/ipc/transport.ts";
 import { App } from "../../app/app.tsx";
 import { createAppRouter } from "../../router.tsx";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 type Counts = OutputOf<"mailbox.categories">;
 const zero: Counts = {
@@ -127,6 +130,18 @@ describe("Pochi in the signed-in shell", () => {
     await waitFor(() => expect(mascot?.getAttribute("data-pose")).toBe("night"));
   });
 
+  // Guards: System-dark users getting the cream pose because the pose read the preference, not the resolved theme.
+  it("uses the night pose when System resolves to the OS dark appearance", async () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    setup("/overview", "system");
+    const mascot = await brandMascot();
+    await waitFor(() => expect(mascot?.getAttribute("data-pose")).toBe("night"));
+  });
+
   it("uses the reading pose on Documents (guards a context-blind mascot)", async () => {
     setup("/documents");
     const mascot = await brandMascot();
@@ -227,6 +242,42 @@ describe("app frame", () => {
         .getByRole("menuitemradio", { name: "All accounts" })
         .querySelector("[data-slot=provider-icon]"),
     ).toBeNull();
+  });
+
+  it("shows the selected account's provider logo in the trigger and the users icon for All accounts (guards a trigger that ignores the account)", async () => {
+    setup();
+    await sidebar();
+    const trigger = () => screen.getByRole("button", { name: /^Account: / });
+    expect(trigger().querySelector("[data-slot=provider-icon]")).toBeNull();
+
+    await userEvent.click(trigger());
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "ann@work.example.test" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Account: ann@work.example.test" })
+          .querySelector(
+            '[data-slot="provider-icon"][data-provider="microsoft"][aria-hidden="true"]',
+          ),
+      ).not.toBeNull(),
+    );
+
+    await userEvent.click(trigger());
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "ann@example.test" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Account: ann@example.test" })
+          .querySelector('[data-slot="provider-icon"][data-provider="google"]'),
+      ).not.toBeNull(),
+    );
+
+    await userEvent.click(trigger());
+    await userEvent.click(await screen.findByRole("menuitemradio", { name: "All accounts" }));
+    await waitFor(() => expect(trigger().querySelector("[data-slot=provider-icon]")).toBeNull());
+    expect(trigger().querySelector("svg.lucide-users")).not.toBeNull();
   });
 
   it("marks only the current screen with aria-current (guards a wrong or missing active item)", async () => {

@@ -2,6 +2,8 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /**
@@ -26,6 +28,15 @@ export const ja = {
     [],
   ),
   "overview.review": entry("確認する", []),
+  "review.counts.title": entry("見つけたもの", []),
+  "review.counts.toReview": entry("確認するもの", []),
+  "review.counts.waiting": entry("返信を待っているもの", []),
+  "review.counts.deadlines": entry("期限のあるもの", []),
+  "review.counts.important": entry("大切な人からのもの", []),
+  "review.cleanable.title": entry("整理できるもの", []),
+  ...reviewMessages.ja,
+  "review.loading": entry("確認する内容を読み込んでいます", []),
+  "review.error.title": entry("確認する内容を読み込めませんでした。", []),
   "overview.pause": entry("一時停止", []),
   "overview.resume": entry("再開", []),
   "overview.viewSummary": entry("まとめを見る", []),
@@ -59,9 +70,9 @@ export const ja = {
   "overview.rec.newsletters.reason": entry("退会できる定期配信の送信元です", []),
   "overview.rec.promotions.sentence": entry("古い広告メールを削除する", []),
   "overview.rec.promotions.reason": entry("セールや宣伝のメールです", []),
-  "overview.rec.notifications.sentence": entry("アプリやSNSからの通知をアーカイブする", []),
+  "overview.rec.notifications.sentence": entry("通知メールをアーカイブする", []),
   "overview.rec.notifications.reason": entry(
-    "自動送信された通知で、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
+    "自動送信された通知メールで、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
     [],
   ),
   "overview.rec.signins.sentence": entry("期限切れのログインコードを削除する", []),
@@ -105,6 +116,7 @@ export const ja = {
   "onboarding.progress": entry("ステップ{current}／{total}", ["current", "total"]),
 
   ...connectMessages.ja,
+  ...storageMessages.ja,
   "setup.title": entry("設定", []),
   "setup.description": entry("Pochiにどのように手伝ってほしいか選んでください。", []),
   "setup.bubble": entry(
@@ -176,7 +188,7 @@ export const ja = {
   "category.records": entry("記録", []),
   "category.purchasesTravel": entry("購入・旅行", []),
   "category.signInsSecurity": entry("サインイン・セキュリティ", []),
-  "category.notifications": entry("通知", []),
+  "category.notifications": entry("通知メール", []),
   "category.newsletters": entry("ニュースレター", []),
   "category.promotions": entry("プロモーション", []),
   "category.placeholder": entry("このカテゴリのメールがここに表示されます。", []),

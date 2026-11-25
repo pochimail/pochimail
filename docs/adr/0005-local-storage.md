@@ -13,6 +13,8 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 - **Backups**: none in v1. "Export my data" writes settings and history as JSON.
 - The packaging smoke test opens the encrypted database inside the packaged app on three OSes and checks wrong-key rejection and a non-plaintext header.
 
+- **Prompt IPC**: the passphrase prompt runs before the worker exists, so it cannot use the worker contract. Main serves four calls (`storage:*`), zod-validated, answering status words only, refused from any frame that is not the app page. One text field component (`TextField`, design PR #162) serves the prompt.
+
 ## Consequences
 The database is a cache of the mailbox plus the action log. Windows and Linux arm64 and the Linux libsecret path are not covered by CI yet.
 

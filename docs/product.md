@@ -9,7 +9,7 @@ Pochimail is a private assistant that gives you the big picture of your email ac
 
 ## Jobs (chosen at setup, any combination)
 1. **Catch what matters**: people waiting on you, threads waiting on others, deadlines, important senders.
-2. **Declutter**: unsubscribe, archive old notifications, delete what is useless.
+2. **Declutter**: unsubscribe, archive old alert emails, delete what is useless.
 3. **Organize**: topics applied as real provider labels; types drive actions ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)).
 4. **Save documents**: invoices, contracts, IDs, payslips, saved to a folder the user chooses ([ADR 0010](adr/0010-saved-attachments-go-to-user-storage.md)).
 
@@ -24,7 +24,7 @@ Pochimail is a private assistant that gives you the big picture of your email ac
 - Every batch is previewed, every action is logged and undoable. Unsubscribe is the exception and the UI says so first ([ADR 0013](adr/0013-unsubscribe-suggested-user-decides.md)).
 
 ## Mail model
-- **Types, signals and topics** ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)): every email has one of five types (personal, transactional, notification, newsletter, promotion), per-email signals that drive protection, and topics discovered from the user's own mailbox. *Suspicious* is a flag. Only types and topics that contain email are shown. The seven categories still in the code are replaced by #100.
+- **Types, signals and topics** ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)): every email has one of five types (personal, transactional, notification (shown as Alert emails), newsletter, promotion), per-email signals that drive protection, and topics discovered from the user's own mailbox. *Suspicious* is a flag. Only types and topics that contain email are shown. The seven categories still in the code are replaced by #100.
 - **Topics** (any number, user-editable): Job search, Work, Finance, Home, Health, Travel, Family, Projects…
 - **Signals** (computed): needs a reply, waiting on them, important sender, has a document, time-sensitive, old and never opened.
 - Classification is local, cheapest first: rules, then calibrated decision heads, then a small local LLM ([ADR 0006](adr/0006-local-ai-runtimes-and-models.md)). It learns from the user's corrections, on the device.

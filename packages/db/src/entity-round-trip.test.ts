@@ -6,6 +6,7 @@ import { unwrap } from "@pochimail/kernel/result";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
 import { entityRoundTripContract } from "@pochimail/testing/entity-contract";
 import { afterAll } from "vitest";
+import { DisplayFieldsCache } from "./mailbox/display-fields-cache.ts";
 import { openStorage, type Storage } from "./open-storage.ts";
 import { createSqliteCore } from "./sqlite-repositories.ts";
 
@@ -25,7 +26,14 @@ function sqliteRoundTrip() {
     if (shared === undefined) {
       const dir = mkdtempSync(join(tmpdir(), "pochimail-entities-"));
       const storage = unwrap(openStorage(join(dir, "pochimail.db"), Buffer.alloc(32, 4)));
-      shared = { storage, core: createSqliteCore(storage.writer), dir };
+      shared = {
+        storage,
+        core: createSqliteCore(storage.writer, {
+          cache: new DisplayFieldsCache(),
+          senderHasher: storage.senderHasher,
+        }),
+        dir,
+      };
     }
     return shared.core;
   };

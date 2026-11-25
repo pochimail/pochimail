@@ -36,7 +36,7 @@ import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import {
-  BellIcon,
+  AtSignIcon,
   ChevronDownIcon,
   FileTextIcon,
   KeyRoundIcon,
@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
 import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
+import { isMacDesktop } from "../../lib/platform.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ProviderIcon } from "./provider-icon.tsx";
@@ -64,7 +65,7 @@ const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }>
   records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
   "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
   "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
-  notifications: { label: CATEGORY_LABELS.notifications, icon: BellIcon },
+  notifications: { label: CATEGORY_LABELS.notifications, icon: AtSignIcon },
   newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
   promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
 };
@@ -154,7 +155,8 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
     enabled: accounts.isSuccess,
   });
   const categories = visibleCategories(counts.data);
-  const currentLabel = accountList.find((a) => a.id === selected)?.displayName ?? t("switcher.all");
+  const current = accountList.find((a) => a.id === selected);
+  const currentLabel = current?.displayName ?? t("switcher.all");
   const selectAccount = (next: string) =>
     void navigate({
       to: ".",
@@ -165,7 +167,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
     });
   useRefreshCategoriesWhileScanning(accountList);
 
-  const isMacDesktop = /Macintosh/.test(navigator.userAgent);
+  const onMac = isMacDesktop();
 
   return (
     <SidebarProvider>
@@ -174,7 +176,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
         <Sidebar>
           <SidebarHeader
             className={
-              isMacDesktop
+              onMac
                 ? "pt-12 [-webkit-app-region:drag] [app-region:drag] [&_a]:[-webkit-app-region:no-drag] [&_a]:[app-region:no-drag] [&_button]:[-webkit-app-region:no-drag] [&_button]:[app-region:no-drag]"
                 : undefined
             }
@@ -185,7 +187,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
             </SidebarBrand>
             <AccountSwitcher>
               <AccountSwitcherTrigger aria-label={`${t("switcher.menu")}: ${currentLabel}`}>
-                <UsersIcon aria-hidden="true" />
+                {current ? <ProviderIcon provider={current.provider} /> : <UsersIcon aria-hidden />}
                 <AccountSwitcherLabel>{currentLabel}</AccountSwitcherLabel>
                 <ChevronDownIcon aria-hidden="true" className="@min-phone:@max-desktop:hidden" />
               </AccountSwitcherTrigger>

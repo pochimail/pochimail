@@ -1,24 +1,33 @@
 import { type StoredSignal, signalSchema } from "@pochimail/classification/model/signal";
 import type { Database } from "better-sqlite3-multiple-ciphers";
-import { z } from "zod";
+import { reasonCode } from "../shared/reason-code.ts";
+import type { RepositoryContext } from "../shared/repository-context.ts";
 import { CHUNK, guard, type Row, sqlHelpers } from "../shared/sql.ts";
+import { text } from "../shared/values.ts";
 
-const signalOf = (r: Row): StoredSignal => ({
-  ...signalSchema.parse({
-    schemaVersion: 1,
-    workspaceId: r.workspace_id,
-    messageId: r.message_id,
-    kind: r.kind,
-    confidence: r.confidence,
-    detectedAt: r.detected_at,
-  }),
-  reason: z.string().parse(r.reason),
-});
+const signalId = (messageId: string, kind: string) => `${messageId}/${kind}`;
 
-/** Repository over one connection. */
-export function createSignalRepository(db: Database) {
+const signalOf = (r: Row, context: RepositoryContext): StoredSignal => {
+  const ws = text(r.workspace_id);
+  const messageId = text(r.message_id);
+  const kind = text(r.kind);
+  const cached = context.cache.ofFields("signal", ws, signalId(messageId, kind));
+  return {
+    ...signalSchema.parse({
+      schemaVersion: 1,
+      workspaceId: ws,
+      messageId,
+      kind,
+      confidence: r.confidence,
+      detectedAt: r.detected_at,
+    }),
+    ...(cached.reason === undefined ? {} : { reason: cached.reason }),
+  };
+};
+
+/** Repository over one connection. The code identifies a rule; only the live cache holds its text. */
+export function createSignalRepository(db: Database, context: RepositoryContext) {
   const { all, run, atomic } = sqlHelpers(db);
-  // ---- signals ----
   const replaceSignals = atomic(
     (ws: string, ids: readonly string[], rows: readonly StoredSignal[]) => {
       for (let i = 0; i < ids.length; i += CHUNK)
@@ -27,21 +36,27 @@ export function createSignalRepository(db: Database) {
           ws,
           JSON.stringify(ids.slice(i, i + CHUNK)),
         );
-      for (const s of rows)
+      for (const s of rows) {
+        if (s.reason !== undefined)
+          context.cache.rememberFields("signal", ws, signalId(s.messageId, s.kind), {
+            reason: s.reason,
+          });
         run(
-          `INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason) VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT (workspace_id, message_id, kind) DO UPDATE SET confidence = excluded.confidence,
-           detected_at = excluded.detected_at, reason = excluded.reason`,
+          `INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason_code)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (workspace_id, message_id, kind) DO UPDATE SET confidence = excluded.confidence,
+             detected_at = excluded.detected_at, reason_code = excluded.reason_code`,
           s.workspaceId,
           s.messageId,
           s.kind,
           s.confidence,
           s.detectedAt,
-          s.reason,
+          s.reason === undefined ? "" : reasonCode(s.reason),
         );
+      }
     },
   );
-  const signals = {
+  return {
     listForMessages: (ws: string, ids: readonly string[]) =>
       guard(() => {
         const out: StoredSignal[] = [];
@@ -51,7 +66,7 @@ export function createSignalRepository(db: Database) {
               "SELECT * FROM signal WHERE workspace_id = ? AND message_id IN (SELECT value FROM json_each(?))",
               ws,
               JSON.stringify(ids.slice(i, i + CHUNK)),
-            ).map(signalOf),
+            ).map((r) => signalOf(r, context)),
           );
         return out.sort(
           (a, b) =>
@@ -62,6 +77,4 @@ export function createSignalRepository(db: Database) {
     replaceForMessages: (ws: string, ids: readonly string[], rows: readonly StoredSignal[]) =>
       guard(() => replaceSignals(ws, ids, rows)),
   };
-
-  return signals;
 }

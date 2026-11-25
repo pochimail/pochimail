@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 
 describe("preload surface", () => {
-  // Guards: the page must only ever see these four methods; any new key (or a leaked ipcRenderer/Node) widens the attack surface.
+  // Guards: the page must only ever see these methods; any new key (or a leaked ipcRenderer/Node) widens the attack surface.
   it("exposes one object with exactly the allowed methods and nothing else", async () => {
     await import("./preload.ts");
     expect(exposed).toHaveLength(1);
@@ -25,8 +25,16 @@ describe("preload surface", () => {
       "openMailAppLink",
       "requestWorkerPort",
       "showInFinder",
+      "storage",
     ]);
-    for (const value of Object.values(api)) expect(typeof value).toBe("function");
+    for (const [name, value] of Object.entries(api))
+      if (name !== "storage") expect(typeof value).toBe("function");
+    expect(Object.keys(api.storage as object).sort()).toEqual([
+      "setPassphrase",
+      "status",
+      "storeUnprotected",
+      "unlock",
+    ]);
     for (const leaked of ["ipcRenderer", "require", "process", "electron", "send", "invoke", "on"])
       expect(api).not.toHaveProperty(leaked);
   });
@@ -67,5 +75,31 @@ describe("preload surface", () => {
     await expect(api.chooseFolder()).rejects.toThrow();
     vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("/Users/me/Exports");
     await expect(api.chooseFolder()).resolves.toBe("/Users/me/Exports");
+  });
+
+  // Guards: a short passphrase reaching main, or an answer carrying anything but a status word back to the page.
+  it("validates storage arguments before main and storage answers before the page", async () => {
+    const { ipcRenderer } = await import("electron");
+    await import("./preload.ts");
+    const api = exposed[0]?.[1] as {
+      storage: {
+        setPassphrase: (value: string) => Promise<string>;
+        unlock: (value: string) => Promise<string>;
+        status: () => Promise<string>;
+      };
+    };
+    const { storage } = api;
+    vi.mocked(ipcRenderer.invoke).mockClear();
+    await expect(storage.setPassphrase("elevenchars")).rejects.toThrow();
+    await expect(storage.unlock("x".repeat(257))).rejects.toThrow();
+    expect(ipcRenderer.invoke).not.toHaveBeenCalled();
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("0123456789abcdef");
+    await expect(storage.status()).rejects.toThrow();
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("ready");
+    await expect(storage.setPassphrase("twelve chars")).resolves.toBe("ready");
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("wrong-passphrase");
+    await expect(storage.unlock("short")).resolves.toBe("wrong-passphrase");
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("blocked");
+    await expect(storage.status()).resolves.toBe("blocked");
   });
 });

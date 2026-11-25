@@ -8,12 +8,13 @@ const startSchema = z.object({
   type: z.literal("start"),
   /** The per-user database file, chosen by main from Electron's userData (never read from the ambient environment). */
   databasePath: z.string().min(1),
-  databaseKeyHex: z.string().optional(),
+  /** Raw key bytes, as main holds them; the worker zeroes them once the database is open. */
+  databaseKey: z.instanceof(Uint8Array).optional(),
 });
 
 export type WorkerStart = {
   readonly databasePath: string;
-  /** Undefined when main could not protect a key; the worker must not open the database then. */
+  /** Undefined when main could not protect a key; the worker must not open the database then. Zeroed after the database is opened. */
   databaseKey: Buffer | undefined;
   secrets: SecretStore & { protection: () => Promise<ProtectionState> };
   /** Asks main to open a provider consent page in the system browser (never in an app window). */
@@ -57,9 +58,13 @@ export const acceptStart = (
     onStart({
       databasePath: parsed.data.databasePath,
       databaseKey:
-        parsed.data.databaseKeyHex === undefined
+        parsed.data.databaseKey === undefined
           ? undefined
-          : Buffer.from(parsed.data.databaseKeyHex, "hex"),
+          : Buffer.from(
+              parsed.data.databaseKey.buffer,
+              parsed.data.databaseKey.byteOffset,
+              parsed.data.databaseKey.byteLength,
+            ),
       secrets: createWorkerSecretStore(transport),
       openBrowser: createBrowserOpener(transport),
     });

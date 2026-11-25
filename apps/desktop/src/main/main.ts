@@ -1,6 +1,3 @@
-import { randomBytes } from "node:crypto";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createLogger } from "@pochimail/logger/logger";
 import { t } from "@pochimail/ui/i18n/format.ts";
@@ -32,7 +29,9 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
-import { keyProtection, loadOrCreateDatabaseKey } from "./storage-key.ts";
+import { smokeStorage } from "./smoke-storage.ts";
+import { registerStorageCalls } from "./storage-calls.ts";
+import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
 import { linkWorkerOnEveryLoad } from "./worker-link.ts";
 import { bootWorker } from "./worker-start.ts";
@@ -88,6 +87,20 @@ const processSecretVault = (): SecretVault => {
     logger,
   });
   return secretVault;
+};
+
+// One gate per process: every window's worker waits on the same choice, and the person is asked at most once.
+let storageGate: StorageGate | undefined;
+const processStorageGate = (): StorageGate => {
+  const userData = app.getPath("userData");
+  storageGate ??= createStorageGate({
+    vault: safeStorage,
+    platform: process.platform,
+    directory: userData,
+    databaseFile: databasePathFor(userData),
+    logger,
+  });
+  return storageGate;
 };
 
 // Demo mode (fixture mailbox, no real account) is for dev and E2E only: a packaged app never honours it.
@@ -153,13 +166,7 @@ const connectWorker = (window: BrowserWindow): void => {
     worker,
     secrets: processSecretVault(),
     databasePath,
-    loadKey: () =>
-      loadOrCreateDatabaseKey(
-        safeStorage,
-        join(userData, "db.key"),
-        process.platform,
-        databasePath,
-      ),
+    loadKey: () => processStorageGate().key(),
     createChannel: () => new MessageChannelMain(),
     // Sign-in consent opens in the user's browser, never in an app window (ADR 0007).
     openExternal: (url) => shell.openExternal(url),
@@ -169,40 +176,6 @@ const connectWorker = (window: BrowserWindow): void => {
     modelHost.stop();
     worker.kill();
   });
-};
-
-/** Packaging smoke (M0-12): key from safeStorage, then the encrypted-database proof inside a utilityProcess of the packaged app. */
-const smokeStorage = async (): Promise<void> => {
-  const dir = mkdtempSync(join(tmpdir(), "pochimail-smoke-"));
-  const protection = await keyProtection(safeStorage, process.platform);
-  // Without a keychain (Linux basic_text) the real app must ask first; the smoke still proves the driver with a throwaway key.
-  const loaded = await loadOrCreateDatabaseKey(
-    safeStorage,
-    join(dir, "db.key"),
-    process.platform,
-    join(dir, "smoke.db"),
-  );
-  const key = (loaded.ok ? loaded.value : undefined) ?? randomBytes(32);
-  const child = utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
-    serviceName: "pochimail-storage-smoke",
-  });
-  try {
-    const result = await new Promise<unknown>((resolve) => {
-      child.once("message", resolve);
-      child.once("exit", (code) =>
-        resolve({ ok: false, error: `storage worker exited with ${code}` }),
-      );
-      child.postMessage({
-        path: join(dir, "smoke.db"),
-        keyHex: key.toString("hex"),
-        rows: 100_000,
-      });
-    });
-    process.stdout.write(`smoke:storage ${JSON.stringify({ protection, result })}\n`);
-  } finally {
-    child.kill();
-    rmSync(dir, { recursive: true, force: true });
-  }
 };
 
 const createWindow = (): void => {
@@ -227,7 +200,13 @@ const createWindow = (): void => {
   if (process.env.POCHIMAIL_SMOKE === "1")
     window.webContents.once("did-finish-load", () => {
       process.stdout.write("smoke:window-loaded\n");
-      void smokeStorage().finally(() => app.quit());
+      void smokeStorage({
+        vault: safeStorage,
+        fork: () =>
+          utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
+            serviceName: "pochimail-storage-smoke",
+          }),
+      }).finally(() => app.quit());
     });
   if (devServerUrl === undefined) void window.loadFile(rendererFile);
   else void window.loadURL(devServerUrl);
@@ -254,6 +233,11 @@ void app.whenReady().then(() => {
     },
     isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
     appDataDirs: () => [app.getPath("userData")],
+  });
+  registerStorageCalls({
+    ipc: ipcMain,
+    gate: processStorageGate(),
+    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
   });
   createWindow();
   const locale = localeFromLanguages(app.getPreferredSystemLanguages());
@@ -289,6 +273,7 @@ void app.whenReady().then(() => {
     quit: () => app.quit(),
   });
   app.on("will-quit", appTray.dispose);
+  app.on("will-quit", () => processStorageGate().dispose());
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

@@ -8,9 +8,10 @@ import type { JobRequest } from "@pochimail/pipeline/job-queue";
 import type { OutboxEntry, OutboxRecord, OutboxStore } from "@pochimail/pipeline/outbox";
 import { eventSinkOver } from "@pochimail/pipeline/outbox-event-sink";
 import { z } from "zod";
+import { DisplayFieldsCache } from "./mailbox/display-fields-cache.ts";
 import { exclusiveResult, type Storage } from "./open-storage.ts";
 import { accountIdOf, guardPayload } from "./payload-guard.ts";
-import { createSqliteRepositories, type MessageSearch } from "./sqlite-repositories.ts";
+import { createSqliteRepositories } from "./sqlite-repositories.ts";
 import type { Transaction, UnitOfWork } from "./unit-of-work-types.ts";
 
 // Rows are parsed at the boundary. Events are loosely typed on purpose: the catalog (core) owns
@@ -52,8 +53,6 @@ export interface SqliteUnitOfWork {
   readonly uow: UnitOfWork;
   /** The relay's view: undelivered rows in append order, and marking them delivered. */
   readonly outboxStore: OutboxStore;
-  /** Full-text search over metadata and derived data, on the read-only connection. */
-  readonly search: MessageSearch;
 }
 
 /**
@@ -66,9 +65,13 @@ export function createSqliteUnitOfWork(
   storage: Storage,
   clock: Clock = { now: () => new Date() },
 ): SqliteUnitOfWork {
-  const readSide = createSqliteRepositories(storage.reader);
-  const read = readSide.reads;
-  const write = createSqliteRepositories(storage.writer).writes;
+  // One cache for this unit of work: a write and the reads that follow it see the same private
+  // fields, while a new unit of work after a restart sees none (ADR 0014).
+  const cache = new DisplayFieldsCache();
+  const context = { cache, senderHasher: storage.senderHasher };
+  const read = createSqliteRepositories(storage.reader, context).reads;
+  const writeSide = createSqliteRepositories(storage.writer, context);
+  const write = writeSide.writes;
   const insertOutbox = storage.writer.prepare(
     "INSERT INTO outbox (kind, workspace_id, payload, account_id) VALUES (?, ?, ?, ?)",
   );
@@ -96,7 +99,12 @@ export function createSqliteUnitOfWork(
       }
     },
   };
-  const tx: Transaction = { repositories: write, outbox, events: eventSinkOver(outbox) };
+  const tx: Transaction = {
+    repositories: write,
+    keepRules: writeSide.keepRules,
+    outbox,
+    events: eventSinkOver(outbox),
+  };
 
   const uow: UnitOfWork = {
     reads: read,
@@ -160,5 +168,5 @@ export function createSqliteUnitOfWork(
       }),
   };
 
-  return { uow, outboxStore, search: readSide.search };
+  return { uow, outboxStore };
 }

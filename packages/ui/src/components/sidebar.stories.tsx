@@ -31,7 +31,7 @@ import {
 } from "@pochimail/ui/components/sidebar";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
-  BellIcon,
+  AtSignIcon,
   ChevronDownIcon,
   FileTextIcon,
   KeyRoundIcon,
@@ -57,7 +57,7 @@ const CATEGORIES = [
   ["Records", FileTextIcon, 2104],
   ["Purchases & travel", ShoppingBagIcon, 3580],
   ["Sign-ins & security", KeyRoundIcon, 1962],
-  ["Notifications", BellIcon, 14230],
+  ["Alert emails", AtSignIcon, 14230],
   ["Newsletters", NewspaperIcon, 10410],
   ["Promotions", TagIcon, 9206],
 ] as const;

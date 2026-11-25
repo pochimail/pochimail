@@ -142,22 +142,45 @@ describe("first-run redirect from app.state", () => {
     fake.close();
   });
 
-  // Guards: the controls drifting back to the screen edge while main content keeps its inset.
-  it("insets the onboarding appearance controls like the main content", async () => {
+  // Guards: the controls drifting off the window's right edge, or the mac title bar losing its drag area.
+  it("pins the onboarding appearance controls top-right and makes the header draggable on macOS", async () => {
+    const original = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      configurable: true,
+    });
+    const fake = createFakeAppClient(false);
+    try {
+      render(<App workerClient={fake.client} />);
+      await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy());
+
+      const wrapper = document.querySelector('[data-slot="appearance-controls"]')?.parentElement;
+      const header = wrapper?.parentElement;
+      expect(wrapper?.classList.contains("absolute")).toBe(true);
+      expect(wrapper?.classList.contains("top-1/2")).toBe(true);
+      expect(wrapper?.classList.contains("-translate-y-1/2")).toBe(true);
+      expect(wrapper?.classList.contains("right-4")).toBe(true);
+      expect(wrapper?.classList.contains("@phone:right-8")).toBe(false);
+      expect(wrapper?.className).toContain("[-webkit-app-region:no-drag]");
+      expect(wrapper?.className).toContain("[app-region:no-drag]");
+      expect(header?.tagName).toBe("HEADER");
+      expect(header?.className).toContain("[-webkit-app-region:drag]");
+      expect(header?.className).toContain("[app-region:drag]");
+      expect(header?.nextElementSibling?.tagName).toBe("MAIN");
+      expect(header?.nextElementSibling?.className).toMatch(/\bpx-4\b.*@phone:px-8/);
+    } finally {
+      fake.close();
+      Object.defineProperty(navigator, "userAgent", { value: original, configurable: true });
+    }
+  });
+
+  // Guards: the header becoming a drag region where the OS has its own title bar.
+  it("leaves the onboarding header undraggable outside macOS", async () => {
     const fake = createFakeAppClient(false);
     render(<App workerClient={fake.client} />);
     await waitFor(() => expect(screen.getByRole("radiogroup", { name: "Theme" })).toBeTruthy());
-
-    const inset = document.querySelector('[data-slot="appearance-controls"]')?.parentElement;
-    const main = inset?.parentElement?.nextElementSibling;
-    expect(inset?.classList.contains("absolute")).toBe(true);
-    expect(inset?.classList.contains("top-1/2")).toBe(true);
-    expect(inset?.classList.contains("-translate-y-1/2")).toBe(true);
-    expect(inset?.classList.contains("right-4")).toBe(true);
-    expect(inset?.classList.contains("@phone:right-8")).toBe(true);
-    expect(main?.tagName).toBe("MAIN");
-    expect(main?.classList.contains("px-4")).toBe(true);
-    expect(main?.classList.contains("@phone:px-8")).toBe(true);
+    const header = document.querySelector("header");
+    expect(header?.className).not.toContain("app-region:drag");
     fake.close();
   });
 });

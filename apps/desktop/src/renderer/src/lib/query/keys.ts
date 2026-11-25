@@ -4,6 +4,7 @@ export const queryKeys = {
   accounts: () => ["accounts", "list"] as const,
   categoryCounts: (accountIds: readonly string[]) => ["mailbox", "categories", accountIds] as const,
   overview: (accountId?: string) => ["overview", accountId ?? "all"] as const,
+  review: (accountId?: string) => ["review", accountId ?? "all"] as const,
   digest: () => ["digest"] as const,
   settings: () => ["settings"] as const,
   deviceName: () => ["device", "name"] as const,

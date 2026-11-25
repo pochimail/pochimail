@@ -218,7 +218,7 @@ it("uses the bottom-sheet container classes below the phone breakpoint", async (
 // Guards: "Where I’d start" always opening the same category whatever the new figures were.
 it.each([
   { figures: { unsubscribed: 5, archived: 1, saved: 1 }, count: 5, heading: "Newsletters" },
-  { figures: { archived: 4, saved: 1, unsubscribed: 1 }, count: 4, heading: "Notifications" },
+  { figures: { archived: 4, saved: 1, unsubscribed: 1 }, count: 4, heading: "Alert emails" },
   { figures: { saved: 3, archived: 1, unsubscribed: 1 }, count: 3, heading: "Records" },
 ])("routes $count new items to $heading", async ({ figures, count, heading }) => {
   const user = userEvent.setup();
