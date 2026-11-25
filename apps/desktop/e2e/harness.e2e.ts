@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { launchApp } from "./app.ts";
+import { launchApp, loggedProblems } from "./app.ts";
 
 // Guards: the harness (or a later change to it) giving the page Node, which would let mail content reach the machine (ADR 0002).
 test("the renderer under test has no Node", async () => {
@@ -45,6 +45,30 @@ test("an error-boundary report is reported", async () => {
       console.error(JSON.stringify({ event: "renderer-error", message: "screen failed" }));
     });
     await expect.poll(() => running.problems).toEqual([expect.stringContaining("screen failed")]);
+  } finally {
+    await running.close();
+  }
+});
+
+// Guards: a CSP error logged while a page loads going unreported because the listener was added after the window.
+test("a CSP error logged before any listener exists is still reported", async () => {
+  const running = await launchApp();
+  try {
+    const opened = running.app.waitForEvent("window");
+    await running.app.evaluate(({ BrowserWindow }) => {
+      const window = new BrowserWindow({ show: false });
+      const page =
+        "<script>console.error('Refused to apply an inline style: Content Security Policy')</script>";
+      void window.loadURL(`data:text/html,${encodeURIComponent(page)}`);
+    });
+    const early = await opened;
+    // The buffer holds the message however late it is read.
+    await expect.poll(() => loggedProblems(early)).toEqual([expect.stringContaining("csp:")]);
+    // A listener added now, as the harness used to do once the window was up, hears nothing: the message is past.
+    const late: string[] = [];
+    early.on("console", (message) => late.push(message.text()));
+    await early.waitForTimeout(200);
+    expect(late).toEqual([]);
   } finally {
     await running.close();
   }

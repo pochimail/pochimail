@@ -1,5 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { queryKeys } from "./query/keys.ts";
 import type { ScanJob, ScanProgressEvent } from "./scan-status-types.ts";
 import { useWorkerClient } from "./worker-context.tsx";
@@ -47,6 +55,20 @@ export function ScanStatusProvider({ children }: { children: ReactNode }) {
     queryFn: () => client.call("scan.status", { accountIds: [...accountIds] }),
     enabled: accountIds.length > 0,
   });
+
+  // A new scan of an account that finished earlier counts from its own events, not from the old `done`.
+  const liveBefore = useRef<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    const live = new Set(jobs.data?.map((job) => job.accountId));
+    const started = [...live].filter((id) => !liveBefore.current.has(id));
+    liveBefore.current = live;
+    if (started.length === 0) return;
+    setProgress((all) => {
+      const stale = started.filter((id) => all[id]?.phase === "done");
+      if (stale.length === 0) return all;
+      return Object.fromEntries(Object.entries(all).filter(([id]) => !stale.includes(id)));
+    });
+  }, [jobs.data]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `key` is the stable identity of `accountIds`.
   useEffect(() => {
