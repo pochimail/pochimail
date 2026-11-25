@@ -1,10 +1,10 @@
-import { spawn } from "node:child_process";
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FuseState, FuseV1Options, getCurrentFuseWire } from "@electron/fuses";
 import { fuses } from "../src/main/fuses.ts";
 import { electronBinaryPath } from "./apply-fuses.ts";
 import { galleryLeaksIn } from "./gallery-check.ts";
+import { launchSmoke } from "./launch-smoke.ts";
 import { checkStorageOutput, storageSummary } from "./storage-check.ts";
 
 /** Smoke test of a packaged build: fuses are flipped on the binary and the app starts, loads its window and quits. */
@@ -62,18 +62,8 @@ if (Object.keys(expected).length !== Object.keys(fuses).filter((k) => /^\d+$/.te
 }
 console.log("fuses: ok");
 
-// Headless launch: Linux CI wraps this script in xvfb-run and its chrome-sandbox helper is not setuid, hence --no-sandbox there only. The app quits itself once the window has loaded.
-const child = spawn(binary, process.platform === "linux" ? ["--no-sandbox"] : [], {
-  env: { ...process.env, POCHIMAIL_SMOKE: "1" },
-  stdio: ["ignore", "pipe", "inherit"],
-});
-let output = "";
-child.stdout.on("data", (chunk: Buffer) => {
-  output += chunk.toString();
-});
-const timer = setTimeout(() => child.kill(), 60_000);
-const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
-clearTimeout(timer);
+// Headless launch (see launch-smoke.ts).
+const { code, output } = await launchSmoke(binary);
 if (code !== 0 || !output.includes("smoke:window-loaded")) {
   throw new Error(`App did not start cleanly (exit ${code}). Output: ${output}`);
 }

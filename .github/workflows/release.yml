@@ -109,6 +109,13 @@ jobs:
       - name: Smoke (fuses, headless launch, encrypted SQLite)
         if: matrix.platform == 'linux'
         run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:smoke
+      # Installs each installer and launches it; on a signed build it also verifies the signature and notarization.
+      - name: Install and launch each artifact
+        if: matrix.platform != 'linux'
+        run: pnpm --filter @pochimail/desktop package:install
+      - name: Install and launch each artifact
+        if: matrix.platform == 'linux'
+        run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:install
       - name: Verify artifacts and signatures
         run: pnpm --filter @pochimail/desktop package:verify
       - name: Report artifact sizes

@@ -1,7 +1,7 @@
 import type { ReleaseOs } from "./release-assets.ts";
 import type { SigningMode } from "./signing-mode.ts";
 
-type Command = { readonly file: string; readonly args: readonly string[] };
+export type Command = { readonly file: string; readonly args: readonly string[] };
 export type SignaturePlan = { readonly skip: string } | { readonly commands: readonly Command[] };
 
 const powershellString = (value: string): string => `'${value.replaceAll("'", "''")}'`;

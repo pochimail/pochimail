@@ -110,6 +110,13 @@ jobs:
       - name: Smoke (fuses, headless launch, encrypted SQLite)
         if: steps.scope.outputs.run == 'true' && runner.os == 'Linux'
         run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:smoke
+      # Installs each artifact the way a person does (dmg copy, silent NSIS, deb, rpm, AppImage), launches it and checks its version.
+      - name: Install and launch each artifact
+        if: steps.scope.outputs.run == 'true' && runner.os != 'Linux'
+        run: pnpm --filter @pochimail/desktop package:install
+      - name: Install and launch each artifact
+        if: steps.scope.outputs.run == 'true' && runner.os == 'Linux'
+        run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:install
       - name: Report artifact sizes
         if: steps.scope.outputs.run == 'true'
         run: pnpm --filter @pochimail/desktop package:size "${{ runner.os }} artifacts"
