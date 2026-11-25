@@ -141,7 +141,7 @@ export function describeCrashRecovery(name: string, create: () => ActionHarness)
 
       it("an entry still deferred after the replay window is closed failed (guards an endless replay)", async () => {
         const h = create();
-        await crash(h, 1, "archive");
+        await crash(h, 1, "mark-handled");
         h.failFor(["m1"]);
         expect(unwrap(await restart(h, MAX_REPLAY_AGE_MS - 1000))).toEqual({
           settled: 0,
@@ -159,17 +159,34 @@ export function describeCrashRecovery(name: string, create: () => ActionHarness)
         expect(unwrap(await h.uow.reads.actionLog.listPending(ws, ALL_ENTRIES))).toEqual([]);
       });
 
-      it("a crash followed by a launch after the replay window still replays once (guards a change lost to Activity and Undo by a long absence)", async () => {
+      it("a non-destructive entry still replays once after the replay window (guards a change lost to Activity and Undo by a long absence)", async () => {
         const h = create();
-        await crash(h, 1, "archive");
+        await crash(h, 1, "mark-handled");
         expect(unwrap(await restart(h, MAX_REPLAY_AGE_MS + 1000))).toEqual({
           settled: 1,
           deferred: 0,
         });
         const logged = unwrap(await h.uow.reads.actionLog.listForKey(ws, "key-1"));
         expect(logged.map((e) => e.outcome)).toEqual(["pending", "applied"]);
-        expect(await h.isArchived("m1")).toBe(true);
       });
+
+      it.each(["trash", "archive"] as const)(
+        "a %s left pending past the replay window is closed as outcome unknown, not applied again (guards a long-gone request undoing what the user did since)",
+        async (kind) => {
+          const h = create();
+          await crash(h, 1, kind);
+          const before = h.mutations();
+          expect(unwrap(await restart(h, MAX_REPLAY_AGE_MS + 1000))).toEqual({
+            settled: 1,
+            deferred: 0,
+          });
+          expect(h.mutations()).toBe(before);
+          const logged = unwrap(await h.uow.reads.actionLog.listForKey(ws, "key-1"));
+          expect(logged.map((e) => e.outcome)).toEqual(["pending", "failed"]);
+          expect(logged[1]?.errorCode).toBe("action.outcome_unknown");
+          expect(unwrap(await h.uow.reads.actionLog.listPending(ws, ALL_ENTRIES))).toEqual([]);
+        },
+      );
 
       it("a clock stepped back does not bring a settled entry back (guards a replay of finished work after a clock change)", async () => {
         const h = create();

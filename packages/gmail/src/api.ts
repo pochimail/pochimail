@@ -30,10 +30,11 @@ export const metadataSchema = z.object({
   payload: z
     .object({
       mimeType: z.string().default(""),
+      filename: z.string().default(""),
       headers: z.array(headerSchema).default([]),
       parts: z.array(attachmentPartSchema).default([]),
     })
-    .default({ mimeType: "", headers: [], parts: [] }),
+    .default({ mimeType: "", filename: "", headers: [], parts: [] }),
 });
 export type GmailMetadata = z.infer<typeof metadataSchema>;
 

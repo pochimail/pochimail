@@ -23,15 +23,20 @@ function header(message: GmailMetadata, name: string): string | undefined {
 }
 
 /**
- * Attachments the payload shows: top-level parts with a filename, else 1 for a `multipart/mixed` body
- * whose parts the metadata format leaves out (a lower bound; classification only asks "any?").
- * Inline images carry no filename and are not counted.
+ * Attachments the payload shows, or undefined when it cannot tell (unknown protects, see
+ * `has-document`). Known: a named file at the top or in a top-level part (a lower bound, never a name),
+ * a `multipart/mixed` body whose parts the metadata format leaves out (1), and the types that cannot
+ * hold a file: `text/*` and `multipart/alternative` without a filename (0). Signed, report, encrypted,
+ * related and `application/*` bodies stay unknown.
  */
-function attachmentCount(payload: GmailMetadata["payload"]): number {
-  const files = payload.parts.filter((p) => p.filename !== "");
-  if (files.length > 0) return files.length;
-  if (payload.parts.length > 0) return 0;
-  return payload.mimeType.toLowerCase() === "multipart/mixed" ? 1 : 0;
+function attachmentCount(payload: GmailMetadata["payload"]): number | undefined {
+  const files = payload.parts.filter((p) => p.filename !== "").length;
+  if (files > 0) return files;
+  if (payload.filename !== "") return 1;
+  const type = payload.mimeType.toLowerCase();
+  if (type === "multipart/mixed") return 1;
+  if (type.startsWith("text/") || type === "multipart/alternative") return 0;
+  return undefined;
 }
 
 /**
@@ -44,6 +49,7 @@ export function toIncoming(message: GmailMetadata, identity: Identity): Incoming
   const threadId = ThreadId(message.threadId);
   const [from] = addresses(header(message, "From"));
   const receivedMs = Number(message.internalDate);
+  const saved = attachmentCount(message.payload);
   if (!id.ok || !threadId.ok || from === undefined || !Number.isFinite(receivedMs)) return null;
   const parsed = incomingMessageSchema.safeParse({
     schemaVersion: 1,
@@ -59,7 +65,7 @@ export function toIncoming(message: GmailMetadata, identity: Identity): Incoming
     hasListUnsubscribe: header(message, "List-Unsubscribe") !== undefined,
     opened: !message.labelIds.includes("UNREAD"),
     ...(message.sizeEstimate === undefined ? {} : { size: message.sizeEstimate }),
-    savedCount: attachmentCount(message.payload),
+    ...(saved === undefined ? {} : { savedCount: saved }),
     topicIds: [],
   });
   return parsed.success ? parsed.data : null;

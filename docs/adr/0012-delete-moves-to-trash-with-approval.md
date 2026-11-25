@@ -17,13 +17,14 @@ Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that 
   - the sender is marked Keep.
   Signals are computed per email by the local classifier ([ADR 0016](0016-fixed-types-and-automatic-topics.md)); when it is unsure, the email is protected.
 - Every deletion is logged with its inverse; **Undo restores from the Trash**.
-- Clean up reports freeable space apart from archivable email, using provider sizes (Gmail `sizeEstimate`; verify Graph before showing Microsoft figures).
+- Clean up reports freeable space apart from archivable email, using provider sizes (Gmail `sizeEstimate`; verify Graph first).
 - Promise: "You keep the control. Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo."
 
 ## Addendum (#128): unsure
-- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects: never pre-selected, proposed or auto-applied. Its signal has confidence `UNSURE_CONFIDENCE` (0.5), reason "Not sure, kept safe", and is never counted.
+- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects: never pre-selected, proposed or auto-applied. Its signal is never counted.
 - Only unsure is enforced at the action boundary (`authorize` denies Autopilot). The other protections are not: a Review list must read every signal hit.
-- "Time-sensitive" is a proxy: a recent unopened `records` email. Stored text is off limits (ADR 0014), so deadlines are unread: it misses dated mail of other types and flags undated records.
+- "Time-sensitive" is a proxy: a recent unopened `records` email. Deadlines are unread (ADR 0014): it misses dated mail of other types and flags undated records.
+- Gmail metadata gives a lower-bound attachment count and no size: the Overview "attachments saved" figure is a floor.
 
 ## Consequences
 - "GB you can free" is real again, tied to deletion only.
