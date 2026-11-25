@@ -64,16 +64,12 @@ export function ScanStatusProvider({ children }: { children: ReactNode }) {
         "scan.progress",
         { accountId },
         (event) => {
+          // A finished account keeps its last event: the count it reached stays in the sum.
+          setProgress((all) => ({ ...all, [accountId]: event }));
           if (event.phase === "done") {
-            setProgress((all) => {
-              const next = { ...all };
-              delete next[accountId];
-              return next;
-            });
             refresh();
             return;
           }
-          setProgress((all) => ({ ...all, [accountId]: event }));
           const wait = REFRESH_EVERY_MS - (Date.now() - last);
           if (wait <= 0) refresh();
           else timer ??= setTimeout(refresh, wait);
@@ -106,17 +102,23 @@ export function useScanStatus(accountIds: readonly string[]): ScanStatus {
   if (state === undefined) throw new Error("useScanStatus requires ScanStatusProvider");
 
   const live = state.jobs.filter((job) => accountIds.includes(job.accountId));
-  const events = Object.values(state.progress).filter((event) =>
-    live.some((job) => job.accountId === event.accountId),
+  // Every account of this scan: still live, or finished in this session. A finished account leaves the worker's live
+  // jobs but its count stays in the sum, so the number only ever goes up while the others carry on.
+  const events = Object.values(state.progress).filter(
+    (event) =>
+      accountIds.includes(event.accountId) &&
+      (event.phase === "done" || live.some((job) => job.accountId === event.accountId)),
   );
-  const processed =
-    events.reduce((sum, event) => sum + event.processed, 0) +
-    live
+  const counted = [
+    ...events.map((event) => ({ id: event.accountId, processed: event.processed })),
+    ...live
       .filter((job) => !events.some((event) => event.accountId === job.accountId))
-      .reduce((sum, job) => sum + job.processed, 0);
-  const known = events.length === live.length && events.every((event) => event.total !== null);
+      .map((job) => ({ id: job.accountId, processed: job.processed })),
+  ];
+  const processed = counted.reduce((sum, account) => sum + account.processed, 0);
+  const known = events.length === counted.length && events.every((event) => event.total !== null);
   const total =
-    known && live.length > 0 ? events.reduce((sum, event) => sum + (event.total ?? 0), 0) : null;
+    known && counted.length > 0 ? events.reduce((sum, event) => sum + (event.total ?? 0), 0) : null;
   const percent = total === null || total === 0 ? 0 : Math.min(100, (processed / total) * 100);
 
   const act = (status: "running" | "paused", call: "scan.pause" | "scan.resume") => {

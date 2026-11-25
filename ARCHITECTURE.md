@@ -1,7 +1,7 @@
 # Architecture
 
 ## Overview
-Pochimail is an Electron app. It connects to Gmail and Outlook with OAuth, syncs message headers incrementally, classifies email with local models, and proposes actions (archive, delete to Trash, unsubscribe, label, save attachments) that the user reviews. Every action is logged with its inverse. The database stores what Pochimail found and did, never what emails say ([ADR 0014](docs/adr/0014-store-reports-and-actions-not-mail.md)).
+Pochimail is an Electron app. It connects to Gmail with OAuth (Outlook comes in v1.1), syncs message headers incrementally, classifies email with local models, and proposes actions (archive, delete to Trash, unsubscribe, label, save attachments) that the user reviews. Every action is logged with its inverse. The database stores what Pochimail found and did, never what emails say ([ADR 0014](docs/adr/0014-store-reports-and-actions-not-mail.md)).
 
 ## Packages ([ADR 0015](docs/adr/0015-bounded-context-packages-and-quality-gates.md))
 Every workspace is `packages/<name>` or `apps/<name>`. Packages are of three kinds.

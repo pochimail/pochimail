@@ -50,8 +50,8 @@ Enforced by `session.webRequest` in every session and by the worker HTTP client,
 |---|---|
 | `gmail.googleapis.com` | Gmail API |
 | `oauth2.googleapis.com` | Google token exchange, refresh, revoke |
-| `graph.microsoft.com` | Microsoft Graph mail |
-| `login.microsoftonline.com` | Microsoft token calls (no public revocation endpoint) |
+| `graph.microsoft.com` | Microsoft Graph mail (v1.1; unreleased) |
+| `login.microsoftonline.com` | Microsoft token calls (v1.1; no public revocation endpoint) |
 | `github.com`, `release-assets.githubusercontent.com` | Updates and model manifest (confirm the exact list in the release work) |
 | `huggingface.co`, `us.aws.cdn.hf.co` | Model downloads |
 
