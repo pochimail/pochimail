@@ -1,19 +1,15 @@
 import { CATEGORIES, type Category } from "@pochimail/classification/model/category";
 import { DEFAULT_SIGNAL_SETTINGS } from "@pochimail/classification/model/signal-settings";
-import {
-  BULK_CATEGORIES,
-  OLD_AFTER_DAYS,
-  TIME_SENSITIVE_WITHIN_DAYS,
-} from "@pochimail/classification/policies/signal-rules";
+import { BULK_CATEGORIES, OLD_AFTER_DAYS } from "@pochimail/classification/policies/signal-rules";
 import {
   CORRESPONDENTS,
-  ITEMS,
   type Language,
   SENDERS,
   SPOOFED_SENDER,
   TEMPLATES,
   VIP_COUNT,
 } from "./content.ts";
+import { DAY, fill, pickLanguage, threadLength } from "./fixture-draws.ts";
 import { type LabelsFile, labelsFileSchema, type MessageLabel } from "./labels.ts";
 import {
   type Charset,
@@ -23,7 +19,7 @@ import {
   quoteFromLines,
 } from "./mbox.ts";
 import { apportion, createRng, type Rng } from "./prng.ts";
-import { assignThreadSignals } from "./signal-labels.ts";
+import { assignThreadSignals, markRecentRecordsRead } from "./signal-labels.ts";
 
 // FAKE DATA ONLY. The mock dataset of brief §6, reproduced with a seeded generator:
 // 2 accounts, 7 categories, 7 people waiting (oldest 9 days), 3 deadlines this week,
@@ -88,7 +84,6 @@ const ACCOUNT_DEFS = [
   },
 ] as const;
 
-const DAY = 86_400_000;
 const HOUR = 3_600_000;
 const YEARS = 9;
 /** Unopened bulk mail older than this is proposed for archiving (a stricter bar than the signal). */
@@ -146,33 +141,6 @@ interface Plan {
   attachmentSize: number;
   suspicious: boolean;
   signals: Set<MessageLabel["signals"][number]>;
-}
-
-function pickLanguage(rng: Rng): Language {
-  const roll = rng.next();
-  return roll < 0.7 ? "en" : roll < 0.9 ? "fr" : "ja";
-}
-
-function fill(text: string, rng: Rng, language: Language, at: number, name: string): string {
-  const amount =
-    language === "en"
-      ? `USD ${rng.int(5, 900)}.${String(rng.int(0, 99)).padStart(2, "0")}`
-      : language === "fr"
-        ? `${rng.int(5, 900)},${String(rng.int(0, 99)).padStart(2, "0")} EUR`
-        : `${rng.int(500, 90000)}円`;
-  return text
-    .replaceAll("{n}", String(rng.int(100, 99_999)))
-    .replaceAll("{name}", name)
-    .replaceAll("{item}", rng.pick(ITEMS[language]))
-    .replaceAll("{amount}", amount)
-    .replaceAll("{date}", new Date(at + rng.int(1, 6) * DAY).toISOString().slice(0, 10));
-}
-
-function threadLength(category: Category, rng: Rng): number {
-  if (category === "people")
-    return rng.chance(0.07) ? rng.int(8, 30) : rng.chance(0.35) ? rng.int(2, 4) : 1;
-  if (category === "purchases-travel" && rng.chance(0.15)) return rng.int(2, 3);
-  return 1;
 }
 
 /** How old a thread is. The draw is made even for an awaiting thread, so the seeded mailbox keeps its shape. */
@@ -304,14 +272,7 @@ function assignSignals(rng: Rng, plans: Plan[], total: number): void {
     plan.signals.add("time-sensitive");
     plan.opened = false;
   }
-  // Any other recent records notice was read, so only a deadline notice is recent and unopened.
-  for (const plan of plans)
-    if (
-      plan.category === "records" &&
-      !plan.signals.has("time-sensitive") &&
-      FIXTURE_NOW - plan.at <= TIME_SENSITIVE_WITHIN_DAYS * DAY
-    )
-      plan.opened = true;
+  markRecentRecordsRead(plans, FIXTURE_NOW);
   // Documents: a seeded share of records and purchases carry a PDF.
   const documents = Math.round((MOCK_DATASET.documents * total) / MOCK_DATASET.totalMessages);
   const eligible = plans.filter(

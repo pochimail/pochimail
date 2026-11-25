@@ -1,5 +1,6 @@
 import type { Category, SignalKind } from "@pochimail/classification/model/category";
 import type { SignalSettings } from "@pochimail/classification/model/signal-settings";
+import { TIME_SENSITIVE_WITHIN_DAYS } from "@pochimail/classification/policies/signal-rules";
 
 const DAY = 86_400_000;
 
@@ -10,6 +11,7 @@ export interface SignalPlan {
   readonly pos: number;
   readonly inbound: boolean;
   readonly at: number;
+  opened: boolean;
   readonly signals: Set<SignalKind>;
 }
 
@@ -36,4 +38,15 @@ export function assignThreadSignals(
     if (plan.inbound) plan.signals.add("needs-reply");
     else if (age >= settings.waitingAfterDays) plan.signals.add("waiting-on-them");
   }
+}
+
+/** Any recent records notice that is not a deadline was read, so only a deadline notice is recent and unopened. */
+export function markRecentRecordsRead(plans: readonly SignalPlan[], now: number): void {
+  for (const plan of plans)
+    if (
+      plan.category === "records" &&
+      !plan.signals.has("time-sensitive") &&
+      now - plan.at <= TIME_SENSITIVE_WITHIN_DAYS * DAY
+    )
+      plan.opened = true;
 }
