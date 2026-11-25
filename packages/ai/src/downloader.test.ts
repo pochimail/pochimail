@@ -142,7 +142,51 @@ describe("downloadFile", () => {
   });
 });
 
+describe("downloadFile partial files", () => {
+  const partialPath = () => join(dir, ".partial", `${file.sha256}.part`);
+
+  // Guards: a partial the server can no longer range over (416) looping or being appended to.
+  it("drops the partial and starts over when the server answers 416", async () => {
+    await mkdir(join(dir, ".partial"));
+    await writeFile(partialPath(), bytes.subarray(0, 600));
+    const { result, waits, final } = run([
+      { status: 416, body: bodyOf(new Uint8Array()) },
+      { status: 200, body: bodyOf(bytes) },
+    ]);
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(waits).toEqual([]);
+    expect(new Uint8Array(await readFile(final))).toEqual(bytes);
+  });
+
+  // Guards: a partial longer than the file being resumed instead of discarded.
+  it("discards a partial that is longer than the file", async () => {
+    await mkdir(join(dir, ".partial"));
+    await writeFile(partialPath(), new Uint8Array(bytes.length + 500));
+    const { result, final } = run([{ status: 200, body: bodyOf(bytes) }]);
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(new Uint8Array(await readFile(final))).toEqual(bytes);
+  });
+
+  // Guards: an unusable partial folder throwing out of the download instead of failing it.
+  it("fails when the partial folder cannot be created", async () => {
+    await writeFile(join(dir, ".partial"), "not a folder");
+    const { result } = run([{ status: 200, body: bodyOf(bytes) }]);
+    expect(await result).toEqual({ ok: false, error: "failed" });
+  });
+});
+
 describe("sleep", () => {
+  // Guards: a backoff that never ends, or one that a cancel does not cut short.
+  it("waits out the delay, and ends early when the signal aborts meanwhile", async () => {
+    await sleep(5, new AbortController().signal);
+    const controller = new AbortController();
+    const started = Date.now();
+    const waiting = sleep(60_000, controller.signal);
+    controller.abort();
+    await waiting;
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+
   // Guards: a cancelled download waiting out a backoff of up to a minute.
   it("returns at once on an aborted signal", async () => {
     const controller = new AbortController();
