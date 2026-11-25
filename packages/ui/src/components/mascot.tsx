@@ -4,7 +4,7 @@ import happyPose2x from "@pochimail/ui/assets/mascot/pochi-happy@2x.png";
 import happyPose from "@pochimail/ui/assets/mascot/pochi-happy.png";
 import nightPose2x from "@pochimail/ui/assets/mascot/pochi-night@2x.png";
 import nightPose from "@pochimail/ui/assets/mascot/pochi-night.png";
-import nightRim from "@pochimail/ui/assets/mascot/pochi-night-rim@2x.png";
+import nightRim from "@pochimail/ui/assets/mascot/pochi-night-rim@2x.png?inline";
 import readingPose2x from "@pochimail/ui/assets/mascot/pochi-reading@2x.png";
 import readingPose from "@pochimail/ui/assets/mascot/pochi-reading.png";
 import savingPose2x from "@pochimail/ui/assets/mascot/pochi-saving@2x.png";
@@ -25,7 +25,7 @@ const poses = {
 
 export type MascotPose = keyof typeof poses;
 
-/** Silhouette masks (alpha only) for charcoal poses: painted behind the art with the `mascot-rim` token, so they stay readable on dark surfaces. */
+/** Alpha masks scaled by CSS (so no 1x) for charcoal poses, painted behind the art with the `mascot-rim` token in dark mode. Inlined as data URIs: Chromium fetches CSS masks in CORS mode, which fails from file://. */
 const rims: Partial<Record<MascotPose, string>> = { night: nightRim };
 
 /** Only these poses have open eyes; smiles and sleeping faces must never blink. */
@@ -176,7 +176,7 @@ function Mascot({
             <span
               data-slot="mascot-rim"
               aria-hidden="true"
-              className="absolute inset-0 bg-mascot-rim"
+              className="absolute inset-0 dark:bg-mascot-rim"
               style={{ maskImage: `url(${rim})`, maskSize: "100% 100%" }}
             />
           ) : null}

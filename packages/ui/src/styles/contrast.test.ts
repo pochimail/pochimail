@@ -70,14 +70,15 @@ const graphicPairs: [string, string][] = [
   // Composites (M4-03): hatched storage segment and ledger bar fill on the muted track, progress fill on its track.
   ["foreground-tertiary", "muted"],
   ["primary", "muted"],
-  // Pochi's rim light against every surface the mascot sits on (the night pose is charcoal; see docs/design.md › Pochi).
-  ...surfaces.map((s): [string, string] => ["mascot-rim", s]),
   ...categories.map((c): [string, string] => [c, "muted"]),
   ...categories.flatMap((c): [string, string][] => [
     [c, "background"],
     [c, "card"],
   ]),
 ];
+
+// Pochi's rim light exists in dark only (the charcoal night pose is invisible there; see docs/design.md › Pochi).
+const rimPairs = surfaces.map((s): [string, string] => ["mascot-rim", s]);
 
 function failures(tokens: Tokens, pairs: [string, string][], min: number): string[] {
   return pairs.flatMap(([fg, bg]) => {
@@ -100,6 +101,11 @@ describe.each(["light", "dark"] as const)("%s theme contrast", (theme) => {
   });
 });
 
+// Guards: the charcoal night pose losing its outline on a dark surface.
+it("dark theme: Pochi's rim light is >= 3:1 on every surface", () => {
+  expect(failures(themes.dark, rimPairs, 3)).toEqual([]);
+});
+
 // Guards: tokens.css drifting from tokens.json (the contrast result would then describe the wrong palette).
 it("tokens.css matches tokens.json in both themes", () => {
   const map: Record<string, string> = {
@@ -116,7 +122,6 @@ it("tokens.css matches tokens.json in both themes", () => {
     focus: "ring",
     danger: "destructive",
     frame: "frame",
-    mascotRim: "mascot-rim",
   };
   const mismatches: string[] = [];
   for (const theme of ["light", "dark"] as const) {
@@ -130,6 +135,9 @@ it("tokens.css matches tokens.json in both themes", () => {
         mismatches.push(`${theme}.category.${name}`);
     }
   }
+  const rim = json.color.dark?.mascotRim?.$value?.toLowerCase();
+  if (rim !== themes.dark["mascot-rim"]?.toLowerCase()) mismatches.push("dark.mascotRim");
+  if (themes.light["mascot-rim"] !== undefined) mismatches.push("light.mascotRim must not exist");
   expect(mismatches).toEqual([]);
 });
 

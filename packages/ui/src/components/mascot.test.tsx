@@ -83,8 +83,9 @@ describe("Mascot public behavior", () => {
     const rim = night.indexOf('data-slot="mascot-rim"');
     expect(rim).toBeGreaterThan(night.indexOf('data-slot="mascot-breathe"'));
     expect(rim).toBeLessThan(night.indexOf('data-slot="mascot-image"'));
-    expect(night).toContain("bg-mascot-rim");
-    expect(night).toMatch(/mask-image: url\([^)]*pochi-night-rim@2x\.png/i);
+    expect(night).toContain("dark:bg-mascot-rim");
+    // Guards: a file URL mask, which Chromium refuses to fetch from file:// (the packaged app), so the rim would never render.
+    expect(night).toMatch(/mask-image: url\((?:&quot;|"|')?data:image\/png;base64,/);
     for (const pose of ["default", "happy", "reading", "saving"] as const) {
       expect(renderMarkup(<Mascot pose={pose} />)).not.toContain('data-slot="mascot-rim"');
     }

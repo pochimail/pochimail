@@ -29,6 +29,9 @@ it("the committed night rim is what the generator makes from the night art", () 
   const rim = rimAlpha(read("pochi-night@2x.png"));
   expect(rim.ok).toBe(true);
   if (!rim.ok) return;
+  const size = (png: Buffer) => [png.readUInt32BE(16), png.readUInt32BE(20)];
+  // Guards: a rim of another size than the art, which would sit offset when CSS stretches it over the image.
+  expect(size(read("pochi-night-rim@2x.png"))).toEqual(size(read("pochi-night@2x.png")));
   expect(maskAlpha(read("pochi-night-rim@2x.png"), rim.width, rim.height)).toEqual(rim.alpha);
 });
 
