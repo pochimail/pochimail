@@ -11,6 +11,9 @@ type AppEventHandlers = {
   readonly onScanFailed: () => void;
   readonly onScanEnded: () => void;
   readonly onDigestReady: () => void;
+  readonly onAccountChanged: (
+    event: Extract<EventOf<"app.events">, { type: "NeedsReauth" | "Reconnected" }>,
+  ) => void;
 };
 
 /** Routes one global app event to the reconciliation or shell callback that owns it. */
@@ -36,6 +39,10 @@ const dispatchAppEvent = (event: EventOf<"app.events">, handlers: AppEventHandle
     case "DigestReady":
       handlers.onDigestReady();
       break;
+    case "NeedsReauth":
+    case "Reconnected":
+      handlers.onAccountChanged(event);
+      break;
   }
 };
 
@@ -50,6 +57,8 @@ export const subscribeAppEvents = (
   onScanEnded: () => void = () => {},
   /** A digest was tallied: the summary's counts must be re-read. */
   onDigestReady: () => void = () => {},
+  /** An account lost access or got it back. */
+  onAccountChanged: AppEventHandlers["onAccountChanged"] = () => {},
 ): (() => void) => {
   let closed = false;
   let currentUnsubscribe: (() => void) | undefined;
@@ -70,6 +79,7 @@ export const subscribeAppEvents = (
             onScanFailed,
             onScanEnded,
             onDigestReady,
+            onAccountChanged,
           });
         },
         (error) => {

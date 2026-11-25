@@ -57,7 +57,7 @@ export interface AccountsRuntimeOptions {
 export const createAccountsRuntime = (
   start: WorkerStart,
   options: AccountsRuntimeOptions,
-): (WorkerApp & { readonly close: () => void }) | undefined => {
+): (Pick<WorkerApp, "handlers" | "idle"> & { readonly close: () => void }) | undefined => {
   if (start.databaseKey === undefined) return undefined;
   const storage = openStorage(start.databasePath, start.databaseKey);
   start.databaseKey.fill(0);
@@ -133,6 +133,8 @@ export const createAccountsRuntime = (
   });
   const accounts = createAccountProcedures({
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
+    forgetTokens: (accountId) => tokenSources.delete(accountId),
+    emit: app.emitAppEvent,
     workspaceId: LOCAL_WORKSPACE,
     uow,
     connectAccount: new ConnectAccount({

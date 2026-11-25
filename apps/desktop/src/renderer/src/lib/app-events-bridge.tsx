@@ -3,6 +3,7 @@ import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
+import { recordAccountEvent } from "./needs-reauth.tsx";
 import { useOptimisticRegistry } from "./optimistic-context.tsx";
 import { queryKeys } from "./query/keys.ts";
 import { subscribeAppEvents } from "./query/worker-events.ts";
@@ -24,6 +25,7 @@ export function AppEventsBridge({ client }: { client: RpcClient }) {
         },
         () => void queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
         () => void queryClient.invalidateQueries({ queryKey: queryKeys.digest() }),
+        (event) => recordAccountEvent(queryClient, event),
       ),
     [client, registry, queryClient, t],
   );

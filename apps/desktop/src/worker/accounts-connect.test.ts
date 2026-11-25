@@ -87,6 +87,8 @@ const setup = async (options: {
       if (options.failScan) throw new Error("scan.start failed");
     },
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
+    forgetTokens: () => {},
+    emit: () => {},
     workspaceId,
     uow,
     connectAccount: new ConnectAccount({

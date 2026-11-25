@@ -13,7 +13,7 @@ const TYPE_COPY: Readonly<Record<string, MessageKey | undefined>> = {
 export function TypePage() {
   const t = useT();
   const navigate = useNavigate();
-  const { typeId } = useParams({ from: "/shell/type/$typeId" });
+  const { typeId } = useParams({ from: "/shell/gate/type/$typeId" });
   const label = typeLabelKey(typeId);
   return (
     <main className={PAGE_MAIN_CLASS}>

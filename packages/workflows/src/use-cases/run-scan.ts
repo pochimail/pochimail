@@ -1,5 +1,6 @@
+import { MarkAccountNeedsReauth } from "@pochimail/accounts/use-cases/mark-account-needs-reauth";
 import { BuildDigest } from "@pochimail/cleanup/use-cases/build-digest";
-import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import { type AsyncResult, type CancelSignal, createCancelSource } from "@pochimail/kernel/common";
 import { type DomainError, StorageError } from "@pochimail/kernel/errors";
 import { err, ok } from "@pochimail/kernel/result";
 import type { DomainEventOf } from "../events.ts";
@@ -33,7 +34,10 @@ export interface RunScanOutcome {
 export class RunScan {
   constructor(private readonly deps: RunScanDeps) {}
 
-  /** A failed run announces `ScanFailed` (code only) so the screen can say so, then returns the error. */
+  /**
+   * A failed run announces `ScanFailed` (code only) so the screen can say so, then returns the error.
+   * Expired credentials also put the account in `needs_reauth`, so the person is asked to reconnect.
+   */
   async execute(
     request: RunScanRequest,
     signal: CancelSignal,
@@ -48,6 +52,12 @@ export class RunScan {
       failure = new StorageError();
     }
     if (failure.code !== "operation.cancelled") {
+      // A grant the provider refuses even after a token refresh is dead: only reconnecting helps (ADR 0007).
+      if (failure.code === "provider.auth_expired")
+        await new MarkAccountNeedsReauth({ uow, clock }).execute(
+          { workspaceId, accountId },
+          createCancelSource().signal,
+        );
       const event = {
         id: `scan:${request.jobId}:failed:${clock.now().getTime()}`,
         type: "ScanFailed",

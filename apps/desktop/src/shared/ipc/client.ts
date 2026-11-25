@@ -120,7 +120,9 @@ export const createRpcClient = (transport: Transport, options: { timeoutMs?: num
             pending.delete(id);
             reject(new RpcError("TIMEOUT", "worker did not answer"));
           },
-          name === "accounts.connect" ? CONNECT_CALL_TIMEOUT_MS : timeoutMs,
+          name === "accounts.connect" || name === "accounts.reconnect"
+            ? CONNECT_CALL_TIMEOUT_MS
+            : timeoutMs,
         );
         pending.set(id, {
           timer,

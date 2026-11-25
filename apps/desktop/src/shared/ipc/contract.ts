@@ -143,6 +143,9 @@ export const CONNECT_FAILURES = [
   "unknown",
 ] as const;
 
+/** Why a reconnect failed: the sign-in reasons, plus a consent for another mailbox than the account's. */
+export const RECONNECT_FAILURES = [...CONNECT_FAILURES, "not-found", "wrong-account"] as const;
+
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
 
@@ -156,7 +159,16 @@ const mutations = {
       z.object({ status: z.literal("failed"), reason: z.enum(CONNECT_FAILURES) }),
     ]),
   },
-  /** Stops a sign-in that is waiting for the person; the waiting `accounts.connect` then answers `cancelled`. */
+  /** Consent again for an account in `needs_reauth`: stores the new token, then the scan resumes from its cursor. */
+  "accounts.reconnect": {
+    input: z.object({ accountId }),
+    output: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("reconnected") }),
+      z.object({ status: z.literal("cancelled") }),
+      z.object({ status: z.literal("failed"), reason: z.enum(RECONNECT_FAILURES) }),
+    ]),
+  },
+  /** Stops a sign-in or reconnect that is waiting for the person; the waiting call then answers `cancelled`. */
   "accounts.cancelConnect": {
     input: z.undefined(),
     output: z.undefined(),
