@@ -2,34 +2,39 @@ import { derivedMessageSchema } from "@pochimail/classification/model/derived";
 import type { Database } from "better-sqlite3-multiple-ciphers";
 import type { z } from "zod";
 import { decodeCursor, page } from "../shared/paging.ts";
+import { reasonCode } from "../shared/reason-code.ts";
+import type { RepositoryContext } from "../shared/repository-context.ts";
 import { find, guard, type Row, sqlHelpers } from "../shared/sql.ts";
-import { orUndefined, text } from "../shared/values.ts";
+import { text } from "../shared/values.ts";
 
-const derivedOf = (r: Row) =>
-  derivedMessageSchema.parse({
+const derivedOf = (r: Row, context: RepositoryContext) => {
+  const ws = text(r.workspace_id);
+  const id = text(r.message_id);
+  const fields = context.cache.ofFields("derived", ws, id);
+  return derivedMessageSchema.parse({
     schemaVersion: 1,
-    workspaceId: r.workspace_id,
+    workspaceId: ws,
     accountId: r.account_id,
-    messageId: r.message_id,
+    messageId: id,
     category: r.category,
-    reason: r.reason,
+    reason: fields.reason ?? text(r.reason_code),
     confidence: r.confidence,
     modelVersion: r.model_version,
-    ...orUndefined("templateHash", r.template_hash),
-    ...orUndefined("embeddingRef", r.embedding_ref),
-    snippet: r.snippet,
+    ...(fields.templateHash === undefined ? {} : { templateHash: fields.templateHash }),
+    ...(fields.embeddingRef === undefined ? {} : { embeddingRef: fields.embeddingRef }),
+    snippet: fields.snippet ?? "",
     derivedAt: r.derived_at,
   });
+};
 
-/** Repository over one connection. */
-export function createDerivedRepository(db: Database) {
+/** Repository over one connection. Only the reason code is persisted (ADR 0014). */
+export function createDerivedRepository(db: Database, context: RepositoryContext) {
   const { all, one, run } = sqlHelpers(db);
-  // ---- derived data ----
   const derived = {
     get: (ws: string, id: string) =>
       find("Derived data", () => {
         const r = one("SELECT * FROM derived WHERE workspace_id = ? AND message_id = ?", ws, id);
-        return r === undefined ? undefined : derivedOf(r);
+        return r === undefined ? undefined : derivedOf(r, context);
       }),
     list: (ws: string, account: string, p: { limit: number; cursor?: string }) =>
       guard(() => {
@@ -43,28 +48,36 @@ export function createDerivedRepository(db: Database) {
           ...(after === undefined ? [] : [after]),
           limit + 1,
         );
-        return page(rows, limit, derivedOf, (r) => [text(r.message_id)]);
+        return page(
+          rows,
+          limit,
+          (r) => derivedOf(r, context),
+          (r) => [text(r.message_id)],
+        );
       }),
     save: (d: z.infer<typeof derivedMessageSchema>) =>
       guard(() => {
         const v = derivedMessageSchema.parse(d);
+        context.cache.rememberFields("derived", v.workspaceId, v.messageId, {
+          reason: v.reason,
+          snippet: v.snippet,
+          ...(v.templateHash === undefined ? {} : { templateHash: v.templateHash }),
+          ...(v.embeddingRef === undefined ? {} : { embeddingRef: v.embeddingRef }),
+        });
         run(
-          `INSERT INTO derived (workspace_id, message_id, account_id, category, reason, confidence, model_version,
-             template_hash, embedding_ref, snippet, derived_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO derived (workspace_id, message_id, account_id, category, reason_code, confidence, model_version, derived_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (workspace_id, message_id) DO UPDATE SET account_id = excluded.account_id,
-             category = excluded.category, reason = excluded.reason, confidence = excluded.confidence,
-             model_version = excluded.model_version, template_hash = excluded.template_hash,
-             embedding_ref = excluded.embedding_ref, snippet = excluded.snippet, derived_at = excluded.derived_at`,
+             category = excluded.category, reason_code = excluded.reason_code,
+             confidence = excluded.confidence, model_version = excluded.model_version,
+             derived_at = excluded.derived_at`,
           v.workspaceId,
           v.messageId,
           v.accountId,
           v.category,
-          v.reason,
+          reasonCode(v.reason),
           v.confidence,
           v.modelVersion,
-          v.templateHash ?? null,
-          v.embeddingRef ?? null,
-          v.snippet,
           v.derivedAt,
         );
       }),

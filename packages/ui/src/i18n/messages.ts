@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -47,6 +48,15 @@ export const messages = {
     [],
   ),
   "overview.review": entry("Review", []),
+  "review.counts.title": entry("What I found", []),
+  "review.counts.toReview": entry("To review", []),
+  "review.counts.waiting": entry("Waiting on you", []),
+  "review.counts.deadlines": entry("With deadlines", []),
+  "review.counts.important": entry("From important people", []),
+  "review.cleanable.title": entry("Safe to clean up", []),
+  ...reviewMessages.en,
+  "review.loading": entry("Loading your review", []),
+  "review.error.title": entry("I could not load your review.", []),
   "overview.pause": entry("Pause", []),
   "overview.resume": entry("Resume", []),
   "overview.viewSummary": entry("View summary", []),

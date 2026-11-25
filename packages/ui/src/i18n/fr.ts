@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -28,6 +29,15 @@ export const fr = {
     [],
   ),
   "overview.review": entry("Examiner", []),
+  "review.counts.title": entry("Ce que j’ai trouvé", []),
+  "review.counts.toReview": entry("À examiner", []),
+  "review.counts.waiting": entry("Qui vous attendent", []),
+  "review.counts.deadlines": entry("Avec une échéance", []),
+  "review.counts.important": entry("De personnes importantes", []),
+  "review.cleanable.title": entry("À nettoyer sans risque", []),
+  ...reviewMessages.fr,
+  "review.loading": entry("Chargement de votre examen", []),
+  "review.error.title": entry("Je n’ai pas pu charger votre examen.", []),
   "overview.pause": entry("Pause", []),
   "overview.resume": entry("Reprendre", []),
   "overview.viewSummary": entry("Voir le résumé", []),

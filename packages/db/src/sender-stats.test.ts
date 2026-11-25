@@ -22,12 +22,17 @@ describe("sender stats", () => {
     const stats = unwrap(await h.uow.reads.senders.list(WS_A, ACCOUNT_1, { limit: 100 })).items;
     const recount = h.storage.reader
       .prepare(
-        "SELECT sender AS address, count(*) AS n, sum(opened) AS opened, max(received_at) AS last FROM message GROUP BY sender ORDER BY sender",
+        "SELECT sender_hash, count(*) AS n, sum(opened) AS opened, max(received_at) AS last FROM message GROUP BY sender_hash ORDER BY sender_hash",
       )
-      .all() as { address: string; n: number; opened: number; last: string }[];
-    expect(stats.map((s) => [s.address, s.messageCount, s.openedCount, s.lastMessageAt])).toEqual(
-      recount.map((r) => [r.address, r.n, r.opened, r.last]),
-    );
+      .all() as { sender_hash: string; n: number; opened: number; last: string }[];
+    expect(
+      stats.map((s) => [
+        h.storage.senderHasher.hash(ACCOUNT_1, s.address),
+        s.messageCount,
+        s.openedCount,
+        s.lastMessageAt,
+      ]),
+    ).toEqual(recount.map((r) => [r.sender_hash, r.n, r.opened, r.last]));
     expect(stats.reduce((n, s) => n + s.messageCount, 0)).toBe(7);
   });
 
@@ -41,5 +46,19 @@ describe("sender stats", () => {
     await put(h, [mail(2, { from: sender(1) })]);
     const after = unwrap(await h.uow.reads.senders.get(WS_A, ACCOUNT_1, sender(1)));
     expect([after.messageCount, after.vip, after.repliedCount]).toEqual([2, true, 4]);
+  });
+
+  // Guards: re-ingesting a migrated message (empty sender hash) creating a phantom stats bucket for "".
+  it("never keep a stats row for the empty sender hash of messages migrated to v6", async () => {
+    const h = harness();
+    await put(h, [mail(1, { from: sender(1) }), mail(2, { from: sender(1) })]);
+    h.storage.writer.exec("UPDATE message SET sender_hash = ''; DELETE FROM sender_stats");
+    await put(h, [mail(1, { from: sender(1) })]);
+    const buckets = h.storage.reader
+      .prepare("SELECT sender_hash, message_count FROM sender_stats")
+      .all();
+    expect(buckets).toEqual([
+      { sender_hash: h.storage.senderHasher.hash(ACCOUNT_1, sender(1)), message_count: 1 },
+    ]);
   });
 });

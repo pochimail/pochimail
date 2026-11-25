@@ -14,7 +14,7 @@ ADR 0009 kept message metadata at rest: subjects, snippets, sender addresses, un
 
 ## Consequences
 - A stolen database reveals counts, ids and dates, not what anyone wrote or who they are.
-- Review lists need a connection to show rows; offline they show counts.
+- Review lists fetch their rows from the provider, so they need a connected account; without one they show counts.
 - A schema allow-list test fails if a column outside this list is added; a fixture test checks that no fixture text reaches the database file.
 
 ## Alternatives considered

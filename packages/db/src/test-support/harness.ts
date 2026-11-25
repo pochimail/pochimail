@@ -27,7 +27,7 @@ export function harness() {
   const snapshot = async () => {
     const tables = storage.reader
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'message_search%' AND name NOT IN ('outbox', 'job')",
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('outbox', 'job')",
       )
       .all() as { name: string }[];
     const out: Record<string, unknown> = {};

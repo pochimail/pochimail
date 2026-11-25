@@ -4,6 +4,7 @@ export const queryKeys = {
   accounts: () => ["accounts", "list"] as const,
   categoryCounts: (accountIds: readonly string[]) => ["mailbox", "categories", accountIds] as const,
   overview: (accountId?: string) => ["overview", accountId ?? "all"] as const,
+  review: (accountId?: string) => ["review", accountId ?? "all"] as const,
   /** Without an account this is the prefix that invalidates every account's digest cache. */
   digest: (accountId?: string) =>
     accountId === undefined ? (["digest"] as const) : (["digest", accountId] as const),
