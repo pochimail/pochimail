@@ -36,6 +36,18 @@ describe("sender stats", () => {
     expect(stats.reduce((n, s) => n + s.messageCount, 0)).toBe(7);
   });
 
+  it("count one sender once whatever the case of its address (guards a split sender after lowercasing moved to the hash)", async () => {
+    const h = harness();
+    await put(h, [
+      mail(1, { from: "Sender@Example.COM" }),
+      mail(2, { from: "sender@example.com" }),
+    ]);
+    const stats = unwrap(await h.uow.reads.senders.list(WS_A, ACCOUNT_1, { limit: 10 })).items;
+    expect(stats.map((s) => s.messageCount)).toEqual([2]);
+    const found = unwrap(await h.uow.reads.senders.get(WS_A, ACCOUNT_1, "SENDER@example.com"));
+    expect(found.messageCount).toBe(2);
+  });
+
   it("keep the VIP flag and replied count that the stats row already had (guards a re-sync wiping user knowledge)", async () => {
     const h = harness();
     await put(h, [mail(1, { from: sender(1) })]);
