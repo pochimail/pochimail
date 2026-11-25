@@ -46,3 +46,22 @@ test("a new user gets from Welcome to the first summary, and can pause and resum
     await running.close();
   }
 });
+
+// Guards: the Setup title appearing or disappearing with focus moves the Start button, so a press on its edge misses it.
+test("pressing elsewhere on Setup does not move the Start button", async () => {
+  const running = await launchApp({ firstRun: true });
+  const { page } = running;
+  try {
+    await walkToSetup(page);
+    const start = page.getByRole("button", { name: copy("setup.start") });
+    const heading = page.getByRole("heading", { level: 1, name: copy("setup.title") });
+    await expect(heading).toBeFocused();
+    const before = await start.boundingBox();
+    await page.mouse.click(4, 4);
+    await expect(heading).not.toBeFocused();
+    expect(await start.boundingBox()).toEqual(before);
+    expect(running.problems).toEqual([]);
+  } finally {
+    await running.close();
+  }
+});
