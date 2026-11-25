@@ -248,7 +248,7 @@ describe("adaptive polling single flight", () => {
   });
 
   // Guards: an activity change arming a second tick beside the pending one while a long poll is in flight.
-  it("leaves the pending tick alone when the activity changes during a long poll", async () => {
+  it("re-arms a single tick at the new cadence when the activity changes during a long poll", async () => {
     const { scheduler, activity, polling } = harness();
     const { gate, done, release, finished } = blockedTask();
     let runs = 0;
@@ -264,12 +264,52 @@ describe("adaptive polling single flight", () => {
     release();
     await done;
     await Promise.resolve();
-    await scheduler.advance(FOCUSED_POLL_MS - 1);
+    await scheduler.advance(VISIBLE_POLL_MS - 1);
     expect(runs).toBe(1);
     await scheduler.advance(1);
     expect(runs).toBe(2);
-    await scheduler.advance(VISIBLE_POLL_MS - FOCUSED_POLL_MS);
+    await scheduler.advance(VISIBLE_POLL_MS - 1);
     expect(runs).toBe(2);
+  });
+
+  // Guards: a trigger-started poll finishing without re-arming, so polling stops after hidden, trigger, focused.
+  it("keeps polling after hidden, trigger, focused", async () => {
+    const { scheduler, activity, polling } = harness({ activity: "hidden", hiddenMs: null });
+    const { gate, done, release, finished } = blockedTask();
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+      if (runs === 1) {
+        await gate;
+        finished();
+      }
+    });
+    polling.trigger("acc-1");
+    activity.set("focused");
+    release();
+    await done;
+    await Promise.resolve();
+    await scheduler.advance(FOCUSED_POLL_MS);
+    expect(runs).toBe(2);
+  });
+
+  // Guards: a stale tick armed before the window was hidden polling on request-only cadence.
+  it("drops the pending tick when the window is hidden during a long poll", async () => {
+    const { scheduler, activity, polling } = harness({ hiddenMs: null });
+    const { gate, done, release, finished } = blockedTask();
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+      await gate;
+      finished();
+    });
+    polling.trigger("acc-1");
+    activity.set("hidden");
+    release();
+    await done;
+    await Promise.resolve();
+    await scheduler.advance(5 * FOCUSED_POLL_MS);
+    expect(runs).toBe(1);
   });
 
   // Guards: an unwatch or dispose leaving an in-flight poll running after its watch is gone.
@@ -370,5 +410,41 @@ describe("adaptive polling errors", () => {
     await scheduler.advance(FOCUSED_POLL_MS);
     expect(runs).toBe(2);
     expect(errors).toEqual([thrown]);
+  });
+
+  // Guards: a pause, unwatch or dispose abort reported as a failed poll.
+  it("does not report a poll that threw after being aborted", async () => {
+    const errors: unknown[] = [];
+    const { power, polling } = harness({ onError: (error) => errors.push(error) });
+    const { gate, done, release, finished } = blockedTask();
+    polling.watch("acc-1", async () => {
+      await gate;
+      finished();
+      throw new Error("aborted");
+    });
+    polling.trigger("acc-1");
+    power.sleep();
+    release();
+    await done;
+    await Promise.resolve();
+    expect(errors).toEqual([]);
+  });
+
+  // Guards: a throwing reporter becoming an unhandled rejection or ending the cadence.
+  it("survives a throwing reporter", async () => {
+    const { scheduler, polling } = harness({
+      onError: () => {
+        throw new Error("reporter failed");
+      },
+    });
+    let runs = 0;
+    polling.watch("acc-1", async () => {
+      runs++;
+      throw new Error("poll failed");
+    });
+    polling.trigger("acc-1");
+    await Promise.resolve();
+    await scheduler.advance(FOCUSED_POLL_MS);
+    expect(runs).toBe(2);
   });
 });

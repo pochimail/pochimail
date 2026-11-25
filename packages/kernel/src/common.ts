@@ -35,7 +35,7 @@ export function createCancelSource(): { signal: CancelSignal; abort: () => void 
         try {
           listener();
         } catch {
-          // A broken listener must not stop the other watches from being cancelled.
+          // Deliberately swallowed: a broken listener must not stop the other listeners from being cancelled.
         }
       }
     },

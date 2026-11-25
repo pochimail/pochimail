@@ -34,6 +34,16 @@ export const powerMonitorChecks: readonly Check<PowerMonitorHarness>[] = [
     },
   ),
   check(
+    "listeners receive an asleep change (guards missing the sleep that must pause work)",
+    async ({ monitor, change }) => {
+      const seen: PowerState[] = [];
+      monitor.onChange((s) => void seen.push(s));
+      change({ asleep: true });
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.asleep).toBe(true);
+    },
+  ),
+  check(
     "a returned state is a snapshot (guards callers mutating the monitor's own state)",
     async ({ monitor }) => {
       const snapshot = monitor.current() as { online: boolean };
