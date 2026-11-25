@@ -4,8 +4,8 @@ import type { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors
 import type { MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
 import type { MessageClassified } from "../events.ts";
-import { categorySchema } from "../model/category.ts";
 import { DERIVED_SNIPPET_MAX_CHARS, type DerivedMessage } from "../model/derived.ts";
+import { emailTypeSchema } from "../model/email-type.ts";
 import type { ClassifiableMessage } from "../model/message-facts.ts";
 import { confidenceSchema } from "../model/scores.ts";
 import type { AiError, Classification, Classifier } from "../ports/classifier.ts";
@@ -64,7 +64,7 @@ export class ClassifyBatch {
     >();
     for (const c of answered.value) {
       const message = byId.get(c.messageId);
-      const category = categorySchema.safeParse(c.category);
+      const category = emailTypeSchema.safeParse(c.category);
       if (!message || !category.success || !confidenceSchema.safeParse(c.confidence).success) {
         continue;
       }

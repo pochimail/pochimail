@@ -2,7 +2,7 @@ import type { AsyncResult } from "@pochimail/kernel/common";
 import type { NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
-import { categoryOf } from "../model/category.ts";
+import { emailTypeOf } from "../model/email-type.ts";
 import type { StoredSignal } from "../model/signal.ts";
 import { DEFAULT_SIGNAL_SETTINGS, type SignalSettings } from "../model/signal-settings.ts";
 import { IMPORTANT_REPLY_COUNT, signalRules } from "../policies/signal-rules.ts";
@@ -50,7 +50,7 @@ export class EvaluateSignals {
         fromOwner: f.fromOwner,
         receivedAt: f.receivedAt,
         opened: f.opened,
-        category: derived.ok ? derived.value.category : categoryOf({ category: f.storedCategory }),
+        category: derived.ok ? derived.value.category : emailTypeOf({ category: f.storedCategory }),
         confidence: derived.ok ? derived.value.confidence : undefined,
         now,
         lastInThread: f.lastInThread,

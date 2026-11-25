@@ -1,6 +1,6 @@
 import type { AsyncResult } from "@pochimail/kernel/common";
 import type { NotFound, StorageError } from "@pochimail/kernel/errors";
-import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
+import type { AccountId, MessageId, TopicId, WorkspaceId } from "@pochimail/kernel/ids";
 import type { ClassifiableMessage, SignalFacts } from "../model/message-facts.ts";
 
 /** Read access to the mailbox's messages as plain data; the adapter maps from the mailbox rows. */
@@ -14,11 +14,17 @@ export interface MessageSource {
 }
 
 export interface MessageLabeler {
-  /** Records the category on the stored message. */
+  /** Records the type on the stored message under its stored `category` label. */
   setCategory(
     ws: WorkspaceId,
     id: MessageId,
     category: string,
+  ): AsyncResult<void, StorageError | NotFound>;
+  /** Replaces the topics of the stored message; an empty list leaves it in none. */
+  setTopics(
+    ws: WorkspaceId,
+    id: MessageId,
+    topicIds: readonly TopicId[],
   ): AsyncResult<void, StorageError | NotFound>;
 }
 

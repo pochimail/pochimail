@@ -1,6 +1,7 @@
 import { AUTONOMY_LEVELS } from "@pochimail/actions/policies/autonomy";
-import { categorySchema } from "@pochimail/classification/model/category";
+import { emailTypeSchema } from "@pochimail/classification/model/email-type";
 import { digestFiguresSchema } from "@pochimail/cleanup/model/digest";
+import { CLEANABLE_LABELS } from "@pochimail/cleanup/policies/labels";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
 import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
@@ -18,15 +19,15 @@ const themeSchema = z.enum(THEMES);
 const localeSchema = z.enum(SETTINGS_LOCALES);
 const tidyCadenceSchema = z.enum(TIDY_CADENCES);
 const count = z.number().int().nonnegative();
-/** The four cleanable categories, shared by the Overview and Review figures; counts only (ADR 0014). */
+/** The cleanable types, shared by the Overview and Review figures; counts only (ADR 0014). */
 const cleanableSchema = z
   .array(
     z.object({
-      category: z.enum(["newsletters", "promotions", "notifications", "sign-ins-security"]),
+      category: z.enum(CLEANABLE_LABELS),
       count,
     }),
   )
-  .max(4);
+  .max(CLEANABLE_LABELS.length);
 const capabilitiesSchema = z.object(
   Object.fromEntries(CAPABILITIES.map((name) => [name, z.boolean()])) as Record<
     (typeof CAPABILITIES)[number],
@@ -82,10 +83,10 @@ const queries = {
       noAccount: z.boolean(),
     }),
   },
-  /** Email counts per category over the given accounts (the switcher's selection); counts only, never content. */
-  "mailbox.categories": {
+  /** Email counts per type over the given accounts (the switcher's selection); counts only, never content. */
+  "mailbox.types": {
     input: z.object({ accountIds: z.array(accountId).max(100) }),
-    output: z.record(categorySchema, z.number().int().nonnegative()),
+    output: z.record(emailTypeSchema, z.number().int().nonnegative()),
   },
   /** Read-only: the live (running or paused) scan jobs of the given accounts, so a screen can show Pause or Resume after a reload. */
   "scan.status": {

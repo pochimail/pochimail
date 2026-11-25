@@ -1,4 +1,5 @@
-import { CATEGORIES, SIGNAL_KINDS } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
+import { SIGNAL_KINDS } from "@pochimail/classification/model/signal";
 import type { EvalReport } from "./report.ts";
 
 /** A class may lose at most this much precision or recall before the gate fails. */
@@ -54,7 +55,7 @@ export function compareToBaseline(
       }
     }
   };
-  check("category", CATEGORIES, baseline.categories, current.categories);
+  check("category", EMAIL_TYPES, baseline.categories, current.categories);
   check("signal", SIGNAL_KINDS, baseline.signals, current.signals);
   check(
     "suspicious",

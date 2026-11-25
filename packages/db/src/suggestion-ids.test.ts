@@ -1,5 +1,4 @@
 // Guards: a suggestion keyed by the sender address or split by the display cache, so it changes or duplicates after a restart (ADR 0014).
-import { PROTECTED_CATEGORIES } from "@pochimail/classification/model/category";
 import { live, type SeedRow } from "@pochimail/cleanup/testing/samples";
 import { ProposeSuggestions } from "@pochimail/cleanup/use-cases/propose-suggestions";
 import { unwrap } from "@pochimail/kernel/result";
@@ -13,8 +12,8 @@ import { freshPath, key, open } from "./test-support/storage.ts";
 
 const ADDRESS = "promo@example.com";
 const promo = (): SeedRow => ({
-  category: "promotions",
-  message: { from: ADDRESS, hasListUnsubscribe: true },
+  category: "promotion",
+  message: { from: ADDRESS, hasListUnsubscribe: true, savedCount: 0 },
   reason: "Weekly promo, never opened",
   confidence: 0.95,
 });
@@ -29,7 +28,6 @@ const session = (path: string) => {
       await new ProposeSuggestions({
         uow,
         clock: { now: () => new Date("2026-01-02T00:00:00.000Z") },
-        protectedLabels: PROTECTED_CATEGORIES,
       }).execute({ workspaceId: WS_A, accountId: ACCOUNT_1 }, live()),
     );
   return { storage, uow, seed: cleanupSeeder({ uow, committedOutbox }).seed, propose };

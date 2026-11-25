@@ -30,7 +30,7 @@ type DatabaseKey = Result<Buffer | undefined, DatabaseKeyError>;
 type State =
   | { kind: "choose" }
   | { kind: "locked"; choice: PassphraseChoice }
-  | { kind: "settled"; key: DatabaseKey };
+  | { kind: "settled"; key: DatabaseKey; passphrase?: true };
 
 export type StorageGateOptions = {
   vault: KeyVault;
@@ -79,8 +79,8 @@ export const createStorageGate = (options: StorageGateOptions) => {
       state = next;
       if (next.kind === "settled") release();
     });
-  const settle = (key: Buffer): void => {
-    state = { kind: "settled", key: ok(key) };
+  const settle = (key: Buffer, passphrase?: true): void => {
+    state = { kind: "settled", key: ok(key), ...(passphrase ? { passphrase } : {}) };
     release();
   };
 
@@ -120,6 +120,17 @@ export const createStorageGate = (options: StorageGateOptions) => {
       return key.ok && key.value !== undefined ? ok(Buffer.from(key.value)) : key;
     },
 
+    /**
+     * A copy of the database key when the person chose a passphrase, else `undefined`: only then may tokens persist on
+     * basic-text (#247). Waits for the choice; the caller zeroes it.
+     */
+    passphraseKey: async (): Promise<Buffer | undefined> => {
+      await released;
+      return state?.kind === "settled" && state.passphrase && state.key.ok && state.key.value
+        ? Buffer.from(state.key.value)
+        : undefined;
+    },
+
     setPassphrase: (raw: unknown): Promise<StorageOutcome> =>
       answer("choose", async () => {
         const passphrase = passphraseSchema.safeParse(raw);
@@ -132,7 +143,7 @@ export const createStorageGate = (options: StorageGateOptions) => {
           throw error;
         }
         rmSync(plainKeyFile, { force: true });
-        settle(key);
+        settle(key, true);
         logger.info("storage protected with a passphrase", { operation: "start" });
         return "ready";
       }),
@@ -160,7 +171,7 @@ export const createStorageGate = (options: StorageGateOptions) => {
           logger.warn("storage unlock refused, wrong passphrase", { operation: "start" });
           return "wrong-passphrase";
         }
-        settle(key);
+        settle(key, true);
         return "ready";
       }),
 

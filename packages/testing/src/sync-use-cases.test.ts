@@ -1,6 +1,6 @@
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { AiUnavailable } from "@pochimail/classification/errors";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import type { ProviderError } from "@pochimail/kernel/errors";
 import { createFakeClock } from "./fake-clock.ts";
@@ -11,7 +11,7 @@ import { runSyncContract } from "./sync-contract.ts";
 runSyncContract(() => {
   const store = createInMemoryUnitOfWork();
   const provider = createFakeMailProvider({ pageSize: 2 });
-  const labels = new Map<string, Category>();
+  const labels = new Map<string, EmailType>();
   const classifier = createGroundTruthClassifier(labels);
   let next = 0;
   return {

@@ -46,8 +46,8 @@ it("a provider failing part-way logs the applied part as applied and undo restor
           },
           authorization: {
             autonomy: "suggest",
-            categories: ["newsletters"],
-            protectedCategories: ["people"],
+            categories: ["newsletter"],
+            protectedCategories: ["personal"],
             confidence: 0.95,
             userConfirmed: true,
           },
@@ -79,6 +79,6 @@ it("a provider failing part-way logs the applied part as applied and undo restor
 });
 
 authorizeContract(authorize, {
-  categories: ["people", "promotions", "newsletters"],
-  protectedCategories: ["people"],
+  categories: ["personal", "promotion", "newsletter"],
+  protectedCategories: ["personal"],
 });

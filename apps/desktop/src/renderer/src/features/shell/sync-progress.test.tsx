@@ -14,13 +14,11 @@ afterEach(cleanup);
 type Job = OutputOf<"scan.status">[number];
 const activeJob: Job = { accountId: "a1", jobId: "j1", status: "running", processed: 0 };
 const zero = {
-  people: 0,
-  records: 0,
-  "purchases-travel": 0,
-  "sign-ins-security": 0,
-  notifications: 0,
-  newsletters: 0,
-  promotions: 0,
+  personal: 0,
+  transactional: 0,
+  notification: 0,
+  newsletter: 0,
+  promotion: 0,
 };
 const indicator = () => screen.queryByRole("progressbar", { name: "Syncing your email" });
 
@@ -45,7 +43,7 @@ const setup = (jobs: Job[] = [activeJob], path = "/overview") => {
       "accounts.list": () => [
         { id: "a1", provider: "google" as const, displayName: "a@example.test" },
       ],
-      "mailbox.categories": () => zero,
+      "mailbox.types": () => zero,
       "scan.status": ({ accountIds }) =>
         state.jobs.filter((job) => accountIds.includes(job.accountId)),
       "overview.get": () => ({

@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 import { classifiableMessageSchema } from "@pochimail/classification/model/message-facts";
 import { z } from "zod";
 
@@ -30,7 +30,7 @@ export type HostRequest = z.infer<typeof hostRequestSchema>;
 export const classificationsSchema = z.array(
   z.object({
     messageId: z.string().min(1),
-    category: z.enum(CATEGORIES),
+    category: z.enum(EMAIL_TYPES),
     confidence: z.number().min(0).max(1),
     reasons: z.array(z.string()),
     modelVersion: z.string().optional(),

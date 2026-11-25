@@ -8,7 +8,7 @@ import { ago, DAY, expectSignal, idOf, kinds, type SignalsHarness } from "./sign
 
 const person = (h: SignalsHarness, days: number, from = "alice@example.com") =>
   ({
-    category: "people",
+    category: "personal",
     message: { from, receivedAt: ago(h, days * DAY) },
   }) as const;
 
@@ -20,7 +20,7 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
         1: person(h, 1),
         2: person(h, 1, "owner@example.com"),
         3: { ...person(h, 1), message: { receivedAt: ago(h, DAY), hasListUnsubscribe: true } },
-        4: { category: "newsletters", message: { receivedAt: ago(h, DAY) } },
+        4: { category: "newsletter", message: { receivedAt: ago(h, DAY) } },
         5: person(h, 40),
       });
       const got = await kinds(h, [1, 2, 3, 4, 5]);
@@ -72,17 +72,17 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
     },
   ),
   check(
-    "time-sensitive fires on a recent unopened records notice and not on an opened, old or bulk one (guards missed deadlines and false alarms)",
+    "time-sensitive fires on a recent unopened transactional email and not on an opened, old or bulk one (guards missed deadlines and false alarms)",
     async (h) => {
       const recent = (over: object) => ({
-        category: "records" as const,
+        category: "transactional" as const,
         message: { receivedAt: ago(h, 2 * DAY), opened: false, ...over },
       });
       await h.seed({
         1: recent({}),
         2: recent({ opened: true }),
         3: recent({ receivedAt: ago(h, 20 * DAY) }),
-        4: { ...recent({}), category: "newsletters" },
+        4: { ...recent({}), category: "newsletter" },
       });
       const got = await kinds(h, [1, 2, 3, 4]);
       expect(got.get(1)).toContain("time-sensitive");
@@ -97,7 +97,7 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
         1: { message: { receivedAt: old, opened: false } },
         2: { message: { receivedAt: old, opened: true } },
         3: { message: { receivedAt: ago(h, 2 * DAY), opened: false } },
-        4: { category: "people", message: { receivedAt: old, opened: false } },
+        4: { category: "personal", message: { receivedAt: old, opened: false } },
       });
       const got = await kinds(h, [1, 2, 3, 4]);
       expect(got.get(1)).toContain("old-never-opened");
@@ -109,7 +109,10 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
     async (h) => {
       await h.seed({
         1: { attachmentCount: 1 },
-        2: { category: "people", message: { from: "alice@example.com", receivedAt: ago(h, DAY) } },
+        2: {
+          category: "personal",
+          message: { from: "alice@example.com", receivedAt: ago(h, DAY) },
+        },
       });
       const run = (ids: number[]) =>
         new DetectSignals({ uow: h.uow, clock: h.clock }).execute(
@@ -126,7 +129,7 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
     "signals survive a fresh DetectSignals read without re-detecting, and re-running detection yields identical rows (guards lost or churning signals)",
     async (h) => {
       await h.seed({
-        1: { category: "people" },
+        1: { category: "personal" },
         2: { attachmentCount: 1 },
       });
       const request = { workspaceId: WS_A, accountId: ACCOUNT_1, messageIds: [idOf(1), idOf(2)] };
@@ -161,7 +164,7 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
           derived: { snippet: "placeholder" },
         },
       });
-      h.labels.set("msg-1", "records");
+      h.labels.set("msg-1", "transactional");
       unwrap(
         await new ClassifyBatch({ uow: h.uow, classifier: h.classifier, clock: h.clock }).execute(
           { workspaceId: WS_A, messageIds: [idOf(1)] },

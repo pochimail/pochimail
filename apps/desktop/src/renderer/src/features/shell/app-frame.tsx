@@ -1,4 +1,4 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import {
   AccountSwitcher,
   AccountSwitcherContent,
@@ -39,35 +39,31 @@ import {
   AtSignIcon,
   ChevronDownIcon,
   FileTextIcon,
-  KeyRoundIcon,
   LayoutGridIcon,
   NewspaperIcon,
   PaperclipIcon,
   PlusIcon,
   SettingsIcon,
-  ShoppingBagIcon,
   TagIcon,
   Undo2Icon,
   UserIcon,
   UsersIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
-import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { isMacDesktop } from "../../lib/platform.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { TYPE_LABELS } from "../../lib/type-labels.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ProviderIcon } from "./provider-icon.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
-import { visibleCategories } from "./visible-categories.ts";
+import { visibleTypes } from "./visible-types.ts";
 
-const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
-  people: { label: CATEGORY_LABELS.people, icon: UserIcon },
-  records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
-  "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
-  "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
-  notifications: { label: CATEGORY_LABELS.notifications, icon: AtSignIcon },
-  newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
-  promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
+const TYPE_NAV: Record<EmailType, { label: MessageKey; icon: ComponentType }> = {
+  personal: { label: TYPE_LABELS.personal, icon: UserIcon },
+  transactional: { label: TYPE_LABELS.transactional, icon: FileTextIcon },
+  notification: { label: TYPE_LABELS.notification, icon: AtSignIcon },
+  newsletter: { label: TYPE_LABELS.newsletter, icon: NewspaperIcon },
+  promotion: { label: TYPE_LABELS.promotion, icon: TagIcon },
 };
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";
@@ -98,8 +94,8 @@ function NavItem({
 
 const REFRESH_EVERY_MS = 2000;
 
-/** A category appears when it gets mail (D5): while an account scans, refresh the counts at most every 2 s. */
-function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) {
+/** A type appears when it gets mail (D5): while an account scans, refresh the counts at most every 2 s. */
+function useRefreshCountsWhileScanning(accounts: readonly { id: string }[]) {
   const accountIds = accounts.map((a) => a.id);
   const client = useWorkerClient();
   const queryClient = useQueryClient();
@@ -150,11 +146,11 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
   const accountIds = selected === null ? allAccountIds : [selected];
 
   const counts = useQuery({
-    queryKey: queryKeys.categoryCounts(accountIds),
-    queryFn: () => client.call("mailbox.categories", { accountIds }),
+    queryKey: queryKeys.typeCounts(accountIds),
+    queryFn: () => client.call("mailbox.types", { accountIds }),
     enabled: accounts.isSuccess,
   });
-  const categories = visibleCategories(counts.data);
+  const types = visibleTypes(counts.data);
   const current = accountList.find((a) => a.id === selected);
   const currentLabel = current?.displayName ?? t("switcher.all");
   const selectAccount = (next: string) =>
@@ -165,7 +161,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
         return next === ALL_ACCOUNTS ? rest : { ...rest, account: next };
       },
     });
-  useRefreshCategoriesWhileScanning(accountList);
+  useRefreshCountsWhileScanning(accountList);
 
   const onMac = isMacDesktop();
 
@@ -225,10 +221,10 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
                   icon={LayoutGridIcon}
                   active={pathname}
                 />
-                {categories.map(({ id, count }) => {
-                  const nav = CATEGORY_NAV[id];
+                {types.map(({ id, count }) => {
+                  const nav = TYPE_NAV[id];
                   const Icon = nav.icon;
-                  const target = `/category/${id}`;
+                  const target = `/type/${id}`;
                   return (
                     <SidebarMenuItem key={id} reach="wide">
                       <SidebarMenuButton
@@ -237,11 +233,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
                         tone="muted"
                         tooltip={t(nav.label)}
                       >
-                        <Link
-                          to="/category/$categoryId"
-                          params={{ categoryId: id }}
-                          search={(prev) => prev}
-                        >
+                        <Link to="/type/$typeId" params={{ typeId: id }} search={(prev) => prev}>
                           <Icon />
                           <SidebarMenuLabel>{t(nav.label)}</SidebarMenuLabel>
                           <SidebarMenuBadge>{count.toLocaleString(locale)}</SidebarMenuBadge>

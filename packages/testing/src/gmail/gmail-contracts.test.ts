@@ -1,6 +1,6 @@
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { AiUnavailable } from "@pochimail/classification/errors";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { AuthExpired, type ProviderError, RateLimited } from "@pochimail/kernel/errors";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
@@ -19,7 +19,7 @@ runSyncContract(() => {
   const { provider, server, clock, deliver } = createGmailHarness({ pageSize: 2 });
   const owners = new Map<string, Pick<IncomingMessage, "workspaceId" | "accountId">>();
   const store = createInMemoryUnitOfWork();
-  const labels = new Map<string, Category>();
+  const labels = new Map<string, EmailType>();
   const classifier = createGroundTruthClassifier(labels);
   let next = 0;
   return {

@@ -5,9 +5,9 @@ import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "@tanstack/react-router";
 import type { OutputOf } from "#shared/ipc/contract.ts";
-import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
+import { TYPE_LABELS } from "../../lib/type-labels.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 
 type Review = OutputOf<"review.get">;
@@ -83,7 +83,7 @@ function CleanableCounts({
         <ul className="m-0 flex list-none flex-col divide-y p-0">
           {data.cleanable.map((row) => (
             <li key={row.category} className="flex items-baseline justify-between gap-4 py-2.5">
-              <span className="text-ui">{t(CATEGORY_LABELS[row.category])}</span>
+              <span className="text-ui">{t(TYPE_LABELS[row.category])}</span>
               <span className="font-display text-body font-title tabular-nums">
                 {row.count.toLocaleString(locale)}
               </span>

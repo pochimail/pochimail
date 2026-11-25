@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { ok } from "@pochimail/kernel/result";
@@ -13,7 +13,7 @@ import { scoreMultiLabel, scoreSingleLabel } from "./metrics.ts";
 import { type EvalReport, evalReportSchema } from "./report.ts";
 
 const mailbox = generateMailbox({ seed: 20261117, scale: "small" });
-const labels = new Map<string, Category>(
+const labels = new Map<string, EmailType>(
   mailbox.labels.messages.map((l) => [l.messageId, l.category]),
 );
 const truth = () => createGroundTruthClassifier(labels);
@@ -23,18 +23,18 @@ const baseline = evalReportSchema.parse(
 
 describe("metrics", () => {
   it("hand-computed tiny fixture: precision, recall, support and accuracy are exact (guards a swapped fp/fn)", () => {
-    // people: tp 2 (a, b), fn 1 (c predicted records), records: tp 1 (d), fp 1 (c), fn 1 (e unanswered).
+    // personal: tp 2 (a, b), fn 1 (c predicted transactional), transactional: tp 1 (d), fp 1 (c), fn 1 (e unanswered).
     const { perClass, accuracy } = scoreSingleLabel(
-      ["people", "records"],
+      ["personal", "transactional"],
       [
-        { expected: "people", predicted: "people" },
-        { expected: "people", predicted: "people" },
-        { expected: "people", predicted: "records" },
-        { expected: "records", predicted: "records" },
-        { expected: "records", predicted: undefined },
+        { expected: "personal", predicted: "personal" },
+        { expected: "personal", predicted: "personal" },
+        { expected: "personal", predicted: "transactional" },
+        { expected: "transactional", predicted: "transactional" },
+        { expected: "transactional", predicted: undefined },
       ],
     );
-    expect(perClass.people).toMatchObject({
+    expect(perClass.personal).toMatchObject({
       support: 3,
       truePositives: 2,
       falsePositives: 0,
@@ -42,7 +42,7 @@ describe("metrics", () => {
       precision: 1,
       recall: 0.6667,
     });
-    expect(perClass.records).toMatchObject({
+    expect(perClass.transactional).toMatchObject({
       support: 2,
       truePositives: 1,
       falsePositives: 1,
@@ -82,7 +82,7 @@ describe("compareToBaseline", () => {
     ...baseline,
     categories: {
       ...baseline.categories,
-      people: { ...baseline.categories.people, recall: 1 - drop },
+      personal: { ...baseline.categories.personal, recall: 1 - drop },
     },
   });
 
@@ -91,7 +91,7 @@ describe("compareToBaseline", () => {
     const failed = compareToBaseline(worse(0.05), baseline);
     expect(failed.ok).toBe(false);
     expect(failed.regressions).toEqual([
-      { group: "category", name: "people", metric: "recall", baseline: 1, current: 0.95 },
+      { group: "category", name: "personal", metric: "recall", baseline: 1, current: 0.95 },
     ]);
   });
 
@@ -117,7 +117,7 @@ describe("runEval", () => {
     const report = await runEval({ classifier: silent, mailbox });
     expect(report.unclassified).toBe(mailbox.labels.messages.length);
     expect(report.categoryAccuracy).toBe(0);
-    expect(report.categories.people.recall).toBe(0);
+    expect(report.categories.personal.recall).toBe(0);
   });
 
   it("the report validates against its schema and holds no mail content (guards leaking subjects or addresses, D11)", async () => {

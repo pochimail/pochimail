@@ -1,11 +1,11 @@
 import { accountSchema } from "@pochimail/accounts/model/account";
 import { actionLogSchema, actionSchema } from "@pochimail/actions/model/action";
 import {
-  CATEGORIES,
-  categoryOf,
-  categorySchema,
-  signalKindSchema,
-} from "@pochimail/classification/model/category";
+  EMAIL_TYPES,
+  emailTypeOf,
+  emailTypeSchema,
+} from "@pochimail/classification/model/email-type";
+import { signalKindSchema } from "@pochimail/classification/model/signal";
 import { incomingMessageSchema, messageSchema } from "@pochimail/mailbox/model/message";
 import { describe, expect, it } from "vitest";
 import { rng, sampleBuilders } from "./domain-samples.ts";
@@ -16,23 +16,15 @@ entityRoundTripContract();
 const r = rng(42);
 
 describe("fixed vocabularies", () => {
-  it("has exactly the 7 brief categories (a renamed or extra category breaks the sidebar)", () => {
-    expect([...CATEGORIES].sort()).toEqual(
-      [
-        "newsletters",
-        "notifications",
-        "people",
-        "promotions",
-        "purchases-travel",
-        "records",
-        "sign-ins-security",
-      ].sort(),
+  it("has exactly the 5 types of ADR 0016 (a renamed or extra type breaks the sidebar)", () => {
+    expect([...EMAIL_TYPES].sort()).toEqual(
+      ["newsletter", "notification", "personal", "promotion", "transactional"].sort(),
     );
   });
-  it("rejects an unknown category on a message (including 'suspicious', which is a flag)", () => {
-    expect(categorySchema.safeParse("suspicious").success).toBe(false);
+  it("rejects an unknown type on a message (including 'suspicious', which is a flag)", () => {
+    expect(emailTypeSchema.safeParse("suspicious").success).toBe(false);
     const m = { ...sampleBuilders.message(r), category: "spam" };
-    expect(() => categoryOf(m)).toThrow();
+    expect(() => emailTypeOf(m)).toThrow();
   });
   it("has exactly 6 signal kinds", () => {
     expect(signalKindSchema.options).toHaveLength(6);

@@ -34,13 +34,11 @@ import {
   AtSignIcon,
   ChevronDownIcon,
   FileTextIcon,
-  KeyRoundIcon,
   LayoutGridIcon,
   NewspaperIcon,
   PaperclipIcon,
   PlusIcon,
   SettingsIcon,
-  ShoppingBagIcon,
   TagIcon,
   Undo2Icon,
   UserIcon,
@@ -52,11 +50,9 @@ const ACCOUNTS = [
   { id: "gmail", label: "alex@example.test" },
   { id: "outlook", label: "alex@work.example.test" },
 ];
-const CATEGORIES = [
-  ["People", UserIcon, 6820],
-  ["Records", FileTextIcon, 2104],
-  ["Purchases & travel", ShoppingBagIcon, 3580],
-  ["Sign-ins & security", KeyRoundIcon, 1962],
+const TYPES = [
+  ["Personal", UserIcon, 6820],
+  ["Transactional", FileTextIcon, 7646],
   ["Alert emails", AtSignIcon, 14230],
   ["Newsletters", NewspaperIcon, 10410],
   ["Promotions", TagIcon, 9206],
@@ -65,10 +61,10 @@ const CATEGORIES = [
 /** The whole frame in plain markup: only the width of the box around it decides rail, tabs or sidebar. */
 function Frame({
   width,
-  categories = CATEGORIES,
+  types = TYPES,
 }: {
   width: number;
-  categories?: readonly (typeof CATEGORIES)[number][];
+  types?: readonly (typeof TYPES)[number][];
 }) {
   const [account, setAccount] = useState<string | null>(null);
   const current = ACCOUNTS.find((a) => a.id === account)?.label ?? "All accounts";
@@ -116,9 +112,9 @@ function Frame({
                       <SidebarMenuLabel>Overview</SidebarMenuLabel>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {categories.map(([label, Icon, count]) => (
+                  {types.map(([label, Icon, count]) => (
                     <SidebarMenuItem key={label} reach="wide">
-                      <SidebarMenuButton href="#category" tone="muted" tooltip={label}>
+                      <SidebarMenuButton href="#type" tone="muted" tooltip={label}>
                         <Icon />
                         <SidebarMenuLabel>{label}</SidebarMenuLabel>
                         <SidebarMenuBadge>{count.toLocaleString("en")}</SidebarMenuBadge>
@@ -191,9 +187,9 @@ export const IconRail: Story = { args: { width: 860 } };
 /** 560-760: rail, edge to edge (the desktop window minimum is 720). */
 export const IconRailEdgeToEdge: Story = { args: { width: 720 } };
 export const BottomTabs: Story = { args: { width: 420 } };
-/** Empty categories are the caller's to omit (D5): here only People and Newsletters have mail. */
-export const HiddenEmptyCategories: Story = {
-  args: { width: 1100, categories: [CATEGORIES[0], CATEGORIES[5]] },
+/** Empty types are the caller's to omit (D5): here only Personal and Newsletters have mail. */
+export const HiddenEmptyTypes: Story = {
+  args: { width: 1100, types: [TYPES[0], TYPES[3]] },
 };
 export const Dark: Story = {
   args: { width: 1100 },

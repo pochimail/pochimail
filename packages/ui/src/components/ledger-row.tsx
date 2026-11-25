@@ -4,16 +4,14 @@ import type * as React from "react";
 
 const ledgerBarVariants = cva("h-1.5 w-32 shrink-0 overflow-hidden rounded-full bg-muted", {
   variants: {
-    // The fill color: one per mail category (brief §6), or the neutral default.
+    // The fill color: one per email type (ADR 0016), or the neutral default.
     tone: {
       neutral: "[&>span]:bg-foreground-tertiary",
-      people: "[&>span]:bg-category-people",
-      records: "[&>span]:bg-category-records",
-      purchases: "[&>span]:bg-category-purchases",
-      signins: "[&>span]:bg-category-signins",
-      notifications: "[&>span]:bg-category-notifications",
-      newsletters: "[&>span]:bg-category-newsletters",
-      promotions: "[&>span]:bg-category-promotions",
+      personal: "[&>span]:bg-type-personal",
+      transactional: "[&>span]:bg-type-transactional",
+      notification: "[&>span]:bg-type-notification",
+      newsletter: "[&>span]:bg-type-newsletter",
+      promotion: "[&>span]:bg-type-promotion",
     },
   },
   defaultVariants: { tone: "neutral" },
