@@ -4,6 +4,7 @@ import { ok, unwrap } from "@pochimail/kernel/result";
 import { type Check, check, registerContract } from "@pochimail/kernel/testing/contract";
 import { expect } from "vitest";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
+import { GetOverview } from "../use-cases/get-overview.ts";
 import { ProposeSuggestions } from "../use-cases/propose-suggestions.ts";
 import { ACCOUNT_1, live, type Seeder, type SeedRow, WS_A } from "./samples.ts";
 
@@ -53,6 +54,15 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     },
   ),
   check(
+    "a suggestion is keyed by the sender hash and carries no address (guards an address persisted in a suggestion id, ADR 0014)",
+    async (h) => {
+      await h.seed(unopenedPromos());
+      const [s] = await suggestionsFor(h);
+      expect(s?.id).toMatch(/^sug:acc-1:[0-9a-f]{16,}:unsubscribe$/);
+      expect(JSON.stringify(s)).not.toContain("promo@example.com");
+    },
+  ),
+  check(
     "no suggestion touches People mail, even from a sender that also sends promotions, and none is a delete (guards the brief §2 invariants)",
     async (h) => {
       const people = Object.fromEntries(
@@ -89,6 +99,35 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
         ),
       );
       expect(await suggestionsFor(h)).toEqual([]);
+    },
+  ),
+  check(
+    "a sender with a message that has no decision is not proposed (guards suggesting mail the classifier has not judged)",
+    async (h) => {
+      const promos = unopenedPromos();
+      await h.seed({ ...promos, 3: { ...promos[3], undecided: true } });
+      expect(await suggestionsFor(h)).toEqual([]);
+    },
+  ),
+  check(
+    "the Overview counts as cleanable only the mail that suggestions propose, never unsure or undecided mail (guards ADR 0012)",
+    async (h) => {
+      const doubtful = (from: string, over: Partial<SeedRow> = {}): SeedRow => ({
+        category: "promotions",
+        message: { from, hasListUnsubscribe: true },
+        confidence: UNSURE_BELOW - 0.01,
+        ...over,
+      });
+      await h.seed({
+        ...unopenedPromos(),
+        4: doubtful("unsure@example.com"),
+        5: doubtful("unsure@example.com"),
+        6: doubtful("undecided@example.com", { undecided: true }),
+      });
+      const proposed = await suggestionsFor(h);
+      const overview = unwrap(await new GetOverview({ uow: h.uow, clock: h.clock }).execute(WS_A));
+      expect(proposed.flatMap((s) => s.recommendation.messageIds)).toHaveLength(3);
+      expect(overview.cleanable).toEqual([{ category: "promotions", count: 3 }]);
     },
   ),
   check(

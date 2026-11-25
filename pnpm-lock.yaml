@@ -415,6 +415,9 @@ importers:
 
   packages/ai:
     dependencies:
+      '@pochimail/classification':
+        specifier: workspace:*
+        version: link:../classification
       '@pochimail/kernel':
         specifier: workspace:*
         version: link:../kernel

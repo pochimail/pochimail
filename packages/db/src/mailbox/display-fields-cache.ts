@@ -7,7 +7,6 @@ export interface PrivateFields {
   readonly snippet?: string;
   readonly from?: string;
   readonly to?: readonly string[];
-  readonly suspicious?: IncomingMessage["suspicious"];
   readonly reason?: string;
   readonly reasons?: readonly string[];
   readonly recommendation?: unknown;
@@ -54,7 +53,6 @@ export class DisplayFieldsCache {
       snippet: message.snippet,
       from: message.from,
       to: message.to,
-      ...(message.suspicious === undefined ? {} : { suspicious: message.suspicious }),
     });
   }
 

@@ -33,7 +33,7 @@ export interface OverviewNumbers {
   readonly important: number;
   /** Age in whole days of the oldest email still waiting for a reply; 0 when none. */
   readonly oldestWaitingDays: number;
-  /** Emails Pochi could propose to clean, per category, largest first; empty categories are left out. */
+  /** Emails Pochi could propose to clean, per category, largest first; unsure and undecided mail is not counted (ADR 0012). */
   readonly cleanable: readonly { readonly category: CleanableLabel; readonly count: number }[];
   readonly figures: OverviewFigures;
 }
@@ -69,7 +69,7 @@ export class GetOverview {
       figures.unsubscribed += row.unsubscribed;
       figures.totalSize += row.totalSize;
     }
-    const { signals, categories, waiting, toReview } = summary.value;
+    const { signals, proposable, waiting, toReview } = summary.value;
     const deadlines = signals["time-sensitive"] ?? 0;
     const important = signals["important-sender"] ?? 0;
     return ok({
@@ -81,7 +81,7 @@ export class GetOverview {
       oldestWaitingDays: summary.value.oldestWaitingDays,
       cleanable: CLEANABLE_LABELS.map((category) => ({
         category,
-        count: categories[category] ?? 0,
+        count: proposable[category] ?? 0,
       }))
         .filter((c) => c.count > 0)
         .sort((a, b) => b.count - a.count),

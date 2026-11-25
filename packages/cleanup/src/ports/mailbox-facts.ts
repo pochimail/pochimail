@@ -5,7 +5,8 @@ import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 /** One stored message as plain data: the label is an opaque string owned by classification. */
 export interface MessageFact {
   readonly id: MessageId;
-  readonly from: string;
+  /** The keyed sender digest, never the address (ADR 0014); empty when the sender is unknown. */
+  readonly senderHash: string;
   readonly category: string;
   readonly receivedAt: string;
   readonly opened: boolean;

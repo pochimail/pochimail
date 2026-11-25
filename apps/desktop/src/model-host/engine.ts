@@ -1,3 +1,4 @@
+import { createCachingClassifier } from "@pochimail/ai/cache";
 import { demoScale } from "../shared/demo.ts";
 import type { ModelHostEngine } from "./serve.ts";
 
@@ -8,5 +9,8 @@ export const loadEngine = async (
   const scale = demoScale(demo);
   if (scale === undefined) return undefined;
   const { createFixtureEngine } = await import("./fixture-engine.ts");
-  return createFixtureEngine(scale);
+  const engine = createFixtureEngine(scale);
+  // One cache per host process, in memory only: it is gone when the host exits (ADR 0014).
+  const cache = createCachingClassifier(engine.classifier);
+  return { ...engine, classifier: cache, clearCache: cache.clear };
 };
