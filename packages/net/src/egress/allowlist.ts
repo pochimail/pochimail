@@ -16,6 +16,20 @@ export const STATIC_EGRESS_HOSTS: readonly string[] = [
 ];
 
 /**
+ * Model downloads only (`docs/security.md`, ADR 0006): kept apart from the static hosts, so the
+ * session filter and mail clients never reach them. Exact names, no wildcard.
+ */
+const MODEL_DOWNLOAD_HOSTS: readonly string[] = [
+  "huggingface.co", // the pinned `resolve` URL
+  "us.aws.cdn.hf.co", // where `huggingface.co` redirects file downloads
+  "us.gcp.cdn.hf.co",
+  "cdn-lfs-us-1.hf.co",
+  "cdn-lfs-eu-1.hf.co",
+  "transfer.xethub.hf.co",
+  "transfer.xethub-eu.hf.co",
+];
+
+/**
  * One egress policy, used by the worker's HTTP client and the Electron session filter.
  */
 export interface HostAllowlist {
@@ -101,4 +115,5 @@ export const createHostAllowlist = (
 export const egressPolicy = {
   staticHosts: STATIC_EGRESS_HOSTS,
   create: (): HostAllowlist => createHostAllowlist(STATIC_EGRESS_HOSTS),
+  createForModelDownloads: (): HostAllowlist => createHostAllowlist(MODEL_DOWNLOAD_HOSTS),
 } as const;

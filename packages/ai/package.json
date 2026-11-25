@@ -5,7 +5,12 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
-    "./cache": "./src/cache.ts"
+    "./cache": "./src/cache.ts",
+    "./downloader": "./src/downloader.ts",
+    "./gpu-probe": "./src/gpu-probe.ts",
+    "./manifest": "./src/manifest.ts",
+    "./model-store": "./src/model-store.ts",
+    "./tiers": "./src/tiers.ts"
   },
   "scripts": {
     "typecheck": "tsc",
@@ -15,15 +20,16 @@
   },
   "dependencies": {
     "@pochimail/classification": "workspace:*",
-    "@pochimail/kernel": "workspace:*"
+    "@pochimail/kernel": "workspace:*",
+    "node-llama-cpp": "3.22.3",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@huggingface/transformers": "4.3.2",
+    "@pochimail/testing": "workspace:*",
     "@pochimail/typescript-config": "workspace:*",
     "@types/node": "26.6.6",
-    "node-llama-cpp": "3.22.3",
     "typescript": "7.0.2",
-    "vitest": "5.1.0",
-    "zod": "4.6.7"
+    "vitest": "5.1.0"
   }
 }
