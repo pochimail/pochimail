@@ -44,8 +44,8 @@ function Section({
 /** Dev/E2E only (router.tsx): every required state and motion moment, with theme and reduced-motion toggles. */
 export function DevGalleryPage() {
   const t = useT();
-  const { theme, selectTheme } = useAppearance();
-  const dark = theme === "dark";
+  const { resolvedTheme, selectTheme } = useAppearance();
+  const dark = resolvedTheme === "dark";
   const [reduceMotion, setReduceMotion] = useState(false);
 
   return (

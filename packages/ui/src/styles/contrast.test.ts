@@ -77,6 +77,9 @@ const graphicPairs: [string, string][] = [
   ]),
 ];
 
+// Pochi's rim light exists in dark only (the charcoal night pose is invisible there; see docs/design.md › Pochi).
+const rimPairs = surfaces.map((s): [string, string] => ["mascot-rim", s]);
+
 function failures(tokens: Tokens, pairs: [string, string][], min: number): string[] {
   return pairs.flatMap(([fg, bg]) => {
     const [a, b] = [tokens[fg], tokens[bg]];
@@ -96,6 +99,11 @@ describe.each(["light", "dark"] as const)("%s theme contrast", (theme) => {
   it("graphic pairs are >= 3:1", () => {
     expect(failures(themes[theme], graphicPairs, 3)).toEqual([]);
   });
+});
+
+// Guards: the charcoal night pose losing its outline on a dark surface.
+it("dark theme: Pochi's rim light is >= 3:1 on every surface", () => {
+  expect(failures(themes.dark, rimPairs, 3)).toEqual([]);
 });
 
 // Guards: tokens.css drifting from tokens.json (the contrast result would then describe the wrong palette).
@@ -127,6 +135,9 @@ it("tokens.css matches tokens.json in both themes", () => {
         mismatches.push(`${theme}.category.${name}`);
     }
   }
+  const rim = json.color.dark?.mascotRim?.$value?.toLowerCase();
+  if (rim !== themes.dark["mascot-rim"]?.toLowerCase()) mismatches.push("dark.mascotRim");
+  if (themes.light["mascot-rim"] !== undefined) mismatches.push("light.mascotRim must not exist");
   expect(mismatches).toEqual([]);
 });
 

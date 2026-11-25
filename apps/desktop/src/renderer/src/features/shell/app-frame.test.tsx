@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
 import type { EventOf, OutputOf } from "#shared/ipc/contract.ts";
 import { serveRpc } from "#shared/ipc/server.ts";
@@ -9,7 +9,10 @@ import { fromDomPort } from "#shared/ipc/transport.ts";
 import { App } from "../../app/app.tsx";
 import { createAppRouter } from "../../router.tsx";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 type Counts = OutputOf<"mailbox.categories">;
 const zero: Counts = {
@@ -123,6 +126,18 @@ describe("Pochi in the signed-in shell", () => {
 
   it("uses the night pose in dark mode (guards a theme-blind mascot)", async () => {
     setup("/overview", "dark");
+    const mascot = await brandMascot();
+    await waitFor(() => expect(mascot?.getAttribute("data-pose")).toBe("night"));
+  });
+
+  // Guards: System-dark users getting the cream pose because the pose read the preference, not the resolved theme.
+  it("uses the night pose when System resolves to the OS dark appearance", async () => {
+    vi.stubGlobal("matchMedia", () => ({
+      matches: true,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    setup("/overview", "system");
     const mascot = await brandMascot();
     await waitFor(() => expect(mascot?.getAttribute("data-pose")).toBe("night"));
   });

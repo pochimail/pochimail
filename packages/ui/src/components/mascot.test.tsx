@@ -77,6 +77,22 @@ describe("Mascot public behavior", () => {
     expect(html).toContain('data-reaction="found"');
   });
 
+  // Guards: the charcoal night pose vanishing on dark surfaces (dark ink on a dark background).
+  it("draws the night pose over a token-colored rim that breathes with it, and no other pose", () => {
+    const night = renderMarkup(<Mascot pose="night" />);
+    const rim = night.indexOf('data-slot="mascot-rim"');
+    expect(rim).toBeGreaterThan(night.indexOf('data-slot="mascot-breathe"'));
+    expect(rim).toBeLessThan(night.indexOf('data-slot="mascot-image"'));
+    // Guards: a rim layer painted in light mode, where the charcoal night pose must stay unchanged.
+    expect(night).toMatch(/data-slot="mascot-rim"[^>]*class="[^"]*\bhidden\b[^"]*\bdark:block\b/);
+    expect(night).toContain("bg-mascot-rim");
+    // Guards: a file URL mask, which Chromium refuses to fetch from file:// (the packaged app), so the rim would never render.
+    expect(night).toMatch(/mask-image: url\((?:&quot;|"|')?data:image\/png;base64,/);
+    for (const pose of ["default", "happy", "reading", "saving"] as const) {
+      expect(renderMarkup(<Mascot pose={pose} />)).not.toContain('data-slot="mascot-rim"');
+    }
+  });
+
   it("guards found reaction animating when Animations are off", () => {
     const html = renderMarkup(
       <MotionProvider animations={false}>

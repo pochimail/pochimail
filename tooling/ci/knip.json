@@ -1,5 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6.45.1/schema.json",
-  "entry": ["src/assert-gates.ts", "src/check-quality.ts"],
+  "entry": ["src/assert-gates.ts", "src/check-quality.ts", "src/make-mascot-rim.ts"],
   "ignoreBinaries": ["biome", "knip", "turbo"]
 }
