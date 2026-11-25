@@ -30,7 +30,7 @@ export function mailboxFactsOver(reads: Reads): MailboxFacts {
       return ok({
         items: page.value.items.map((m) => ({
           id: m.id,
-          from: m.from,
+          senderHash: m.senderHash,
           category: m.category,
           receivedAt: m.receivedAt,
           opened: m.opened,

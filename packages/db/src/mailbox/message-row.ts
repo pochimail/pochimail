@@ -41,5 +41,6 @@ export const messageOf = (r: Row, cache: DisplayFieldsCache): Message => {
     topicIds: json(r.topic_ids),
     ...(suspicious === undefined ? {} : { suspicious }),
     category: r.category,
+    senderHash: text(r.sender_hash),
   });
 };

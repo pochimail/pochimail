@@ -46,6 +46,8 @@ export type IncomingMessage = z.infer<typeof incomingMessageSchema>;
 /** A stored message: the label is opaque here, classification owns the closed set. */
 export const messageSchema = incomingMessageSchema.extend({
   category: z.string(),
+  /** The keyed sender digest stored with the message (ADR 0014); empty when the sender is unknown. */
+  senderHash: z.string(),
   /** Whether an applied archive action left the message out of the inbox; the action log owns it. */
   archived: z.boolean().optional(),
 });

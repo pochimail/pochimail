@@ -53,6 +53,15 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     },
   ),
   check(
+    "a suggestion is keyed by the sender hash and carries no address (guards an address persisted in a suggestion id, ADR 0014)",
+    async (h) => {
+      await h.seed(unopenedPromos());
+      const [s] = await suggestionsFor(h);
+      expect(s?.id).toMatch(/^sug:acc-1:[0-9a-f]{16,}:unsubscribe$/);
+      expect(JSON.stringify(s)).not.toContain("promo@example.com");
+    },
+  ),
+  check(
     "no suggestion touches People mail, even from a sender that also sends promotions, and none is a delete (guards the brief §2 invariants)",
     async (h) => {
       const people = Object.fromEntries(

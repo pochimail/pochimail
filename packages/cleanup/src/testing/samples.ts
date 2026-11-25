@@ -26,7 +26,10 @@ export const makeSuggestion = (over: Partial<Suggestion> = {}): Suggestion => ({
 
 /** One message to store, with the decision recorded for it. */
 export interface SeedRow {
-  readonly message?: Partial<Omit<MessageFact, "id" | "category">>;
+  /** `from` is the provider-side address the adapter ingests; the facts only ever carry its hash. */
+  readonly message?: Partial<Omit<MessageFact, "id" | "category" | "senderHash">> & {
+    readonly from?: string;
+  };
   readonly category?: string;
   readonly reason?: string;
   readonly confidence?: number;
