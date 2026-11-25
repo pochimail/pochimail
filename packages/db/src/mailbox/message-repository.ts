@@ -5,6 +5,7 @@ import {
   DEFAULT_CATEGORY,
 } from "@pochimail/classification/model/category";
 import { NotFound } from "@pochimail/kernel/errors";
+import type { MessageId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
 import type { MessageQuery } from "@pochimail/mailbox/ports/message-repository";
@@ -211,6 +212,18 @@ export function createMessageRepository(db: Database, context: RepositoryContext
         );
         return countRow.parse(r).value;
       }),
+    listUnclassified: (ws: string, account: string, limit: number) =>
+      guard(() =>
+        all(
+          `SELECT m.id AS value FROM message m
+             WHERE m.workspace_id = ? AND m.account_id = ?
+               AND NOT EXISTS (SELECT 1 FROM derived d WHERE d.workspace_id = m.workspace_id AND d.message_id = m.id)
+             ORDER BY m.id LIMIT ?`,
+          ws,
+          account,
+          Math.max(0, Math.floor(limit)),
+        ).map((r) => text(r.value) as MessageId),
+      ),
     countByCategory: (ws: string, accountIds: readonly string[]) =>
       guard(() => {
         const counts = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<

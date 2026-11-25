@@ -68,6 +68,7 @@
     "./secret-store-contract": "./src/secret-store-contract.ts",
     "./settings-store-contract": "./src/settings-store-contract.ts",
     "./sync-contract": "./src/sync-contract.ts",
+    "./unclassified-contract": "./src/unclassified-contract.ts",
     "./unit-of-work-contract": "./src/unit-of-work-contract.ts",
     "./window-activity-contract": "./src/window-activity-contract.ts"
   },

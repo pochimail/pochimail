@@ -10,6 +10,9 @@ import { createFakeMailProvider } from "@pochimail/testing/fake-mail-provider";
 import { createFakePowerMonitor } from "@pochimail/testing/fake-power-monitor";
 import { ACCOUNT_1, makeAccount, makeIncomingMessage, WS_A } from "@pochimail/testing/fixtures";
 import { CLASSIFY_LIMITS, limitClassifier } from "@pochimail/workflows/jobs/limit-classifier";
+import { scanCursorCodec } from "@pochimail/workflows/jobs/scan-pipeline";
+import { ClassifyPending } from "@pochimail/workflows/use-cases/classify-pending";
+import { RunIncrementalSync } from "@pochimail/workflows/use-cases/run-incremental-sync";
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
 import { describe, expect, it } from "vitest";
 import { createSqliteJobQueue } from "./sqlite-job-queue.ts";
@@ -108,6 +111,36 @@ async function launch(
         if (!stopped && !(error instanceof HardStop)) throw error;
         return "stopped" as const;
       });
+    },
+    /** The sync after the first scan: store what arrived, then classify it and what is left; a stop can fall between. */
+    async sync(stopBeforeClassify = false) {
+      const inner = createFakeClassifier().classify;
+      const classifier: Classifier = {
+        classify: async (messages, signal) => {
+          if (stopBeforeClassify) stop();
+          return inner(messages, signal);
+        },
+      };
+      try {
+        const stored = await new RunIncrementalSync({
+          uow,
+          provider: mail,
+          clock,
+          cursorCodec: scanCursorCodec,
+        }).execute({ workspaceId: WS_A, accountId: ACCOUNT_1 }, never);
+        const classified = await new ClassifyPending({
+          uow,
+          classifier,
+          clock,
+          workspaceId: WS_A,
+          accountId: ACCOUNT_1,
+        }).execute(never);
+        await relay.drain();
+        return stored.ok && classified.ok ? ("done" as const) : ("failed" as const);
+      } catch (error) {
+        if (!stopped && !(error instanceof HardStop)) throw error;
+        return "stopped" as const;
+      }
     },
     drain: () => relay.drain(),
     close: () => storage.close(),
@@ -213,6 +246,41 @@ describe("restart and resume on SQLite", () => {
       expectEventsOnce(after.storage, delivered);
     });
   }
+
+  /** Mail that reaches the provider after the first scan. */
+  const deliverMore = (mail: ReturnType<typeof provider>) => {
+    for (const n of [8, 9, 10])
+      mail.deliver(makeIncomingMessage(n, { hasListUnsubscribe: n % 2 === 0 }));
+  };
+
+  it("a hard stop between the sync and the classify of mail that arrived after the first scan ends with it classified exactly once, like an uninterrupted run", async () => {
+    // Guards: mail stored by an incremental sync that stays unclassified after a crash, or is classified twice.
+    const referenceMail = provider();
+    const referencePath = await seededPath();
+    const reference = await launch(referencePath, referenceMail, []);
+    expect(succeeded(await reference.scan("job-1"))).toBe(true);
+    deliverMore(referenceMail);
+    expect(await reference.sync()).toBe("done");
+    const expected = dump(reference.storage);
+    reference.close();
+
+    const path = await seededPath();
+    const mail = provider();
+    const delivered: string[] = [];
+    const first = await launch(path, mail, delivered);
+    expect(succeeded(await first.scan("job-1"))).toBe(true);
+    deliverMore(mail);
+    expect(await first.sync(true)).toBe("stopped");
+
+    const after = await launch(path, mail, delivered);
+    unwrap(await after.drain());
+    expect(await after.sync()).toBe("done");
+    expect(dump(after.storage)).toEqual(expected);
+    expectEventsOnce(after.storage, delivered);
+    const classifiedEvents = delivered.filter((id) => /^classified:msg-(8|9|10):/.test(id));
+    expect(classifiedEvents).toHaveLength(3);
+    expect(new Set(classifiedEvents).size).toBe(3);
+  });
 
   const outages = [
     { name: "rate-limited", failure: () => new RateLimited({ retryAfterMs: 60_000 }) },

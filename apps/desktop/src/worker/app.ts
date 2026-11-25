@@ -6,7 +6,7 @@ import { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status"
 import { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import { RecordDigestReady } from "@pochimail/cleanup/use-cases/record-digest-ready";
 import type { Clock } from "@pochimail/kernel/clock";
-import type { WorkspaceId } from "@pochimail/kernel/ids";
+import type { AccountId, WorkspaceId } from "@pochimail/kernel/ids";
 import type { Logger } from "@pochimail/logger/logger";
 import type { Timer } from "@pochimail/pipeline/event-batching";
 import { createInMemoryEventBus } from "@pochimail/pipeline/in-memory-event-bus";
@@ -23,6 +23,7 @@ import { pollAccounts } from "@pochimail/workflows/jobs/poll-accounts";
 import { scanCursorCodec } from "@pochimail/workflows/jobs/scan-pipeline";
 import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
 import type { WorkflowUnitOfWork as UnitOfWork } from "@pochimail/workflows/ports/unit-of-work";
+import { ClassifyPending } from "@pochimail/workflows/use-cases/classify-pending";
 import { RunIncrementalSync } from "@pochimail/workflows/use-cases/run-incremental-sync";
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
 import { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
@@ -34,7 +35,7 @@ import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers } from "./handlers.ts";
 import { ManageSettings } from "./manage-settings.ts";
 import { resolvePendingActions } from "./pending-actions.ts";
-import { ALWAYS_PLUGGED, ALWAYS_VISIBLE } from "./static-environment.ts";
+import { ALWAYS_PLUGGED } from "./static-environment.ts";
 
 /**
  * Everything the worker needs from the outside, as ports. The fixture bundle (dev/E2E) and M2's SQLite and real
@@ -55,8 +56,8 @@ export interface WorkerAdapters {
   readonly classifier: Classifier;
   /** Without it scans keep one classify batch at a time and never pause for power. */
   readonly power?: PowerMonitor;
-  /** What the main window is doing, for the polling cadence. Without it the window counts as visible. */
-  readonly activity?: WindowActivity;
+  /** What the main window is doing, for the polling cadence (ADR 0004). */
+  readonly activity: WindowActivity;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
@@ -70,6 +71,8 @@ export interface WorkerApp {
   idle(): Promise<void>;
   /** Stops polling and waits for the syncs it started: call before the database closes. */
   stop(): Promise<void>;
+  /** The person signed in again (a re-auth emits no event): syncing the account is worth another try. */
+  accountConnected(accountId: AccountId): void;
 }
 
 /** The worker's composition root: domain use cases and workflows wired to the adapters it is given, behind the typed IPC handlers. */
@@ -104,15 +107,18 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
   });
 
   const limiter = adapters.power && createPowerLimiter(adapters.power, CLASSIFY_LIMITS);
+  // The scan and the sync after it classify through the same, power-limited classifier.
+  const classifier = limiter ? limitClassifier(adapters.classifier, limiter) : adapters.classifier;
   const scans = new ScanRunner({
     uow,
     workspaceId,
     newJobId: adapters.newJobId,
-    scanFor: (account) =>
+    scanFor: (account, { announceFailure }) =>
       new RunScan({
+        announceFailure,
         uow,
         provider: adapters.providerFor(account),
-        classifier: limiter ? limitClassifier(adapters.classifier, limiter) : adapters.classifier,
+        classifier,
         ...(limiter
           ? {
               maxInFlightBatches: CLASSIFY_LIMITS.plugged,
@@ -142,7 +148,14 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
         clock,
         cursorCodec: scanCursorCodec,
       }),
+    classifyFor: (account) =>
+      new ClassifyPending({ uow, classifier, clock, workspaceId, accountId: account.id }),
     flush,
+  });
+  // A signed-in-again account is worth syncing again; until then a poll leaves it alone.
+  bus.subscribe("AccountConnected", (event) => syncs.reconnected(event.payload.accountId));
+  bus.subscribe("AccountStateChanged", (event) => {
+    if (event.payload.state === "connected") syncs.reconnected(event.payload.accountId);
   });
   const stopPolling = pollAccounts({
     uow,
@@ -151,7 +164,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     timer: adapters.timer,
     onError: () => adapters.logger.error("sync poll failed", { operation: "sync.poll" }),
     power: adapters.power ?? ALWAYS_PLUGGED,
-    activity: adapters.activity ?? ALWAYS_VISIBLE,
+    activity: adapters.activity,
     events: bus,
   });
 
@@ -174,6 +187,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
       await syncs.idle();
       await scans.idle();
     },
+    accountConnected: (accountId) => syncs.reconnected(accountId),
     stop: async () => {
       stopPolling();
       await syncs.stop();

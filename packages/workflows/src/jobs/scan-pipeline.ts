@@ -41,9 +41,6 @@ export interface ScanPipelineDeps {
 interface Fetched {
   readonly messages: readonly IncomingMessage[];
 }
-interface Stored {
-  readonly ids: readonly MessageId[];
-}
 
 /**
  * sync → classify → signals as one pausable, resumable pipeline (M1-08). The pipeline persists
@@ -53,21 +50,13 @@ interface Stored {
 export function createScanPipeline(deps: ScanPipelineDeps): Pipeline {
   const { uow, workspaceId, accountId } = deps;
   const store = new StoreMessages({ uow });
-  const classify = new ClassifyBatch({ uow, classifier: deps.classifier, clock: deps.clock });
-  const detect = new DetectSignals({ uow, clock: deps.clock });
-  // Batches are never abandoned half-way: pausing happens between batches, in the pipeline.
-  const never: CancelSignal = {
-    aborted: false,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-  };
-
+  const stages = createClassifyStages(deps);
   const cursors: CursorStore = {
     get: (scope) => uow.reads.cursors.get(workspaceId, accountId, scope),
     set: (cursor) => uow.run((tx) => tx.repositories.cursors.set(workspaceId, accountId, cursor)),
   };
 
-  const sync: Stage<Fetched, Stored> = {
+  const sync: Stage<Fetched, StoredBatch> = {
     name: "sync",
     concurrency: 1,
     process: async (item) => {
@@ -79,27 +68,6 @@ export function createScanPipeline(deps: ScanPipelineDeps): Pipeline {
       return ids.ok ? ok({ ids: ids.value }) : err(ids.error as DomainError);
     },
   };
-  const classifyStage: Stage<Stored, Stored> = {
-    name: "classify",
-    concurrency: deps.classifyConcurrency ?? 1,
-    process: async (item) => {
-      if (item.ids.length === 0) return ok(item);
-      const done = await classify.execute({ workspaceId, messageIds: item.ids }, never);
-      return done.ok ? ok(item) : err(done.error);
-    },
-  };
-  const signalsStage: Stage<Stored, number> = {
-    name: "signals",
-    concurrency: 1,
-    process: async (item) => {
-      if (item.ids.length === 0) return ok(0);
-      const found = await detect.execute({ workspaceId, accountId, messageIds: item.ids }, never);
-      if (!found.ok) return err(found.error);
-      await deps.onBatchProcessed?.(item.ids.length);
-      return ok(found.value.length);
-    },
-  };
-
   return createPipeline<Fetched>({
     name: SCAN_PIPELINE_NAME,
     workspaceId,
@@ -124,9 +92,63 @@ export function createScanPipeline(deps: ScanPipelineDeps): Pipeline {
     },
   })
     .stage(sync)
-    .stage(classifyStage)
-    .stage(signalsStage)
+    .stage(stages.classify)
+    .stage(stages.signals)
     .build();
+}
+
+/** Messages already in the store, as ids: what the classify and signals stages work on. */
+export interface StoredBatch {
+  readonly ids: readonly MessageId[];
+}
+
+/** The stages that give stored mail its type and signals; the scan and the sync after it run these same ones. */
+export function createClassifyStages(
+  deps: Pick<
+    ScanPipelineDeps,
+    | "uow"
+    | "classifier"
+    | "clock"
+    | "workspaceId"
+    | "accountId"
+    | "classifyConcurrency"
+    | "onBatchProcessed"
+  >,
+): {
+  readonly classify: Stage<StoredBatch, StoredBatch>;
+  readonly signals: Stage<StoredBatch, number>;
+} {
+  const { uow, workspaceId, accountId } = deps;
+  const classify = new ClassifyBatch({ uow, classifier: deps.classifier, clock: deps.clock });
+  const detect = new DetectSignals({ uow, clock: deps.clock });
+  // Batches are never abandoned half-way: pausing happens between batches, in the pipeline.
+  const never: CancelSignal = {
+    aborted: false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const classifyStage: Stage<StoredBatch, StoredBatch> = {
+    name: "classify",
+    concurrency: deps.classifyConcurrency ?? 1,
+    process: async (item) => {
+      if (item.ids.length === 0) return ok(item);
+      const done = await classify.execute({ workspaceId, messageIds: item.ids }, never);
+      return done.ok ? ok(item) : err(done.error);
+    },
+  };
+  const signalsStage: Stage<StoredBatch, number> = {
+    name: "signals",
+    concurrency: 1,
+    process: async (item) => {
+      if (item.ids.length === 0) return ok(0);
+      const found = await detect.execute({ workspaceId, accountId, messageIds: item.ids }, never);
+      if (!found.ok) return err(found.error);
+      await deps.onBatchProcessed?.(item.ids.length);
+      return ok(found.value.length);
+    },
+  };
+
+  return { classify: classifyStage, signals: signalsStage };
 }
 
 // The pipeline keeps cursors under its own scope; the provider's scope rides inside the token.

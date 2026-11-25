@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { createFakeClassifier } from "@pochimail/classification/testing/fake-ai";
+import { openStorage } from "@pochimail/db/open-storage";
 import { createLogger } from "@pochimail/logger/logger";
 import type { FetchInit } from "@pochimail/net/egress/http-client";
 import { oauthProviderConfig } from "@pochimail/net/oauth/providers";
@@ -26,7 +27,11 @@ import { fromDomPort } from "../../shared/ipc/transport.ts";
 import { createAccountsRuntime } from "../accounts-runtime.ts";
 
 /** A new message for the fake Gmail; the number only makes ids and dates unique. */
-export const mail = (n: number, mailbox = "a"): FakeGmailMessage => ({
+export const mail = (
+  n: number,
+  mailbox = "a",
+  over: Partial<FakeGmailMessage> = {},
+): FakeGmailMessage => ({
   id: `${mailbox}-m${n}`,
   threadId: `${mailbox}-t${n}`,
   receivedAt: new Date(Date.UTC(2026, 0, 1, 0, n)).toISOString(),
@@ -36,6 +41,7 @@ export const mail = (n: number, mailbox = "a"): FakeGmailMessage => ({
   snippet: `Snippet ${n}`,
   hasListUnsubscribe: false,
   opened: false,
+  ...over,
 });
 
 /**
@@ -56,6 +62,7 @@ export async function createSyncKit(accounts = 1) {
   const power = createFakePowerMonitor();
   const activity = createFakeWindowActivity("focused");
   const online = { value: true };
+  const classifier = createFakeClassifier();
   let held: Promise<void> | null = null;
 
   // Each account's token is bound to the next unbound fake Gmail the first time it is used.
@@ -103,7 +110,7 @@ export async function createSyncKit(accounts = 1) {
         activity,
         logger: createLogger({ sink: { write: () => undefined } }),
         deviceName: () => "Mac",
-        classifier: createFakeClassifier(),
+        classifier,
         network: {
           oauthConfig: {
             ...oauthProviderConfig("google"),
@@ -137,12 +144,13 @@ export async function createSyncKit(accounts = 1) {
 
   return {
     gmails,
+    classifier,
     events,
     power,
     activity,
     online,
     /** Connects the next account (its first scan starts at once) and waits for that scan to end. */
-    async connect(next: string): Promise<string> {
+    async connect(next: string, options: { waitForScan?: boolean } = {}): Promise<string> {
       address = next;
       connecting = Math.min(bound.size, gmails.length - 1);
       const outcome = (await call("accounts.connect", { provider: "google" })) as {
@@ -150,6 +158,7 @@ export async function createSyncKit(accounts = 1) {
         accountId: string;
       };
       if (outcome.status !== "connected") throw new Error(`connect ${outcome.status}`);
+      if (options.waitForScan === false) return outcome.accountId;
       await runtime.idle();
       await vi.waitFor(() =>
         expect(
@@ -201,6 +210,21 @@ export async function createSyncKit(accounts = 1) {
       runtime = open();
       listen();
       await runtime.idle();
+    },
+    /** Quits, then reads the id of every event the outbox committed: the database is closed for good afterwards. */
+    async committedEventIds(): Promise<string[]> {
+      await runtime.close();
+      const storage = openStorage(databasePath, key);
+      if (!storage.ok) throw storage.error;
+      try {
+        return (
+          storage.value.reader.prepare("SELECT payload FROM outbox WHERE kind = 'event'").all() as {
+            payload: string;
+          }[]
+        ).map((row) => (JSON.parse(row.payload) as { id: string }).id);
+      } finally {
+        storage.value.close();
+      }
     },
     async quit(): Promise<void> {
       await runtime.close();

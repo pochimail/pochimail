@@ -1,5 +1,4 @@
 import { type ActionLog, unresolvedPending } from "@pochimail/actions/model/action";
-import { CATEGORIES } from "@pochimail/classification/model/category";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
@@ -18,6 +17,7 @@ import {
   removeAccount,
 } from "./in-memory-store-data.ts";
 import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
+import { categoryReads } from "./read-models/category-reads.ts";
 import { derivedReads } from "./read-models/derived-reads.ts";
 import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
@@ -99,16 +99,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
               .sort((a, b) => byText(b.receivedAt, a.receivedAt) || byText(a.id, b.id));
             return ok(paginate(rows, q));
           }) as never,
-        countByCategory: (ws, accountIds) =>
-          guarded(() => {
-            const counts: Record<string, number> = Object.fromEntries(
-              CATEGORIES.map((c) => [c, 0]),
-            );
-            for (const m of data().messages.values())
-              if (m.workspaceId === ws && accountIds.includes(m.accountId))
-                counts[m.category] = (counts[m.category] ?? 0) + 1;
-            return ok(counts);
-          }) as never,
+        ...categoryReads(data, guarded),
         latestSequence: (ws, acc) =>
           guarded(() => {
             const d = data();

@@ -9,6 +9,7 @@ import { createLogger } from "@pochimail/logger/logger";
 import { afterEach, expect, it } from "vitest";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
 import { createAccountsRuntime } from "./accounts-runtime.ts";
+import { ALWAYS_VISIBLE } from "./static-environment.ts";
 
 const cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -35,6 +36,7 @@ it("a worker reopened on the same database finds theme, language and autonomy un
         timer: { set: () => () => undefined },
         logger: createLogger({ sink: { write: () => undefined } }),
         deviceName: () => "Mac",
+        activity: ALWAYS_VISIBLE,
         classifier: createFakeClassifier(),
       },
     );

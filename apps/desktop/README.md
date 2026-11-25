@@ -7,6 +7,7 @@ The shipped Electron app and its composition root (ADR 0002).
 - `main/`, `preload/`, `worker/`, `model-host/`, `renderer/`: one folder per process (see ARCHITECTURE.md).
 - `shared/`: the IPC contract used by every process.
 - `build/`, `resources/`, `packaging/`: icons (per platform), tray assets, electron-builder config.
+- Polling follows the window state main sends. Power state is not wired until #318 (PR #321); production assumes plugged in.
 - `e2e/`: Playwright smoke and picture tests on the fixture worker (ADR 0017).
 
 ## May import

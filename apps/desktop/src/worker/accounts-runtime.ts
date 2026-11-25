@@ -7,7 +7,7 @@ import { createSqliteJobQueue } from "@pochimail/db/sqlite-job-queue";
 import { createSqliteUnitOfWork } from "@pochimail/db/sqlite-unit-of-work";
 import { createGmailProvider } from "@pochimail/gmail/provider";
 import type { Clock } from "@pochimail/kernel/clock";
-import { WorkspaceId } from "@pochimail/kernel/ids";
+import { AccountId, WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import type { Logger } from "@pochimail/logger/logger";
 import { egressPolicy } from "@pochimail/net/egress/allowlist";
@@ -47,7 +47,8 @@ export interface AccountsRuntimeOptions {
   /** Tests drive time and the machine's state; the app leaves these out. */
   readonly clock?: Clock;
   readonly power?: PowerMonitor;
-  readonly activity?: WindowActivity;
+  /** What the window is doing; main feeds it through the worker entry. */
+  readonly activity: WindowActivity;
   /** Tests point the providers at local fakes; the app leaves this out and uses the real hosts. */
   readonly network?: {
     readonly oauthConfig: OAuthProviderConfig;
@@ -117,7 +118,7 @@ export const createAccountsRuntime = (
     settings: createSqliteSettingsStore(storage.value),
     classifier: options.classifier,
     ...(options.power === undefined ? {} : { power: options.power }),
-    ...(options.activity === undefined ? {} : { activity: options.activity }),
+    activity: options.activity,
     ...(options.clearClassifierCache === undefined
       ? {}
       : { clearClassifierCache: options.clearClassifierCache }),
@@ -158,6 +159,9 @@ export const createAccountsRuntime = (
       ),
     // The first scan of a new account starts right after connecting; a failure is the scan's own event, never the connect's.
     startScan: async (accountId) => {
+      // Signing in again is how an expired sign-in is repaired; syncing is worth trying again.
+      const parsed = AccountId(accountId);
+      if (parsed.ok) app.accountConnected(parsed.value);
       try {
         await app.handlers.procedures["scan.start"]?.({ accountId });
       } catch {
@@ -177,6 +181,7 @@ export const createAccountsRuntime = (
     handlers,
     idle: app.idle,
     stop: app.stop,
+    accountConnected: app.accountConnected,
     close: async () => {
       await app.stop();
       storage.value.close();

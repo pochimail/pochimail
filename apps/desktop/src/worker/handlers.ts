@@ -26,7 +26,7 @@ export interface HandlerDeps {
   readonly digestStatus: GetDigestStatus;
   readonly settings: ManageSettings;
   readonly scans: ScanRunner;
-  readonly syncs: Pick<SyncRunner, "now" | "status" | "onChange">;
+  readonly syncs: Pick<SyncRunner, "now" | "status" | "onChange" | "settled">;
   readonly events: Pick<EventBus<DomainEvent>, "subscribe">;
   readonly deviceName: () => DeviceName;
 }
@@ -154,6 +154,8 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       },
       "scan.start": async ({ accountId }) => {
         const id = unwrapOrThrow(AccountId(accountId));
+        // A sync in flight holds the account's cursor: the scan starts after it, never beside it.
+        await deps.syncs.settled(id);
         return unwrapOrThrow(await deps.scans.start(id));
       },
       "scan.pause": ({ jobId }) => {

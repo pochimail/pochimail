@@ -23,6 +23,7 @@ import { createFakeMailProvider } from "@pochimail/testing/fake-mail-provider";
 import { figuresContract } from "@pochimail/testing/figures-contract";
 import { repositoriesContract } from "@pochimail/testing/repositories-contract";
 import { runSyncContract } from "@pochimail/testing/sync-contract";
+import { unclassifiedContract } from "@pochimail/testing/unclassified-contract";
 import { harness, uowHarness } from "./test-support/harness.ts";
 import { classificationSeeder, cleanupSeeder } from "./test-support/seeders.ts";
 
@@ -41,6 +42,7 @@ describeActionUseCases("sqlite", () =>
 );
 mailboxRepositoryContract(uowHarness);
 repositoriesContract(uowHarness);
+unclassifiedContract(uowHarness);
 figuresContract(uowHarness);
 derivedContract(uowHarness);
 signalRepositoryContract(uowHarness);

@@ -132,6 +132,17 @@ export function createInMemoryClassification(): InMemoryClassification {
         const { category: _category, attachmentCount: _count, suspicious: _flag, ...message } = m;
         return ok(copy(message));
       },
+      listUnclassified: async (ws, accountId, limit) =>
+        ok(
+          [...data().messages]
+            .filter(
+              ([key, m]) =>
+                key.startsWith(`${ws}/`) && m.accountId === accountId && !data().derived.has(key),
+            )
+            .map(([, m]) => m.id)
+            .sort(byText)
+            .slice(0, Math.max(0, limit)),
+        ),
       countByCategory: async (ws, accountIds) => {
         const counts: Record<string, number> = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
         for (const [key, m] of data().messages)

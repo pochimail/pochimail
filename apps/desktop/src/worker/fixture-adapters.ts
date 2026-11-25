@@ -24,6 +24,7 @@ import { DEMO_SEED, type DemoScale } from "../shared/demo.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { WorkerAdapters } from "./app.ts";
 import { createInMemorySettingsStore } from "./in-memory-settings-store.ts";
+import { ALWAYS_VISIBLE } from "./static-environment.ts";
 
 export interface FixtureAdapterOptions {
   readonly scale: DemoScale;
@@ -213,5 +214,6 @@ export async function createFixtureAdapters(
       return provider;
     },
     deviceName: options.deviceName,
+    activity: ALWAYS_VISIBLE,
   };
 }

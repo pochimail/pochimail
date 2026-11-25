@@ -13,6 +13,7 @@
     "./ports/mail-provider": "./src/ports/mail-provider.ts",
     "./ports/notifier": "./src/ports/notifier.ts",
     "./ports/unit-of-work": "./src/ports/unit-of-work.ts",
+    "./use-cases/classify-pending": "./src/use-cases/classify-pending.ts",
     "./use-cases/run-incremental-sync": "./src/use-cases/run-incremental-sync.ts",
     "./use-cases/run-scan": "./src/use-cases/run-scan.ts",
     "./use-cases/scan-runner": "./src/use-cases/scan-runner.ts",
