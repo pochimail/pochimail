@@ -24,9 +24,11 @@ function maskAlpha(png: Buffer, width: number, height: number): Uint8Array {
   return alpha;
 }
 
+const nightRim = rimAlpha(read("pochi-night@2x.png"));
+
 // Guards: the night art changing while the committed rim mask goes stale (the rim then misses the new silhouette on dark surfaces).
 it("the committed night rim is what the generator makes from the night art", () => {
-  const rim = rimAlpha(read("pochi-night@2x.png"));
+  const rim = nightRim;
   expect(rim.ok).toBe(true);
   if (!rim.ok) return;
   const size = (png: Buffer) => [png.readUInt32BE(16), png.readUInt32BE(20)];
@@ -37,8 +39,7 @@ it("the committed night rim is what the generator makes from the night art", () 
 
 // Guards: a rim that is empty or only inside the art, which would draw nothing on a dark background.
 it("the rim is opaque over the body and reaches past the felt edge", () => {
-  const night = read("pochi-night@2x.png");
-  const rim = rimAlpha(night);
+  const rim = nightRim;
   if (!rim.ok) throw new Error(rim.reason);
   const center = (rim.height >> 1) * rim.width + (rim.width >> 1);
   expect(rim.alpha[center]).toBe(255);

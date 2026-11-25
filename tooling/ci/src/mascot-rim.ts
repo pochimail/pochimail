@@ -27,13 +27,13 @@ function boxBlur(
   ) => {
     const to = new Float32Array(width * height);
     for (let line = 0; line < lines; line++) {
+      const base = line * lineStep;
+      const at = (i: number) => from[base + Math.min(lineLength - 1, Math.max(0, i)) * step] ?? 0;
+      let sum = 0;
+      for (let k = -radius; k <= radius; k++) sum += at(k);
       for (let i = 0; i < lineLength; i++) {
-        let sum = 0;
-        for (let k = -radius; k <= radius; k++) {
-          const clamped = Math.min(lineLength - 1, Math.max(0, i + k));
-          sum += from[line * lineStep + clamped * step] ?? 0;
-        }
-        to[line * lineStep + i * step] = sum / size;
+        to[base + i * step] = sum / size;
+        sum += at(i + radius + 1) - at(i - radius);
       }
     }
     return to;
@@ -42,40 +42,42 @@ function boxBlur(
 }
 
 function silhouette({ width, height, rgba }: RgbaImage): Uint8Array {
-  let coverage: Float32Array = Float32Array.from(
-    { length: width * height },
-    (_, i) => (rgba[i * 4 + 3] ?? 0) / 255,
-  );
+  let coverage: Float32Array = new Float32Array(width * height);
+  for (let i = 0; i < coverage.length; i++) coverage[i] = (rgba[i * 4 + 3] ?? 0) / 255;
   for (let pass = 0; pass < BLUR_PASSES; pass++)
     coverage = boxBlur(coverage, width, height, BLUR_RADIUS);
-  return Uint8Array.from(coverage, (value) => (value >= SILHOUETTE_COVERAGE ? 1 : 0));
+  const inside = new Uint8Array(coverage.length);
+  for (let i = 0; i < inside.length; i++)
+    inside[i] = (coverage[i] ?? 0) >= SILHOUETTE_COVERAGE ? 1 : 0;
+  return inside;
 }
 
-/** Every offset within the rim's reach, with its distance. */
-function discOffsets(): { dx: number; dy: number; distance: number }[] {
-  const reach = Math.ceil(RIM_RADIUS + 1);
-  const offsets: { dx: number; dy: number; distance: number }[] = [];
-  for (let dy = -reach; dy <= reach; dy++) {
-    for (let dx = -reach; dx <= reach; dx++) {
-      const distance = Math.hypot(dx, dy);
-      if (distance <= RIM_RADIUS + 1) offsets.push({ dx, dy, distance });
-    }
-  }
-  return offsets;
+/** Distance of every cell of a span x span square centered on a pixel; Infinity beyond the rim's reach. */
+function discDistances(span: number): Float32Array {
+  const reach = (span - 1) / 2;
+  return Float32Array.from({ length: span * span }, (_, i) => {
+    const distance = Math.hypot((i % span) - reach, Math.floor(i / span) - reach);
+    return distance <= RIM_RADIUS + 1 ? distance : Number.POSITIVE_INFINITY;
+  });
 }
 
 function growMask(inside: Uint8Array, width: number, height: number): Uint8Array {
-  const offsets = discOffsets();
+  const reach = Math.ceil(RIM_RADIUS + 1);
+  const span = 2 * reach + 1;
+  const distances = discDistances(span);
   const nearest = new Float32Array(width * height).fill(Number.POSITIVE_INFINITY);
   const isInside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height && inside[y * width + x] === 1;
   const isBorder = (x: number, y: number) =>
     !(isInside(x - 1, y) && isInside(x + 1, y) && isInside(x, y - 1) && isInside(x, y + 1));
   const stamp = (x: number, y: number) => {
-    for (const { dx, dy, distance } of offsets) {
-      const [tx, ty] = [x + dx, y + dy];
-      if (tx < 0 || ty < 0 || tx >= width || ty >= height) continue;
-      nearest[ty * width + tx] = Math.min(nearest[ty * width + tx] ?? distance, distance);
+    const [x0, x1] = [Math.max(0, x - reach), Math.min(width - 1, x + reach)];
+    const [y0, y1] = [Math.max(0, y - reach), Math.min(height - 1, y + reach)];
+    for (let ty = y0; ty <= y1; ty++) {
+      for (let tx = x0; tx <= x1; tx++) {
+        const distance = distances[(ty - y + reach) * span + (tx - x + reach)] ?? Infinity;
+        if (distance < (nearest[ty * width + tx] ?? 0)) nearest[ty * width + tx] = distance;
+      }
     }
   };
   for (let y = 0; y < height; y++) {
@@ -86,9 +88,10 @@ function growMask(inside: Uint8Array, width: number, height: number): Uint8Array
       if (isBorder(x, y)) stamp(x, y);
     }
   }
-  return Uint8Array.from(nearest, (distance) =>
-    Math.round(Math.min(1, Math.max(0, RIM_RADIUS + 0.5 - distance)) * 255),
-  );
+  const alpha = new Uint8Array(nearest.length);
+  for (let i = 0; i < alpha.length; i++)
+    alpha[i] = Math.round(Math.min(1, Math.max(0, RIM_RADIUS + 0.5 - (nearest[i] ?? 0))) * 255);
+  return alpha;
 }
 
 export type RimResult =
