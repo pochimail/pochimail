@@ -262,11 +262,4 @@ export const ja = {
     [],
   ),
   "state.nothingToDo.action": entry("概要に戻る", []),
-  "state.updateReady.title": entry("新しいバージョンの準備ができました", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} の準備ができました。再起動するとインストールされ、メールはそのままです。",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("今すぐ再起動", []),
-  "state.updateReady.whatsNew": entry("新機能", []),
 } satisfies Catalog;

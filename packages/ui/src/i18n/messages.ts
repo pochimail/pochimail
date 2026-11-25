@@ -272,13 +272,6 @@ export const messages = {
     [],
   ),
   "state.nothingToDo.action": entry("Back to overview", []),
-  "state.updateReady.title": entry("A new version is ready", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} is ready. It installs when you restart, and your emails stay where they are.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Restart now", []),
-  "state.updateReady.whatsNew": entry("What’s new", []),
 } as const;
 export type MessageKey = keyof typeof messages;
 /** Params are derived from the catalog entry, so a renamed placeholder breaks the call site. */

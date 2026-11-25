@@ -282,11 +282,4 @@ export const fr = {
     [],
   ),
   "state.nothingToDo.action": entry("Retour à la vue d’ensemble", []),
-  "state.updateReady.title": entry("Une nouvelle version est prête", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} est prêt. Il s’installe au redémarrage, et vos emails restent où ils sont.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Redémarrer maintenant", []),
-  "state.updateReady.whatsNew": entry("Nouveautés", []),
 } satisfies Catalog;
