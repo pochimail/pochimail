@@ -18,6 +18,7 @@
     "arch": "depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json apps packages",
     "quality": "node tooling/ci/src/check-quality.ts",
     "gates": "node tooling/ci/src/assert-gates.ts",
+    "mascot:rim": "node tooling/ci/src/make-mascot-rim.ts",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint && pnpm lint:root",
     "lint:root": "biome check biome.json package.json turbo.json",
