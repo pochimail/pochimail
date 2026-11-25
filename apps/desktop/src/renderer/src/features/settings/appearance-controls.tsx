@@ -84,7 +84,10 @@ export function LanguageDropdown({ compact = false }: { compact?: boolean }) {
           variant="secondary"
           size="sm"
           aria-label={t("appearance.language")}
-          className={cn(compact && "h-8 @max-phone:w-8 @max-phone:px-0 @max-phone:has-[>svg]:px-0")}
+          className={cn(
+            compact &&
+              "h-8 border-0 bg-muted hover:bg-accent @max-phone:w-8 @max-phone:px-0 @max-phone:has-[>svg]:px-0",
+          )}
         >
           {compact ? (
             <>

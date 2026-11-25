@@ -167,6 +167,7 @@ describe("first-run redirect from app.state", () => {
       expect(header?.className).toContain("[-webkit-app-region:drag]");
       expect(header?.className).toContain("[app-region:drag]");
       expect(header?.nextElementSibling?.tagName).toBe("MAIN");
+      expect(header?.nextElementSibling?.className).toMatch(/\bpx-4\b.*@phone:px-8/);
     } finally {
       fake.close();
       Object.defineProperty(navigator, "userAgent", { value: original, configurable: true });
