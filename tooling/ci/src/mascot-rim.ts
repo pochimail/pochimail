@@ -2,10 +2,10 @@ import { decodeRgbaPng, encodeMaskPng, type RgbaImage } from "./png.ts";
 
 /**
  * The rim is the pose's silhouette grown outward, as an alpha mask. Values are for the @2x art
- * (1024 px wide); the displayed rim is half of RIM_RADIUS css px. The mask is painted behind the
+ * (1024 px wide); the rim shows at RIM_RADIUS / 2 css px when the art is 512 px wide. The mask is painted behind the
  * art in the `mascot-rim` color (packages/ui Mascot), so the art's fuzzy felt edge reads on dark.
  */
-const RIM_RADIUS = 14;
+const RIM_RADIUS = 10;
 /** The felt edge is dithered noise: blur it, then cut at half coverage, for a clean outline. */
 const BLUR_RADIUS = 6;
 const BLUR_PASSES = 2;

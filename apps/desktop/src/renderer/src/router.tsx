@@ -29,10 +29,10 @@ export type RouterContext = {
   getWorkerClient(): Promise<RpcClient>;
 };
 
-/** Pochi's resting pose follows the real theme; active poses are chosen by the screen. */
+/** Pochi's resting pose follows the theme on screen (System resolved against the OS); active poses are chosen by the screen. */
 function useIdlePose(): MascotPose {
-  const { theme } = useAppearance();
-  return theme === "dark" ? "night" : "default";
+  const { resolvedTheme } = useAppearance();
+  return resolvedTheme === "dark" ? "night" : "default";
 }
 
 function useShellPose(): MascotPose {

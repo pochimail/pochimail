@@ -83,7 +83,10 @@ describe("Mascot public behavior", () => {
     const rim = night.indexOf('data-slot="mascot-rim"');
     expect(rim).toBeGreaterThan(night.indexOf('data-slot="mascot-breathe"'));
     expect(rim).toBeLessThan(night.indexOf('data-slot="mascot-image"'));
-    expect(night).toContain("dark:bg-mascot-rim");
+    // Guards: a rim layer painted in light mode, where the charcoal night pose must stay unchanged.
+    expect(night).toMatch(/data-slot="mascot-rim"[^>]*class="[^"]*\bhidden\b[^"]*\bdark:block\b/);
+    expect(night).toContain("bg-mascot-rim");
+    expect(night).toContain("blur-[0.5px]");
     // Guards: a file URL mask, which Chromium refuses to fetch from file:// (the packaged app), so the rim would never render.
     expect(night).toMatch(/mask-image: url\((?:&quot;|"|')?data:image\/png;base64,/);
     for (const pose of ["default", "happy", "reading", "saving"] as const) {

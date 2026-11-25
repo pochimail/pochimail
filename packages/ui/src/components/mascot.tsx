@@ -176,7 +176,7 @@ function Mascot({
             <span
               data-slot="mascot-rim"
               aria-hidden="true"
-              className="absolute inset-0 dark:bg-mascot-rim"
+              className="absolute inset-0 hidden bg-mascot-rim blur-[0.5px] dark:block"
               style={{ maskImage: `url(${rim})`, maskSize: "100% 100%" }}
             />
           ) : null}
