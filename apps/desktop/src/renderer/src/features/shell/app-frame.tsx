@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
 import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
+import { isMacDesktop } from "../../lib/platform.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ProviderIcon } from "./provider-icon.tsx";
@@ -165,7 +166,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
     });
   useRefreshCategoriesWhileScanning(accountList);
 
-  const isMacDesktop = /Macintosh/.test(navigator.userAgent);
+  const onMac = isMacDesktop();
 
   return (
     <SidebarProvider>
@@ -174,7 +175,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
         <Sidebar>
           <SidebarHeader
             className={
-              isMacDesktop
+              onMac
                 ? "pt-12 [-webkit-app-region:drag] [app-region:drag] [&_a]:[-webkit-app-region:no-drag] [&_a]:[app-region:no-drag] [&_button]:[-webkit-app-region:no-drag] [&_button]:[app-region:no-drag]"
                 : undefined
             }
