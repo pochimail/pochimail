@@ -19,9 +19,7 @@ export function WelcomePage() {
 
   return (
     <div className="flex flex-col items-center gap-4.5">
-      <h1 className="text-balance text-display leading-heading @phone:text-title">
-        {t("welcome.headline")}
-      </h1>
+      <h1 className="text-balance text-display leading-heading">{t("welcome.headline")}</h1>
       {/* Held invisible until the device name resolves, so the copy never flips from "device" to "Mac". */}
       <p
         className={cn(

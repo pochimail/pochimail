@@ -33,28 +33,12 @@ const SELECTORS: Record<Part, { app: string; reference: string }> = {
 
 /** Compared with the light desktop reference (the canonical one). Vertical position is left out: it follows the sizes. */
 const COMPARED: Record<Part, readonly Property[]> = {
-  headline: ["offsetX", "lineHeight", "tracking", "fontWeight", "color"],
+  headline: ["offsetX", "fontSize", "lineHeight", "tracking", "fontWeight", "color"],
   description: ["offsetX", "width", "height", "fontSize", "lineHeight", "color"],
   button: ["offsetX", "width", "height", "fontSize", "fontWeight", "color"],
   footnote: ["offsetX", "width", "height", "fontSize", "color"],
-  mascot: ["offsetX"],
+  mascot: ["offsetX", "width"],
 };
-
-/**
- * Where the shipped Welcome differs from its reference today. Each entry pins the app's value, so the test fails the day a
- * difference is fixed (delete the entry then) or grows. The list may only shrink.
- */
-const KNOWN_DIFFERENCES: readonly {
-  part: Part;
-  property: Property;
-  app: number;
-  reference: number;
-}[] = [
-  // `text-display @phone:text-title`: from a 560px container up the headline is the 32px title; the reference keeps the 40px display size.
-  { part: "headline", property: "fontSize", app: 32, reference: 40 },
-  // The mascot renders 180px wide; the reference draws it 240px wide.
-  { part: "mascot", property: "width", app: 180, reference: 240 },
-];
 
 const measureAll = (page: Page, side: "app" | "reference"): Promise<Record<Part, Measure>> =>
   page.evaluate(
@@ -94,7 +78,7 @@ const same = (property: Property, shipped: Measure, drawn: Measure): boolean => 
   return Math.abs(a - r) <= (RATIOS.includes(property) ? TOLERANCE.ratio : TOLERANCE.px);
 };
 
-// Guards: the Welcome screen drifting from its light reference (docs/design/screens/html/Main.html) beyond the tolerance, or a known difference changing unnoticed.
+// Guards: the Welcome screen drifting from its light reference (docs/design/screens/html/Main.html) beyond the tolerance.
 test("the Welcome screen matches its light reference", async () => {
   const { app, page, problems, close } = await launchApp({ firstRun: true });
   try {
@@ -135,13 +119,6 @@ test("the Welcome screen matches its light reference", async () => {
         ),
     );
     expect(differing).toEqual([]);
-    for (const { part, property, app: pinned, reference: drawnValue } of KNOWN_DIFFERENCES) {
-      expect(shipped[part][property], `${part} ${property} in the app`).toBeCloseTo(pinned, 0);
-      expect(drawn[part][property], `${part} ${property} in the reference`).toBeCloseTo(
-        drawnValue,
-        0,
-      );
-    }
     expect(problems).toEqual([]);
   } finally {
     await close();
