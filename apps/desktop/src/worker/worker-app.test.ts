@@ -198,6 +198,53 @@ describe("worker app over the real IPC layer", () => {
     close();
   });
 
+  // Guards: a Review answer built from mail content, or an account flag guessed from counts.
+  it("review.get mirrors the stored overview figures and reports a missing account from the account list", async () => {
+    const { client, app, close } = await connect();
+    for (const account of mailbox.accounts)
+      await client.call("scan.start", { accountId: account.id });
+    await app.idle();
+    const overview = await client.call("overview.get", {});
+    expect(await client.call("review.get", {})).toEqual({
+      toReview: overview.toReview,
+      waiting: overview.waiting,
+      deadlines: overview.deadlines,
+      important: overview.important,
+      cleanable: [...overview.cleanable],
+      noAccount: false,
+    });
+    close();
+
+    const clock = createFakeClock(new Date("2026-01-02T00:00:00.000Z"));
+    const store = createInMemoryUnitOfWork();
+    const offline = await connect({
+      adapters: {
+        workspaceId: WS_A,
+        clock,
+        random: () => 0.5,
+        timer: createFakeTimer(),
+        logger: silent,
+        newJobId: () => "job-offline",
+        uow: store.uow,
+        outboxStore: store.outboxStore,
+        queue: createInMemoryJobQueue(clock),
+        settings: createInMemorySettingsStore(),
+        classifier: createFakeClassifier(),
+        providerFor: () => createFakeMailProvider(),
+        deviceName: () => "PC",
+      },
+    });
+    expect(await offline.client.call("review.get", {})).toEqual({
+      toReview: 0,
+      waiting: 0,
+      deadlines: 0,
+      important: 0,
+      cleanable: [],
+      noAccount: true,
+    });
+    offline.close();
+  });
+
   it("a second adapter bundle runs the same handlers with no handler change (guards business wiring leaking into the handlers)", async () => {
     const clock = createFakeClock(new Date("2026-01-02T00:00:00.000Z"));
     const store = createInMemoryUnitOfWork();

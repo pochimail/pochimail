@@ -2,8 +2,11 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { closeSync, openSync, readSync } from "node:fs";
 import { StorageError } from "@pochimail/kernel/errors";
 import { err, ok, type Result } from "@pochimail/kernel/result";
+import type { SenderHasher } from "@pochimail/mailbox/ports/sender-hasher";
 import Database from "better-sqlite3-multiple-ciphers";
+import { createSenderHasher } from "./hmac-sender-hasher.ts";
 import { migrate } from "./migrator.ts";
+import { guardSchema } from "./schema-guard.ts";
 
 /**
  * One encrypted database file: a single writer connection and a read-only one (ADR 0005).
@@ -13,6 +16,8 @@ import { migrate } from "./migrator.ts";
 export interface Storage {
   readonly writer: Database.Database;
   readonly reader: Database.Database;
+  /** Keyed sender digest; the key itself is never exposed (ADR 0014). */
+  readonly senderHasher: SenderHasher;
   /** Runs `fn` after every earlier exclusive call settled. Do not call it from inside `fn`. */
   exclusive<T>(fn: () => Promise<T> | T): Promise<T>;
   /** True while running inside `exclusive` (a transaction or queue statement). */
@@ -80,6 +85,11 @@ export function openStorage(path: string, key: Uint8Array): Result<Storage, Stor
       writer.close();
       return migrated;
     }
+    const guarded = guardSchema(writer);
+    if (!guarded.ok) {
+      writer.close();
+      return guarded;
+    }
     reader = connect(path, key, true);
   } catch (cause) {
     writer?.close();
@@ -94,6 +104,7 @@ export function openStorage(path: string, key: Uint8Array): Result<Storage, Stor
   return ok({
     writer: w,
     reader: r,
+    senderHasher: createSenderHasher(key),
     exclusive<T>(fn: () => Promise<T> | T): Promise<T> {
       const run = () => inside.run(true, fn);
       const next = tail.then(run, run);

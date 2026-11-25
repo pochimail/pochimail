@@ -18,5 +18,8 @@ export const signalSchema = z.object({
 });
 export type Signal = z.infer<typeof signalSchema>;
 
-/** A signal as stored: the rule's fixed reason text (never mail content) travels with it. */
-export type StoredSignal = Signal & { readonly reason: string };
+/**
+ * A signal as stored. The rule's reason text exists only in the process that detected it; a row
+ * read after a restart has no reason, and stored codes are never passed off as text (ADR 0014).
+ */
+export type StoredSignal = Signal & { readonly reason?: string };

@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -27,6 +28,15 @@ export const ja = {
     [],
   ),
   "overview.review": entry("確認する", []),
+  "review.counts.title": entry("見つけたもの", []),
+  "review.counts.toReview": entry("確認するもの", []),
+  "review.counts.waiting": entry("返信を待っているもの", []),
+  "review.counts.deadlines": entry("期限のあるもの", []),
+  "review.counts.important": entry("大切な人からのもの", []),
+  "review.cleanable.title": entry("整理できるもの", []),
+  ...reviewMessages.ja,
+  "review.loading": entry("確認する内容を読み込んでいます", []),
+  "review.error.title": entry("確認する内容を読み込めませんでした。", []),
   "overview.pause": entry("一時停止", []),
   "overview.resume": entry("再開", []),
   "overview.viewSummary": entry("まとめを見る", []),

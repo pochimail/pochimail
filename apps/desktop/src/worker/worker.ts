@@ -83,6 +83,15 @@ const emptyHandlers: Handlers = {
         totalSize: 0,
       },
     }),
+    // Without storage there is no account, so Review has counts only and no session to apply a choice.
+    "review.get": () => ({
+      toReview: 0,
+      waiting: 0,
+      deadlines: 0,
+      important: 0,
+      cleanable: [],
+      noAccount: true,
+    }),
     "mailbox.categories": () => ({
       people: 0,
       records: 0,
