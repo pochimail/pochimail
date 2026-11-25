@@ -90,12 +90,16 @@ describe("preload surface", () => {
     };
     const { storage } = api;
     vi.mocked(ipcRenderer.invoke).mockClear();
-    await expect(storage.setPassphrase("short")).rejects.toThrow();
+    await expect(storage.setPassphrase("elevenchars")).rejects.toThrow();
     await expect(storage.unlock("x".repeat(257))).rejects.toThrow();
     expect(ipcRenderer.invoke).not.toHaveBeenCalled();
     vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("0123456789abcdef");
     await expect(storage.status()).rejects.toThrow();
     vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("ready");
-    await expect(storage.setPassphrase("long enough")).resolves.toBe("ready");
+    await expect(storage.setPassphrase("twelve chars")).resolves.toBe("ready");
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("wrong-passphrase");
+    await expect(storage.unlock("short")).resolves.toBe("wrong-passphrase");
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce("blocked");
+    await expect(storage.status()).resolves.toBe("blocked");
   });
 });

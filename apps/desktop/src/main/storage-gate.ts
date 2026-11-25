@@ -6,6 +6,7 @@ import {
   passphraseSchema,
   type StorageOutcome,
   type StorageStatus,
+  unlockPassphraseSchema,
 } from "../shared/storage-calls.ts";
 import {
   createUnprotectedKey,
@@ -57,7 +58,11 @@ export const createStorageGate = (options: StorageGateOptions) => {
     if (choice.value?.mode === "unprotected")
       return { kind: "settled", key: readUnprotectedKey(plainKeyFile) };
     if (choice.value?.mode === "passphrase") return { kind: "locked", choice: choice.value };
-    if ((await keyProtection(vault, platform)).level === "basic-text") return { kind: "choose" };
+    if ((await keyProtection(vault, platform)).level === "basic-text")
+      return existsSync(databaseFile)
+        ? // A key is never minted over an existing database: that would orphan its data.
+          { kind: "settled", key: err(new DatabaseKeyError("key-missing-database-exists")) }
+        : { kind: "choose" };
     return {
       kind: "settled",
       key: await loadOrCreateDatabaseKey(vault, keychainKeyFile, platform, databaseFile),
@@ -100,20 +105,11 @@ export const createStorageGate = (options: StorageGateOptions) => {
     }
   };
 
-  /** A key is never minted over an existing database: that would orphan its data. */
-  const refuseOverExistingDatabase = (): boolean => {
-    if (!existsSync(databaseFile)) return false;
-    logger.error("storage choice refused, a database already exists", {
-      operation: "start",
-      code: "storage.failed",
-    });
-    return true;
-  };
-
   return {
     status: async (): Promise<StorageStatus> => {
       await started;
-      return state?.kind === "choose" || state?.kind === "locked" ? state.kind : "ready";
+      if (state?.kind === "choose" || state?.kind === "locked") return state.kind;
+      return state?.kind === "settled" && !state.key.ok ? "blocked" : "ready";
     },
 
     /** A copy of the key for one worker start (the caller zeroes it), or the reason there is none. Waits for the choice. */
@@ -127,7 +123,7 @@ export const createStorageGate = (options: StorageGateOptions) => {
     setPassphrase: (raw: unknown): Promise<StorageOutcome> =>
       answer("choose", async () => {
         const passphrase = passphraseSchema.safeParse(raw);
-        if (!passphrase.success || refuseOverExistingDatabase()) return "failed";
+        if (!passphrase.success) return "failed";
         const { choice, key } = await createPassphraseChoice(passphrase.data);
         try {
           writeStorageChoice(choiceFile, choice);
@@ -143,7 +139,6 @@ export const createStorageGate = (options: StorageGateOptions) => {
 
     storeUnprotected: (): Promise<StorageOutcome> =>
       answer("choose", async () => {
-        if (refuseOverExistingDatabase()) return "failed";
         const key = createUnprotectedKey(plainKeyFile);
         try {
           writeStorageChoice(choiceFile, { mode: "unprotected" });
@@ -158,7 +153,7 @@ export const createStorageGate = (options: StorageGateOptions) => {
 
     unlock: (raw: unknown): Promise<StorageOutcome> =>
       answer("locked", async (current) => {
-        const passphrase = passphraseSchema.safeParse(raw);
+        const passphrase = unlockPassphraseSchema.safeParse(raw);
         if (current.kind !== "locked" || !passphrase.success) return "wrong-passphrase";
         const key = await keyForPassphrase(passphrase.data, current.choice);
         if (key === undefined) {

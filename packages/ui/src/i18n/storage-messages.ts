@@ -10,7 +10,7 @@ export const storageMessages = {
     "storage.passphrase.repeat": { text: "Repeat the passphrase", params: [] },
     "storage.passphrase.mismatch": { text: "The two passphrases don’t match.", params: [] },
     "storage.passphrase.tooShort": {
-      text: "Use at least {count, number} characters.",
+      text: "Use at least {count, number} characters. A short sentence works well.",
       params: ["count"],
     },
     "storage.passphrase.protects.title": { text: "What a passphrase protects", params: [] },
@@ -19,6 +19,7 @@ export const storageMessages = {
       params: [],
     },
     "storage.passphrase.submit": { text: "Use this passphrase", params: [] },
+    "storage.passphrase.pending": { text: "Locking your data…", params: [] },
     "storage.unprotected.choose": { text: "Store without protection", params: [] },
     "storage.unprotected.title": { text: "Store without protection?", params: [] },
     "storage.unprotected.description": {
@@ -40,7 +41,18 @@ export const storageMessages = {
     "storage.unlock.description": { text: "Your local data is locked.", params: [] },
     "storage.unlock.hint": { text: "I can’t recover a lost passphrase.", params: [] },
     "storage.unlock.submit": { text: "Unlock", params: [] },
-    "storage.unlock.wrong": { text: "That passphrase doesn’t match.", params: [] },
+    "storage.unlock.pending": { text: "Unlocking…", params: [] },
+    "storage.unlock.wrong": { text: "That isn’t the right passphrase.", params: [] },
+    "storage.blocked.title": { text: "I can’t open your local data", params: [] },
+    "storage.blocked.description": {
+      text: "The key to your local data, or your choice of how to protect it, is missing or damaged. I won’t create a new one: that would make the data I already keep unreadable.",
+      params: [],
+    },
+    "storage.blocked.todo.title": { text: "What you can do", params: [] },
+    "storage.blocked.todo.body": {
+      text: "Quit Pochimail and put back the files you backed up. Or delete Pochimail’s data folder to start over: your emails stay with your provider.",
+      params: [],
+    },
     "storage.failed": {
       text: "I couldn’t save your choice. Nothing was changed. Restart Pochimail and try again.",
       params: [],
@@ -59,7 +71,7 @@ export const storageMessages = {
       params: [],
     },
     "storage.passphrase.tooShort": {
-      text: "Utilisez au moins {count, number} caractères.",
+      text: "Utilisez au moins {count, number} caractères. Une courte phrase convient très bien.",
       params: ["count"],
     },
     "storage.passphrase.protects.title": { text: "Ce que protège une phrase secrète", params: [] },
@@ -68,6 +80,7 @@ export const storageMessages = {
       params: [],
     },
     "storage.passphrase.submit": { text: "Utiliser cette phrase secrète", params: [] },
+    "storage.passphrase.pending": { text: "Verrouillage en cours…", params: [] },
     "storage.unprotected.choose": { text: "Stocker sans protection", params: [] },
     "storage.unprotected.title": { text: "Stocker sans protection ?", params: [] },
     "storage.unprotected.description": {
@@ -92,7 +105,18 @@ export const storageMessages = {
       params: [],
     },
     "storage.unlock.submit": { text: "Déverrouiller", params: [] },
-    "storage.unlock.wrong": { text: "Cette phrase secrète ne correspond pas.", params: [] },
+    "storage.unlock.pending": { text: "Déverrouillage en cours…", params: [] },
+    "storage.unlock.wrong": { text: "Ce n’est pas la bonne phrase secrète.", params: [] },
+    "storage.blocked.title": { text: "Je ne peux pas ouvrir vos données locales", params: [] },
+    "storage.blocked.description": {
+      text: "La clé de vos données locales, ou votre choix de protection, est absente ou abîmée. Je n’en créerai pas une nouvelle : les données que je garde déjà deviendraient illisibles.",
+      params: [],
+    },
+    "storage.blocked.todo.title": { text: "Ce que vous pouvez faire", params: [] },
+    "storage.blocked.todo.body": {
+      text: "Quittez Pochimail et remettez les fichiers que vous aviez sauvegardés. Ou supprimez le dossier de données de Pochimail pour repartir de zéro : vos emails restent chez votre fournisseur.",
+      params: [],
+    },
     "storage.failed": {
       text: "Je n’ai pas pu enregistrer votre choix. Rien n’a été modifié. Redémarrez Pochimail et réessayez.",
       params: [],
@@ -108,7 +132,7 @@ export const storageMessages = {
     "storage.passphrase.repeat": { text: "パスフレーズをもう一度入力", params: [] },
     "storage.passphrase.mismatch": { text: "2つのパスフレーズが一致しません。", params: [] },
     "storage.passphrase.tooShort": {
-      text: "{count, number}文字以上にしてください。",
+      text: "{count, number}文字以上にしてください。短い文章でも大丈夫です。",
       params: ["count"],
     },
     "storage.passphrase.protects.title": { text: "パスフレーズが守るもの", params: [] },
@@ -117,6 +141,7 @@ export const storageMessages = {
       params: [],
     },
     "storage.passphrase.submit": { text: "このパスフレーズを使う", params: [] },
+    "storage.passphrase.pending": { text: "ロックしています…", params: [] },
     "storage.unprotected.choose": { text: "保護せずに保存する", params: [] },
     "storage.unprotected.title": { text: "保護せずに保存しますか？", params: [] },
     "storage.unprotected.description": {
@@ -138,7 +163,18 @@ export const storageMessages = {
     "storage.unlock.description": { text: "ローカルデータはロックされています。", params: [] },
     "storage.unlock.hint": { text: "なくしたパスフレーズは私には復元できません。", params: [] },
     "storage.unlock.submit": { text: "ロック解除", params: [] },
-    "storage.unlock.wrong": { text: "パスフレーズが一致しません。", params: [] },
+    "storage.unlock.pending": { text: "ロックを解除しています…", params: [] },
+    "storage.unlock.wrong": { text: "パスフレーズが正しくありません。", params: [] },
+    "storage.blocked.title": { text: "ローカルデータを開けません", params: [] },
+    "storage.blocked.description": {
+      text: "ローカルデータの鍵、または保護方法の選択が見つからないか壊れています。新しく作ると今あるデータが読めなくなるため、私は作成しません。",
+      params: [],
+    },
+    "storage.blocked.todo.title": { text: "できること", params: [] },
+    "storage.blocked.todo.body": {
+      text: "Pochimailを終了し、バックアップしたファイルを元に戻してください。または、Pochimailのデータフォルダーを削除してやり直してください。メール本体はプロバイダーに残ります。",
+      params: [],
+    },
     "storage.failed": {
       text: "選択を保存できませんでした。何も変更していません。Pochimailを再起動してもう一度お試しください。",
       params: [],

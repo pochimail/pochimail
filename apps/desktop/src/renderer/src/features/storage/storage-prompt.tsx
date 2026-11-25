@@ -1,22 +1,25 @@
 import { Dialog, DialogContent } from "@pochimail/ui/components/dialog";
 import { useEffect, useState } from "react";
 import type { StorageStatus } from "#shared/storage-calls.ts";
+import { BlockedStep } from "./blocked-step.tsx";
 import { PassphraseStep } from "./passphrase-step.tsx";
 import type { StorageApi } from "./storage-api.ts";
 import { UnlockStep } from "./unlock-step.tsx";
 import { UnprotectedStep } from "./unprotected-step.tsx";
 
-type Step = "loading" | "ready" | "passphrase" | "unprotected" | "unlock";
+type Step = "loading" | "ready" | "passphrase" | "unprotected" | "unlock" | "blocked";
 const STEP_FOR_STATUS: Record<StorageStatus, Step> = {
   ready: "ready",
   choose: "passphrase",
   locked: "unlock",
+  blocked: "blocked",
 };
 
 /**
  * Asks main how the local data is protected before the app is usable (ADR 0005): a passphrase first, "store without
  * protection" only as a second, explicit choice, and the passphrase again on later launches. It cannot be dismissed:
- * the worker does not start until the question is answered. With nothing to ask it renders nothing.
+ * the worker does not start until the question is answered. When the key cannot be produced, or main cannot even be
+ * asked, it says so instead of leaving a blank window. With nothing to ask it renders nothing.
  */
 export function StoragePrompt({ storage }: { storage: StorageApi }) {
   const [step, setStep] = useState<Step>("loading");
@@ -28,7 +31,7 @@ export function StoragePrompt({ storage }: { storage: StorageApi }) {
       .then((status) => {
         if (current) setStep(STEP_FOR_STATUS[status]);
       })
-      .catch(() => current && setStep("ready"));
+      .catch(() => current && setStep("blocked"));
     return () => {
       current = false;
     };
@@ -41,7 +44,7 @@ export function StoragePrompt({ storage }: { storage: StorageApi }) {
       <DialogContent
         onEscapeKeyDown={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
-        className="top-16 flex translate-y-0 flex-col gap-5 rounded-xl px-8 pt-7 pb-6 shadow-lg sm:max-w-120"
+        className="top-16 flex translate-y-0 flex-col gap-5 px-8 pt-7 pb-6 shadow-lg sm:max-w-120"
       >
         {step === "passphrase" ? (
           <PassphraseStep
@@ -58,6 +61,7 @@ export function StoragePrompt({ storage }: { storage: StorageApi }) {
           />
         ) : null}
         {step === "unlock" ? <UnlockStep storage={storage} onReady={ready} /> : null}
+        {step === "blocked" ? <BlockedStep /> : null}
       </DialogContent>
     </Dialog>
   );

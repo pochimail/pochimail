@@ -15,7 +15,7 @@ const setup = () => {
     options: {
       databasePath: "/dev-data/pochimail.db",
       worker: {
-        postMessage: (m: unknown) => void posted.push(m),
+        postMessage: (m: unknown) => void posted.push(structuredClone(m)), // what the worker receives, taken before main zeroes its copy
         kill: () => {
           killed = true;
         },
@@ -68,7 +68,11 @@ describe("worker boot", () => {
       true,
     );
     expect(t.posted).toEqual([
-      { type: "start", databasePath: "/dev-data/pochimail.db", databaseKeyHex: "01".repeat(32) },
+      {
+        type: "start",
+        databasePath: "/dev-data/pochimail.db",
+        databaseKey: new Uint8Array(32).fill(1),
+      },
     ]);
   });
 

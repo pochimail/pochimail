@@ -10,6 +10,7 @@ import {
   storageChannels,
   storageOutcomeSchema,
   storageStatusSchema,
+  unlockPassphraseSchema,
 } from "../shared/storage-calls.ts";
 
 /**
@@ -52,7 +53,7 @@ const api = {
       storageOutcomeSchema.parse(await ipcRenderer.invoke(storageChannels.storeUnprotected)),
     unlock: async (passphrase: string) =>
       storageOutcomeSchema.parse(
-        await ipcRenderer.invoke(storageChannels.unlock, passphraseSchema.parse(passphrase)),
+        await ipcRenderer.invoke(storageChannels.unlock, unlockPassphraseSchema.parse(passphrase)),
       ),
   },
 };

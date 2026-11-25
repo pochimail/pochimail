@@ -2,7 +2,7 @@ import { Button } from "@pochimail/ui/components/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@pochimail/ui/components/dialog";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { KeyRoundIcon, MailIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NOTE_LIST_CLASS, NoteRow, TITLE_CLASS } from "./prompt-parts.tsx";
 import type { StorageApi } from "./storage-api.ts";
 
@@ -19,8 +19,11 @@ export function UnprotectedStep({
   const t = useT();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const firstButton = useRef(null as HTMLButtonElement | null);
+  useEffect(() => firstButton.current?.focus(), []);
 
   const store = async () => {
+    if (pending) return;
     setPending(true);
     const outcome = await storage.storeUnprotected().catch(() => "failed" as const);
     setPending(false);
@@ -54,10 +57,15 @@ export function UnprotectedStep({
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="lg" disabled={pending} onClick={onUsePassphrase}>
+        <Button
+          ref={firstButton}
+          size="lg"
+          aria-disabled={pending}
+          onClick={() => !pending && onUsePassphrase()}
+        >
           {t("storage.unprotected.usePassphrase")}
         </Button>
-        <Button variant="secondary" size="lg" disabled={pending} onClick={store}>
+        <Button variant="secondary" size="lg" aria-disabled={pending} onClick={store}>
           {t("storage.unprotected.choose")}
         </Button>
       </div>

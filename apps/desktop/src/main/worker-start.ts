@@ -34,7 +34,7 @@ export const startWorker = (
     {
       type: "start",
       databasePath,
-      ...(databaseKey === undefined ? {} : { databaseKeyHex: databaseKey.toString("hex") }),
+      ...(databaseKey === undefined ? {} : { databaseKey }),
     },
     [port2],
   );

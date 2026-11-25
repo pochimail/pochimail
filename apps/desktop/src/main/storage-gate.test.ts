@@ -133,6 +133,7 @@ describe("storage gate: basic-text", () => {
     const { gate, directory } = setup();
     for (const bad of [
       "short",
+      "elevenchars", // one under the minimum of 12
       "x".repeat(257),
       12345678,
       undefined,
@@ -145,10 +146,14 @@ describe("storage gate: basic-text", () => {
     expect(await locked.open().unlock("short")).toBe("wrong-passphrase");
   });
 
-  // Guards: minting a key over an existing database (orphaning its data) when the choice file was lost.
-  it("never creates a key when a database already exists", async () => {
+  // Guards: minting a key over an existing database (orphaning its data) when the choice file was lost, or asking a
+  // question the person cannot answer.
+  it("blocks instead of asking when a database exists without any choice", async () => {
     const { gate, directory } = setup();
     writeFileSync(join(directory, "pochimail.db"), "existing encrypted data");
+    expect(await gate.status()).toBe("blocked");
+    const result = await gate.key();
+    expect(result.ok ? undefined : result.error.reason).toBe("key-missing-database-exists");
     expect(await gate.storeUnprotected()).toBe("failed");
     expect(await gate.setPassphrase(PASSPHRASE)).toBe("failed");
     expect(filesIn(directory)).toEqual(["pochimail.db"]);
@@ -158,9 +163,19 @@ describe("storage gate: basic-text", () => {
   it("fails loudly when the choice file is damaged", async () => {
     const { directory, open } = setup();
     writeFileSync(join(directory, "storage-protection.json"), '{"mode":"passphrase"}');
-    const result = await open().key();
+    const damaged = open();
+    expect(await damaged.status()).toBe("blocked");
+    const result = await damaged.key();
     expect(result.ok).toBe(false);
     expect(result.ok ? undefined : result.error.reason).toBe("choice-file-invalid");
+  });
+
+  // Guards: a missing or invalid unprotected key file starting the app on a fresh key, or asking again.
+  it("blocks when the unprotected key file is invalid", async () => {
+    const { directory, open } = setup();
+    await open().storeUnprotected();
+    writeFileSync(join(directory, "db.key.plain"), "not a key");
+    expect(await open().status()).toBe("blocked");
   });
 
   // Guards: two windows sharing one buffer, so zeroing it for one worker start breaks the next.
@@ -196,6 +211,13 @@ describe("storage gate: os-keychain", () => {
       expect(await keyOf(setup(vault, platform).open(directory))).toEqual(key);
     },
   );
+
+  // Guards: an unreadable keychain key file leaving the person with a blank, unexplained window.
+  it("blocks when the wrapped key file is invalid", async () => {
+    const { directory, open } = setup(fakeVault(), "darwin");
+    writeFileSync(join(directory, "db.key"), "garbage");
+    expect(await open().status()).toBe("blocked");
+  });
 
   // Guards: a missing keychain being treated as basic-text and prompting, instead of the existing "no key" behaviour.
   it("does not ask when no keychain exists at all", async () => {

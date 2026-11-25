@@ -17,6 +17,7 @@ export const Filled: Story = { args: { defaultValue: "correct horse" } };
 export const WithError: Story = {
   args: { label: "Repeat the passphrase", error: "The two passphrases don’t match." },
 };
+export const WithHint: Story = { args: { hint: "I can’t recover a lost passphrase." } };
 export const Disabled: Story = { args: { disabled: true } };
 export const DarkWithError: Story = {
   decorators: [darkDecorator],
