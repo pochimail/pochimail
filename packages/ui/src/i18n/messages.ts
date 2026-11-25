@@ -1,7 +1,6 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
-import { notificationSettingsMessages } from "./notification-settings-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
@@ -177,7 +176,6 @@ export const messages = {
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
   ...appearanceMessages.en,
-  ...notificationSettingsMessages.en,
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),

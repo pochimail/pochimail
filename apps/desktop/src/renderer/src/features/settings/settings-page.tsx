@@ -2,7 +2,6 @@ import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { cn } from "@pochimail/ui/lib/utils";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { LanguageDropdown, ThemeSegments } from "./appearance-controls.tsx";
-import { NotificationsSection } from "./notifications-section.tsx";
 
 const ROW =
   "flex min-h-14 items-center gap-3.5 border-b border-border px-4.5 py-2.5 last:border-b-0";
@@ -30,8 +29,6 @@ export function SettingsPage() {
           </li>
         </ul>
       </section>
-
-      <NotificationsSection rowClassName={ROW} />
     </main>
   );
 }
