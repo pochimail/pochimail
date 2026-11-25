@@ -39,6 +39,8 @@ export interface AccountsRuntimeOptions {
   readonly logger: Logger;
   readonly deviceName: () => DeviceName;
   readonly classifier: Classifier;
+  /** Drops what the model host remembers of mail; called when an account is removed. */
+  readonly clearClassifierCache?: () => void;
   /** Tests point the providers at local fakes; the app leaves this out and uses the real hosts. */
   readonly network?: {
     readonly oauthConfig: OAuthProviderConfig;
@@ -107,6 +109,9 @@ export const createAccountsRuntime = (
     queue: createSqliteJobQueue(storage.value, clock),
     settings: createSqliteSettingsStore(storage.value),
     classifier: options.classifier,
+    ...(options.clearClassifierCache === undefined
+      ? {}
+      : { clearClassifierCache: options.clearClassifierCache }),
     providerFor: (account) =>
       createGmailProvider({
         workspaceId: account.workspaceId,

@@ -191,4 +191,45 @@ describe("scan classification speed and power", () => {
     expect(run.events).not.toContain("ScanCompleted");
     run.close();
   });
+
+  it("a scan the user paused after the machine went low on power stays paused when it leaves low power (guards power waking a scan the user stopped)", async () => {
+    const fake = engine();
+    fake.state.hold = true;
+    const power = createFakePowerMonitor();
+    const run = await start(fake.classifier, power);
+    const { jobId } = await run.scan();
+    await vi.waitFor(() => expect(fake.state.inFlight).toBeGreaterThan(0));
+
+    power.set({ batterySaver: true });
+    await run.rpc.call("scan.pause", { jobId });
+    power.set({ batterySaver: false });
+    fake.state.hold = false;
+    fake.letGo();
+    await run.app.idle();
+
+    expect(await run.rpc.call("scan.status", { accountIds: [ACCOUNT] })).toMatchObject([
+      { status: "paused" },
+    ]);
+    expect(run.events).not.toContain("ScanCompleted");
+    run.close();
+  });
+
+  it("a scan started while the machine is already low on power is not paused by later power changes (guards pausing a scan the user chose to run)", async () => {
+    const fake = engine();
+    fake.state.hold = true;
+    const power = createFakePowerMonitor({ batterySaver: true });
+    const run = await start(fake.classifier, power);
+    await run.scan();
+    await vi.waitFor(() => expect(fake.state.inFlight).toBeGreaterThan(0));
+
+    power.set({ onBattery: true });
+    power.sleep();
+    fake.state.hold = false;
+    fake.letGo();
+    await vi.waitFor(() => expect(run.events).toContain("ScanCompleted"));
+    await run.app.idle();
+
+    expect(await run.rpc.call("scan.status", { accountIds: [ACCOUNT] })).toEqual([]);
+    run.close();
+  });
 });

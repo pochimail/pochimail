@@ -11,5 +11,6 @@ export const loadEngine = async (
   const { createFixtureEngine } = await import("./fixture-engine.ts");
   const engine = createFixtureEngine(scale);
   // One cache per host process, in memory only: it is gone when the host exits (ADR 0014).
-  return { ...engine, classifier: createCachingClassifier(engine.classifier) };
+  const cache = createCachingClassifier(engine.classifier);
+  return { ...engine, classifier: cache, clearCache: cache.clear };
 };

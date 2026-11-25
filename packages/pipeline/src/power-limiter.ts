@@ -14,7 +14,7 @@ export interface PowerLimiter {
 /**
  * Bounded concurrency that follows the power source: `plugged` slots on mains, `battery` slots on battery.
  * The limit is read each time a slot is granted, so unplugging lowers it for new work at once and
- * work already running is never interrupted.
+ * work already running is never interrupted; plugging in grants the waiting work the new slots at once.
  */
 export function createPowerLimiter(power: PowerMonitor, limits: PowerLimits): PowerLimiter {
   let active = 0;
@@ -28,6 +28,7 @@ export function createPowerLimiter(power: PowerMonitor, limits: PowerLimits): Po
       next();
     }
   };
+  power.onChange(grant);
   return {
     acquire(signal) {
       if (signal.aborted) return Promise.resolve(undefined);

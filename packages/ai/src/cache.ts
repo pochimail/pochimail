@@ -21,6 +21,11 @@ const contentHash = (m: Content): string =>
     .update(JSON.stringify([m.from, m.subject, m.snippet, m.hasListUnsubscribe]))
     .digest("hex");
 
+export interface CachingClassifier extends Classifier {
+  /** Forgets every answer, for the moments private mail data must leave memory (account removal, lock). */
+  clear(): void;
+}
+
 /**
  * Runs the inner classifier once per distinct content: a template seen twice, a re-scan or a retry
  * is answered from memory. The cache is dropped with the process and never written anywhere.
@@ -29,7 +34,7 @@ const contentHash = (m: Content): string =>
 export const createCachingClassifier = (
   inner: Classifier,
   maxEntries: number = DEFAULT_CACHE_ENTRIES,
-): Classifier => {
+): CachingClassifier => {
   const answers = new Map<string, Answer>();
   const remember = (key: string, answer: Answer): void => {
     answers.delete(key);
@@ -41,6 +46,7 @@ export const createCachingClassifier = (
   };
 
   return {
+    clear: () => answers.clear(),
     async classify(messages, signal) {
       const keys = messages.map(contentHash);
       const known = new Map<string, Answer>();

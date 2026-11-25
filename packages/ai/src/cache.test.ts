@@ -82,4 +82,16 @@ describe("createCachingClassifier", () => {
 
     expect(inferred()).toBe(4);
   });
+
+  it("clear forgets every answer (guards mail-derived answers staying in memory after account removal or lock)", async () => {
+    const { classifier, inferred } = countingEngine();
+    const cached = createCachingClassifier(classifier);
+    const messages = mailbox(6, 3);
+
+    await cached.classify(messages, signal);
+    cached.clear();
+    await cached.classify(messages, signal);
+
+    expect(inferred()).toBe(6);
+  });
 });

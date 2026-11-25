@@ -49,6 +49,8 @@ export interface WorkerAdapters {
   readonly classifier: Classifier;
   /** Without it scans keep one classify batch at a time and never pause for power. */
   readonly power?: PowerMonitor;
+  /** Drops what the model host remembers of mail; called when an account is removed. */
+  readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
   readonly providerFor: (account: Account) => MailProvider;
   readonly deviceName: () => DeviceName;
@@ -86,6 +88,10 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
   const tally = createDigestTally();
   const recordDigest = new RecordDigestReady({ tally });
   bus.subscribe("DigestReady", (event) => recordDigest.execute(event));
+
+  bus.subscribe("AccountStateChanged", (event) => {
+    if (event.payload.state === "disconnected") adapters.clearClassifierCache?.();
+  });
 
   const limiter = adapters.power && createPowerLimiter(adapters.power, CLASSIFY_LIMITS);
   const scans = new ScanRunner({

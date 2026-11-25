@@ -6,22 +6,22 @@ import type { ScanRunner } from "../use-cases/scan-runner.ts";
 const isLowPower = (state: PowerState): boolean => state.asleep || state.batterySaver;
 
 /**
- * Pauses the running scans while the machine sleeps or is low on power and resumes them by themselves
- * afterwards. A scan the user paused stays paused. Pausing and resuming are the runner's own, so
- * nothing is read twice and nothing is skipped.
+ * Pauses the running scans when the machine goes into sleep or low-power mode and resumes the ones it
+ * paused when it leaves. It acts only on those two transitions, never on other power changes: a scan the
+ * user starts or resumes while the machine is already low on power keeps running. A scan the user paused
+ * stays paused, even if the user paused it after this job did. Pausing and resuming are the runner's own,
+ * so nothing is read twice and nothing is skipped.
  */
 export function pauseScansOnLowPower(runner: ScanRunner, power: PowerMonitor): Unsubscribe {
-  const ours = new Set<string>();
+  let wasLow = isLowPower(power.current());
   return power.onChange((state) => {
-    if (isLowPower(state)) {
-      for (const job of runner.live()) {
-        if (job.status !== "running") continue;
-        runner.pause(job.jobId);
-        ours.add(job.jobId);
-      }
-      return;
+    const low = isLowPower(state);
+    if (low === wasLow) return;
+    wasLow = low;
+    for (const job of runner.live()) {
+      if (low && job.status === "running") runner.pause(job.jobId, "power");
+      else if (!low && job.status === "paused" && job.pausedBy === "power")
+        runner.resume(job.jobId);
     }
-    for (const jobId of ours) runner.resume(jobId);
-    ours.clear();
   });
 }

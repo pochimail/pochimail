@@ -255,4 +255,27 @@ describe("model host process", () => {
     port1.close();
     port2.close();
   });
+
+  it("clearing the cache reaches the engine behind the host (guards mail-derived answers staying in the host after account removal or lock)", async () => {
+    const { port1, port2 } = new MessageChannel();
+    port1.start();
+    port2.start();
+    let cleared = 0;
+    serveModelHost(fromDomPort(port2), {
+      classifier: createGroundTruthClassifier(labels),
+      llm: createFakeLlmProvider(),
+      embedder: createFakeEmbedder(),
+      clearCache: () => {
+        cleared += 1;
+      },
+    });
+    const client = createModelHostClient({ timer: createFakeTimer() });
+    client.attach(fromDomPort(port1));
+
+    await client.clearCache();
+
+    expect(cleared).toBe(1);
+    port1.close();
+    port2.close();
+  });
 });

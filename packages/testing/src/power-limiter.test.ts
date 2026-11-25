@@ -44,4 +44,22 @@ describe("createPowerLimiter", () => {
     const next = await limiter.acquire(open);
     expect(next).toBeDefined();
   });
+
+  // Guards: work queued on battery staying throttled after the laptop is plugged back in.
+  it("plugging in grants the waiting work the new slots without waiting for a release", async () => {
+    const power = createFakePowerMonitor({ onBattery: true });
+    const limiter = createPowerLimiter(power, { plugged: 3, battery: 1 });
+    await limiter.acquire(open);
+    let granted = 0;
+    for (let n = 0; n < 2; n++)
+      void limiter.acquire(open).then(() => {
+        granted += 1;
+      });
+    await Promise.resolve();
+    expect(granted).toBe(0);
+
+    power.set({ onBattery: false });
+    await Promise.resolve();
+    expect(granted).toBe(2);
+  });
 });
