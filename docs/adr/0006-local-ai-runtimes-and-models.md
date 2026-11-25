@@ -1,6 +1,6 @@
 # 0006 — Local AI runtimes and model selection
 
-Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-actions-not-mail.md): on-device learning was a kNN override over labeled examples; it is now rules keyed by sender hash
+Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-actions-not-mail.md): on-device learning was a kNN override over labeled examples; it is now rules keyed by sender hash; tiers: [0019](0019-cpu-only-tier-path.md)
 
 ## Decision
 - **Layers**, cheapest first: rules → decision heads (embeddings and calibrated classifiers) → generative LLM. Each decision stores its reason and confidence; all output is zod-validated.
@@ -10,7 +10,7 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
   - Tier T2 (16 GB or more, GPU or Apple Silicon): Gemma 4 E4B-it, Q4_K_M (about 5 GB). Fallback: Qwen3.5-4B.
   - Tier T1 (8–16 GB): Qwen3.5-2B, Q4_K_M, for extraction and explanations only.
   - Embeddings: multilingual-e5-small (MIT).
-  - Tier T0 (under 8 GB or no usable GPU): rules and heads only, explained in plain words.
+  - Tier T0 (under 8 GB, or a CPU or GPU too slow): rules and heads only, explained in plain words.
 - Multilingual is required: English, French and Japanese in every eval.
 - **Speed**: classify per sender and per template cluster, minimum input first, content-hash cache, batched inference, bounded concurrency, power awareness: full speed plugged in, throttle on battery, pause on sleep.
 - **On-device learning**: corrections become rules keyed by sender hash and type, replacing the former kNN override over labeled examples ([ADR 0014](0014-store-reports-and-actions-not-mail.md)); heads are re-fitted locally when idle.
@@ -22,4 +22,4 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 Rules carry the bulk on T0 machines, and Autopilot acts only above the calibrated threshold, so weak machines see fewer automatic actions.
 
 ## Known limits
-The benchmark set is synthetic; rebuild the eval on realistic mail before calibrating thresholds. Models invent deadlines: prompts need a "no date" example and a date must appear in the source. x64 CPU numbers must be collected before tier thresholds are set and the tier rule is provisional: a CPU-only machine stays on T0 until a CPU path and an override exist. With `thoughtTokens: 0` on Qwen3.5, `node-llama-cpp` returns JSON without its opening `{`; a test must guard it.
+The benchmark set is synthetic; rebuild the eval on realistic mail before calibrating thresholds. Models invent deadlines: prompts need a "no date" example and a date must appear in the source. Tier thresholds are provisional until more x64 machines are measured (0019). With `thoughtTokens: 0` on Qwen3.5, `node-llama-cpp` returns JSON without its opening `{`; a test must guard it.

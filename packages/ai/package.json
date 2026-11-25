@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./cache": "./src/cache.ts",
+    "./cpu-benchmark": "./src/cpu-benchmark.ts",
     "./downloader": "./src/downloader.ts",
     "./embeddings/embedder": "./src/embeddings/embedder.ts",
     "./embeddings/transformers-extractor": "./src/embeddings/transformers-extractor.ts",

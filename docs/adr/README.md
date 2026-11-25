@@ -9,7 +9,7 @@ One file per decision. Accepted ADRs win.
 | 0003 | Hexagonal domains, outbox | Accepted; amended 0015 |
 | 0004 | Incremental sync | Accepted; amended 0011 |
 | 0005 | Local storage | Accepted; amended 0014, 0010 |
-| 0006 | Local AI | Accepted; amended 0014, 0018 |
+| 0006 | Local AI | Accepted; amended 0014, 0018, 0019 |
 | 0007 | OAuth and scopes | Accepted; amended 0011, 0012 |
 | 0008 | Notifications, privacy | Accepted |
 | 0009 | Store metadata, not mail | Superseded by 0014 |
@@ -22,3 +22,4 @@ One file per decision. Accepted ADRs win.
 | 0016 | Fixed types, automatic topics | Accepted |
 | 0017 | E2E tests | Accepted |
 | 0018 | Patched llama binary test | Accepted |
+| 0019 | CPU-only tier path | Accepted |
