@@ -110,7 +110,7 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     },
   ),
   check(
-    "the Overview's cleanable count leaves out unsure and undecided mail, so it never promises more than is proposed (guards ADR 0012)",
+    "the Overview counts as cleanable only the mail that suggestions propose, never unsure or undecided mail (guards ADR 0012)",
     async (h) => {
       const doubtful = (from: string, over: Partial<SeedRow> = {}): SeedRow => ({
         category: "promotions",

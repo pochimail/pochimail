@@ -7,6 +7,11 @@ import type { DerivedMessage } from "../model/derived.ts";
 
 export interface DerivedReader {
   get(ws: WorkspaceId, id: MessageId): AsyncResult<DerivedMessage, StorageError | NotFound>;
+  /** The rows of these messages in one read; a message without one is left out. */
+  listForMessages(
+    ws: WorkspaceId,
+    ids: readonly MessageId[],
+  ): AsyncResult<readonly DerivedMessage[], StorageError>;
   list(
     ws: WorkspaceId,
     accountId: AccountId,
