@@ -1,6 +1,7 @@
 // Guards: a sign-in that leaks a token to the renderer, stores one outside the keychain, or leaves the person on a wrong state.
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import { StorageError } from "@pochimail/kernel/errors";
 import { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, unwrap } from "@pochimail/kernel/result";
@@ -88,6 +89,14 @@ const setup = async (options: {
     },
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
     forgetTokens: () => {},
+    stopScans: async () => {},
+    forgetDigest: () => {},
+    removeAccount: new RemoveAccount({
+      uow,
+      secrets,
+      revoker,
+      clock: { now: () => new Date("2026-11-21T10:00:00.000Z") },
+    }),
     emit: () => {},
     workspaceId,
     uow,

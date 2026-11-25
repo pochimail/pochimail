@@ -2,18 +2,16 @@ import { toast } from "@pochimail/ui/components/sonner";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
-import type { EventOf } from "#shared/ipc/contract.ts";
 import {
   noRequiredStates,
   reduceRequiredStates,
 } from "../features/states/required-state-reducer.ts";
 import { queryKeys } from "./query/keys.ts";
+import type { AccountEvent } from "./query/worker-events.ts";
 import { useWorkerClient } from "./worker-context.tsx";
 
 type NeedsReauthAccounts = typeof noRequiredStates.needsReauth;
-export type AccountEvent = Extract<EventOf<"app.events">, { type: "NeedsReauth" | "Reconnected" }>;
-
-/** Keeps the accounts that lost access in the query cache, from `NeedsReauth` until `Reconnected`. */
+/** Keeps the accounts that lost access in the query cache, from `NeedsReauth` until `Reconnected` or removal. */
 export const recordAccountEvent = (queryClient: QueryClient, event: AccountEvent): void => {
   queryClient.setQueryData<NeedsReauthAccounts>(
     queryKeys.needsReauth(),

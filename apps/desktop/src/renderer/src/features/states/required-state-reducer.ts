@@ -47,6 +47,7 @@ export function reduceRequiredStates(
         ],
       };
     case "Reconnected":
+    case "AccountRemoved":
       return {
         ...state,
         needsReauth: state.needsReauth.filter((account) => account.accountId !== event.accountId),

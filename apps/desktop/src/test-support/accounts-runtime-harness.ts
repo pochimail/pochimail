@@ -20,6 +20,12 @@ import { createAccountsRuntime } from "../worker/accounts-runtime.ts";
 
 type AppEvent = EventOf<"app.events">;
 
+interface GmailHold {
+  /** Whether a request is waiting at the hold. */
+  readonly reached: boolean;
+  release(): void;
+}
+
 export interface RuntimeHarness {
   readonly client: RpcClient;
   /** Every `app.events` event so far, in order. */
@@ -35,10 +41,17 @@ export interface RuntimeHarness {
   connect(address: string): Promise<string>;
   /** While set, Gmail answers 401 to the requests of this address for which `refuse` is true. */
   refuseGmail(address: string, refuse: ((url: string) => boolean) | undefined): void;
+  /** Holds the Gmail requests of this address for which `when` is true until `release`; an aborted request ends at once. */
+  holdGmail(address: string, when: (url: string) => boolean): GmailHold;
   /** While set, the provider's revocation endpoint cannot be reached. */
   setRevocationOffline(offline: boolean): void;
-  /** How many rows of the account the database holds, including its account row and every table that has an `account_id`. */
+  /**
+   * How many rows of the account the database holds: its account row and every table with an `account_id`.
+   * The action log stays by design, and so does the outbox's own "disconnected" event, which waits for delivery.
+   */
   rowsOf(accountId: string): number;
+  /** Reads or writes the worker's real database through a second connection. */
+  sql(statement: string, ...parameters: string[]): unknown[];
   idle(): Promise<void>;
   close(): void;
 }
@@ -96,6 +109,10 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
   const addressOfRefresh = new Map<string, string>();
   const addressOfAccess = new Map<string, string>();
   const refusals = new Map<string, (url: string) => boolean>();
+  const holds = new Map<
+    string,
+    { when: (url: string) => boolean; wait: (signal: AbortSignal) => Promise<void> }
+  >();
   let revocationOffline = false;
 
   const learn = (body: string, usedRefreshToken: string | null): void => {
@@ -127,6 +144,8 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
     const address = addressOfAccess.get(bearer);
     if (address === undefined) return unauthorized();
     if (refusals.get(address)?.(url) === true) return unauthorized();
+    const hold = holds.get(address);
+    if (hold?.when(url) === true) await hold.wait(init.signal);
     return mailbox(address).fetch(url, init);
   };
 
@@ -207,34 +226,69 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
       if (refuse === undefined) refusals.delete(address);
       else refusals.set(address, refuse);
     },
+    holdGmail: (address, when) => {
+      let release = () => {};
+      let waiting = 0;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      holds.set(address, {
+        when,
+        wait: async (signal) => {
+          waiting += 1;
+          await Promise.race([
+            gate,
+            new Promise<void>((_, reject) =>
+              signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }),
+            ),
+          ]);
+        },
+      });
+      return {
+        get reached() {
+          return waiting > 0;
+        },
+        release,
+      };
+    },
     setRevocationOffline: (offline) => {
       revocationOffline = offline;
     },
-    rowsOf: (accountId) => {
+    sql: (statement, ...parameters) => {
       const storage = openStorage(databasePath, key);
       if (!storage.ok) throw storage.error;
       try {
-        const tables = storage.value.reader
-          .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
-          .all() as { name: string }[];
-        const account = storage.value.reader
-          .prepare("SELECT count(*) AS n FROM account WHERE id = ?")
-          .get(accountId) as { n: number };
-        let rows = account.n;
-        for (const { name } of tables) {
-          const columns = storage.value.reader.prepare(`PRAGMA table_info("${name}")`).all() as {
-            name: string;
-          }[];
-          if (!columns.some((column) => column.name === "account_id")) continue;
-          const counted = storage.value.reader
-            .prepare(`SELECT count(*) AS n FROM "${name}" WHERE account_id = ?`)
-            .get(accountId) as { n: number };
-          rows += counted.n;
-        }
-        return rows;
+        const prepared = storage.value.writer.prepare(statement);
+        return prepared.reader ? prepared.all(...parameters) : [prepared.run(...parameters)];
       } finally {
         storage.value.close();
       }
+    },
+    rowsOf: (accountId) => {
+      const tables = harness.sql("SELECT name FROM sqlite_master WHERE type = 'table'") as {
+        name: string;
+      }[];
+      const count = (name: string, column: string): number =>
+        (
+          harness.sql(`SELECT count(*) AS n FROM "${name}" WHERE ${column} = ?`, accountId)[0] as {
+            n: number;
+          }
+        ).n;
+      let rows =
+        count("account", "id") +
+        (
+          harness.sql(
+            `SELECT count(*) AS n FROM outbox WHERE account_id = ? AND payload NOT LIKE '%"state":"disconnected"%'`,
+            accountId,
+          )[0] as { n: number }
+        ).n;
+      for (const { name } of tables) {
+        if (name === "action_log" || name === "account" || name === "outbox") continue;
+        const columns = harness.sql(`PRAGMA table_info("${name}")`) as { name: string }[];
+        if (columns.some((column) => column.name === "account_id"))
+          rows += count(name, "account_id");
+      }
+      return rows;
     },
     idle: () => runtime.idle(),
     close: () => {

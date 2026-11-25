@@ -6,7 +6,7 @@ import { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status"
 import { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import { RecordDigestReady } from "@pochimail/cleanup/use-cases/record-digest-ready";
 import type { Clock } from "@pochimail/kernel/clock";
-import type { WorkspaceId } from "@pochimail/kernel/ids";
+import { AccountId, type WorkspaceId } from "@pochimail/kernel/ids";
 import type { Logger } from "@pochimail/logger/logger";
 import type { Timer } from "@pochimail/pipeline/event-batching";
 import { createInMemoryEventBus } from "@pochimail/pipeline/in-memory-event-bus";
@@ -60,6 +60,10 @@ export interface WorkerApp {
   readonly handlers: Handlers;
   /** Tells every `app.events` subscriber about something the worker did outside a scan or an action. */
   readonly emitAppEvent: WorkerHandlers["emitAppEvent"];
+  /** Stops an account's scans and resolves once they have ended; for the account's removal. */
+  stopScans(accountId: string): Promise<void>;
+  /** Drops the figures the worker keeps in memory for a removed account. */
+  forgetDigest(accountId: string): void;
   /** Resolves once every running scan has stopped (orderly shutdown, tests). */
   idle(): Promise<void>;
 }
@@ -136,6 +140,14 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
   return {
     handlers,
     emitAppEvent: handlers.emitAppEvent,
+    stopScans: async (accountId) => {
+      const id = AccountId(accountId);
+      if (id.ok) await scans.stopAccount(id.value);
+    },
+    forgetDigest: (accountId) => {
+      const id = AccountId(accountId);
+      if (id.ok) tally.forget(id.value);
+    },
     idle: async () => {
       await recovery;
       await scans.idle();

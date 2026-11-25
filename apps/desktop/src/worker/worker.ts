@@ -126,31 +126,42 @@ const unavailableHandlers: Handlers = {
 
 /**
  * Demo mode has no Google: "connecting" answers with the first fixture account, so onboarding can be tried end to end.
- * In first-run demo mode (E2E) no account is visible until that connect, as in a fresh install.
+ * In first-run demo mode (E2E) no account is visible until that connect, as in a fresh install. Removing an account hides it.
  */
 const withDemoConnect = (demo: Handlers, firstRun: boolean): Handlers => {
   let connected = !firstRun;
-  const list = (): ReturnType<NonNullable<Handlers["procedures"]["accounts.list"]>> =>
-    connected ? (demo.procedures["accounts.list"]?.(undefined) ?? []) : [];
+  const removed = new Set<string>();
+  const list = async (): Promise<
+    Awaited<ReturnType<NonNullable<Handlers["procedures"]["accounts.list"]>>>
+  > =>
+    connected
+      ? ((await demo.procedures["accounts.list"]?.(undefined)) ?? []).filter(
+          (account) => !removed.has(account.id),
+        )
+      : [];
   return {
     ...demo,
     procedures: {
       ...demo.procedures,
       "accounts.list": list,
-      ...(firstRun
-        ? {
-            "app.state": async () => ({
-              status: "ready" as const,
-              hasConnectedAccount: (await list()).length > 0,
-            }),
-          }
-        : {}),
+      "app.state": async () => ({
+        status: "ready" as const,
+        hasConnectedAccount: (await list()).length > 0,
+      }),
       "accounts.connect": async () => {
         connected = true;
+        removed.clear();
         const [first] = await list();
         return first === undefined
           ? { status: "failed" as const, reason: "unknown" as const }
           : { status: "connected" as const, accountId: first.id };
+      },
+      // Demo accounts have no provider to revoke at: a removal only hides the account.
+      "accounts.remove": async ({ accountId }) => {
+        if (!(await list()).some((account) => account.id === accountId))
+          return { status: "failed" as const, reason: "not-found" as const };
+        removed.add(accountId);
+        return { status: "removed" as const, remoteRevoked: true };
       },
     },
   };

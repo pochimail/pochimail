@@ -3,6 +3,7 @@ import type { Account } from "@pochimail/accounts/model/account";
 import type { AccountsUnitOfWork } from "@pochimail/accounts/ports/unit-of-work";
 import type { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
 import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
+import type { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import {
   Cancelled,
@@ -20,6 +21,8 @@ export interface AccountProcedureDeps {
   readonly workspaceId: WorkspaceId;
   readonly uow: AccountsUnitOfWork;
   readonly connectAccount: ConnectAccount;
+  /** Revokes at the provider, then deletes the keychain entry and the account's rows. */
+  readonly removeAccount: RemoveAccount;
   /** Runs the Google sign-in in the system browser; tokens stay in this process. */
   readonly signIn: (signal: CancelSignal) => AsyncResult<SignInGrant, SignInError>;
   /** Starts the scan of a newly connected account. It may throw: that never fails the connect. */
@@ -28,6 +31,10 @@ export interface AccountProcedureDeps {
   readonly revoke: (refreshToken: string, signal: CancelSignal) => Promise<unknown>;
   /** Drops the account's cached access token, so the next call reads the keychain's new refresh token. */
   readonly forgetTokens: (accountId: string) => void;
+  /** Stops the account's scans and resolves once they have ended. */
+  readonly stopScans: (accountId: string) => Promise<void>;
+  /** Drops the digest figures held in memory for the account. */
+  readonly forgetDigest: (accountId: string) => void;
   /** Tells every `app.events` subscriber. */
   readonly emit: (event: EventOf<"app.events">) => void;
 }
@@ -35,6 +42,7 @@ export interface AccountProcedureDeps {
 type ConnectOutcome = OutputOf<"accounts.connect">;
 type SignInFailure = Exclude<ConnectOutcome, { status: "connected" }>;
 type ReconnectOutcome = OutputOf<"accounts.reconnect">;
+type RemoveOutcome = OutputOf<"accounts.remove">;
 
 const PROVIDERS = { gmail: "google", graph: "microsoft" } as const;
 
@@ -48,6 +56,13 @@ const failureOf = (error: SignInError): SignInFailure => {
   // The browser could not open or the token exchange failed: an actionable reason, never the provider's message.
   if (error instanceof ProviderFailed || error instanceof InvalidCallback)
     return { status: "failed", reason: "provider-failed" };
+  return { status: "failed", reason: "unknown" };
+};
+
+/** A failed removal deleted nothing; the reason is a closed set, never the cause's message. */
+const failureOfRemove = (error: StorageError | NotFound | Cancelled): RemoveOutcome => {
+  if (error instanceof NotFound) return { status: "failed", reason: "not-found" };
+  if (error instanceof StorageError) return { status: "failed", reason: "storage-unavailable" };
   return { status: "failed", reason: "unknown" };
 };
 
@@ -77,7 +92,7 @@ const refusal = (account: Account, grant: SignInGrant): ReconnectFailure | undef
 };
 
 /**
- * The real answers for accounts: the list, the first-run flag, the sign-in and the reconnect. Everything else keeps the
+ * The real answers for accounts: the list, the first-run flag, the sign-in, the reconnect and the removal. Everything else keeps the
  * worker's other handlers. The grant's tokens never leave this function: the refresh token goes to the
  * keychain through `ConnectAccount`, the access token is dropped, and only the account id is returned.
  */
@@ -87,6 +102,7 @@ export const createAccountProcedures = (
   Handlers["procedures"],
   | "accounts.connect"
   | "accounts.reconnect"
+  | "accounts.remove"
   | "accounts.cancelConnect"
   | "accounts.list"
   | "app.state"
@@ -160,6 +176,21 @@ export const createAccountProcedures = (
         await startScan(connected.value.account.id);
         return { status: "connected", accountId: connected.value.account.id };
       }),
+    "accounts.remove": async ({ accountId }): Promise<RemoveOutcome> => {
+      const id = AccountId(accountId);
+      if (!id.ok) return { status: "failed", reason: "not-found" };
+      // A scan still running would write rows of the account after they are deleted.
+      await deps.stopScans(accountId);
+      deps.forgetTokens(accountId);
+      const removed = await deps.removeAccount.execute(
+        { workspaceId: deps.workspaceId, accountId: id.value },
+        new AbortController().signal,
+      );
+      if (!removed.ok) return failureOfRemove(removed.error);
+      deps.forgetDigest(accountId);
+      deps.emit({ type: "AccountRemoved", accountId });
+      return { status: "removed", remoteRevoked: removed.value.remoteRevoked };
+    },
     "accounts.reconnect": ({ accountId }): Promise<ReconnectOutcome> =>
       whileWaiting(async (signal) => {
         const account = await accountToReconnect(accountId);

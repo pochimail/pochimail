@@ -145,6 +145,8 @@ export const CONNECT_FAILURES = [
 
 /** Why a reconnect failed: the sign-in reasons, plus a consent for another mailbox than the account's. */
 export const RECONNECT_FAILURES = [...CONNECT_FAILURES, "not-found", "wrong-account"] as const;
+/** Why a removal failed (nothing was deleted): never the provider's message, an address or a token. */
+const REMOVE_FAILURES = ["not-found", "storage-unavailable", "unknown"] as const;
 
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
@@ -166,6 +168,14 @@ const mutations = {
       z.object({ status: z.literal("reconnected") }),
       z.object({ status: z.literal("cancelled") }),
       z.object({ status: z.literal("failed"), reason: z.enum(RECONNECT_FAILURES) }),
+    ]),
+  },
+  /** Revokes the account at the provider, deletes its keychain entry and rows; `remoteRevoked: false`: the provider may still list Pochimail. */
+  "accounts.remove": {
+    input: z.object({ accountId }),
+    output: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("removed"), remoteRevoked: z.boolean() }),
+      z.object({ status: z.literal("failed"), reason: z.enum(REMOVE_FAILURES) }),
     ]),
   },
   /** Stops a sign-in or reconnect that is waiting for the person; the waiting call then answers `cancelled`. */
@@ -250,6 +260,7 @@ const subscriptions = {
       z.object({ type: z.literal("SyncResumed") }),
       z.object({ type: z.literal("NeedsReauth"), accountId, provider: z.string().min(1) }),
       z.object({ type: z.literal("Reconnected"), accountId }),
+      z.object({ type: z.literal("AccountRemoved"), accountId }),
       z.object({ type: z.literal("ModelDownloadFailed") }),
       z.object({ type: z.literal("ModelDownloadStarted") }),
       z.object({ type: z.literal("UpdateReady"), version: z.string().min(1) }),

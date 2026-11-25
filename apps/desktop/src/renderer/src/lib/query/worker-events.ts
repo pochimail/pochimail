@@ -5,15 +5,19 @@ import type { OptimisticActionRegistry } from "./optimistic.ts";
 const INITIAL_BACKOFF_MS = 250;
 const MAX_BACKOFF_MS = 4000;
 
+/** The events that change which accounts are connected and in what state. */
+export type AccountEvent = Extract<
+  EventOf<"app.events">,
+  { type: "NeedsReauth" | "Reconnected" | "AccountRemoved" }
+>;
+
 type AppEventHandlers = {
   readonly registry: OptimisticActionRegistry;
   readonly onMailboxChanged: () => void;
   readonly onScanFailed: () => void;
   readonly onScanEnded: () => void;
   readonly onDigestReady: () => void;
-  readonly onAccountChanged: (
-    event: Extract<EventOf<"app.events">, { type: "NeedsReauth" | "Reconnected" }>,
-  ) => void;
+  readonly onAccountChanged: (event: AccountEvent) => void;
 };
 
 /** Routes one global app event to the reconciliation or shell callback that owns it. */
@@ -41,6 +45,7 @@ const dispatchAppEvent = (event: EventOf<"app.events">, handlers: AppEventHandle
       break;
     case "NeedsReauth":
     case "Reconnected":
+    case "AccountRemoved":
       handlers.onAccountChanged(event);
       break;
   }
@@ -57,7 +62,7 @@ export const subscribeAppEvents = (
   onScanEnded: () => void = () => {},
   /** A digest was tallied: the summary's counts must be re-read. */
   onDigestReady: () => void = () => {},
-  /** An account lost access or got it back. */
+  /** An account lost access, got it back or was removed. */
   onAccountChanged: AppEventHandlers["onAccountChanged"] = () => {},
 ): (() => void) => {
   let closed = false;

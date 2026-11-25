@@ -1,6 +1,7 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import type { OAuthTokenSource } from "@pochimail/accounts/ports/oauth";
 import { accountSecretKey, ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { openStorage } from "@pochimail/db/open-storage";
 import { createSqliteJobQueue } from "@pochimail/db/sqlite-job-queue";
@@ -134,9 +135,12 @@ export const createAccountsRuntime = (
   const accounts = createAccountProcedures({
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
     forgetTokens: (accountId) => tokenSources.delete(accountId),
+    stopScans: app.stopScans,
+    forgetDigest: app.forgetDigest,
     emit: app.emitAppEvent,
     workspaceId: LOCAL_WORKSPACE,
     uow,
+    removeAccount: new RemoveAccount({ uow, secrets: start.secrets, revoker, clock }),
     connectAccount: new ConnectAccount({
       uow,
       secrets: start.secrets,

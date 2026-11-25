@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { recordAccountEvent } from "./needs-reauth.tsx";
 import { useOptimisticRegistry } from "./optimistic-context.tsx";
+import { dropAccountQueries } from "./query/account-queries.ts";
 import { queryKeys } from "./query/keys.ts";
 import { subscribeAppEvents } from "./query/worker-events.ts";
 
@@ -25,7 +26,10 @@ export function AppEventsBridge({ client }: { client: RpcClient }) {
         },
         () => void queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
         () => void queryClient.invalidateQueries({ queryKey: queryKeys.digest() }),
-        (event) => recordAccountEvent(queryClient, event),
+        (event) => {
+          recordAccountEvent(queryClient, event);
+          if (event.type === "AccountRemoved") dropAccountQueries(queryClient, event.accountId);
+        },
       ),
     [client, registry, queryClient, t],
   );
