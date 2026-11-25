@@ -41,7 +41,7 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
       "accounts.list": () => [
         { id: "a1", provider: "google" as const, displayName: "ann@example.test" },

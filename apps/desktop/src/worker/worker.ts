@@ -65,7 +65,7 @@ const started = new Promise<WorkerStart>((resolve) => acceptStart(process.parent
 // Only accounts are real so far; every other query answers empty until its adapters land. Demo mode (dev/E2E) has fixture data.
 const emptyHandlers: Handlers = {
   procedures: {
-    "app.state": () => ({ status: "ready", hasConnectedAccount: false }),
+    "app.state": () => ({ status: "ready", hasConnectedAccount: false, needsReauth: [] }),
     "device.name": () => platform.deviceName(),
     "accounts.list": () => [],
     "accounts.connect": () => ({ status: "failed" as const, reason: "unknown" as const }),
@@ -147,6 +147,7 @@ const withDemoConnect = (demo: Handlers, firstRun: boolean): Handlers => {
       "app.state": async () => ({
         status: "ready" as const,
         hasConnectedAccount: (await list()).length > 0,
+        needsReauth: [],
       }),
       "accounts.connect": async () => {
         connected = true;

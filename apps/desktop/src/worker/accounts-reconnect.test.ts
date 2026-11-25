@@ -135,4 +135,81 @@ describe("token expiry and reconnect over the real worker", () => {
     expect((await h.client.call("overview.get", { accountId: second })).scanned).toBe(5);
     expect((await h.client.call("overview.get", { accountId: first })).scanned).toBe(0);
   });
+
+  it("a sign-in for a mailbox another connected account holds is refused without revoking, so that account keeps its grant (guards a revocation that kills the other account)", async () => {
+    const h = await startRuntimeHarness();
+    h.fill(FIRST, 150);
+    h.fill(SECOND, 3);
+    h.refuseGmail(FIRST, (url) => url.includes("pageToken"));
+    const first = await h.connect(FIRST);
+    const second = await h.connect(SECOND);
+    await eventually(() => expect(types(h, first)).toContain("NeedsReauth"));
+    await eventually(() => expect(types(h, second)).toContain("ScanCompleted"));
+    const secondToken = await secretOf(h, second);
+
+    h.oauth.signInAs(SECOND);
+    expect(await h.client.call("accounts.reconnect", { accountId: first })).toEqual({
+      status: "failed",
+      reason: "wrong-account",
+    });
+
+    expect(h.oauth.requests().filter((request) => request.path === "/revoke")).toEqual([]);
+    expect(await secretOf(h, second)).toBe(secondToken);
+    expect(await h.client.call("accounts.list")).toHaveLength(2);
+  });
+
+  it("a removal aborts the reconnect consent still open for that account, which stores nothing (guards a removed account coming back with a token)", async () => {
+    const { h, accountId } = await expiredMidScan();
+    const consent = h.holdConsent();
+    h.oauth.signInAs(FIRST);
+    const reconnecting = h.client.call("accounts.reconnect", { accountId });
+    await eventually(() => expect(consent.reached).toBe(true));
+
+    expect(await h.client.call("accounts.remove", { accountId })).toMatchObject({
+      status: "removed",
+    });
+    consent.release();
+
+    expect(await reconnecting).toEqual({ status: "cancelled" });
+    expect(await h.client.call("accounts.list")).toEqual([]);
+    expect(await secretOf(h, accountId)).toBeNull();
+    expect(types(h, accountId)).not.toContain("Reconnected");
+    expect(h.rowsOf(accountId)).toBe(0);
+  });
+
+  it("the worker keeps who needs a reconnect for a screen that reloads, until reconnected or removed (guards a reload that hides the Reconnect gate)", async () => {
+    const { h, accountId } = await expiredMidScan();
+    expect((await h.client.call("app.state")).needsReauth).toEqual([
+      { accountId, provider: "Gmail" },
+    ]);
+
+    h.refuseGmail(FIRST, undefined);
+    h.oauth.signInAs(FIRST);
+    await h.client.call("accounts.reconnect", { accountId });
+    expect((await h.client.call("app.state")).needsReauth).toEqual([]);
+
+    h.refuseGmail(FIRST, () => true);
+    await h.client.call("scan.start", { accountId });
+    await eventually(() =>
+      expect(h.events.filter((event) => event.type === "NeedsReauth")).toHaveLength(2),
+    );
+    await h.client.call("accounts.remove", { accountId });
+    expect((await h.client.call("app.state")).needsReauth).toEqual([]);
+  });
+
+  it("no token or address reaches the logs across connect, reconnect and removal (guards a secret written to a log line)", async () => {
+    const { h, accountId } = await expiredMidScan();
+    h.refuseGmail(FIRST, undefined);
+    h.oauth.signInAs(FIRST);
+    await h.client.call("accounts.reconnect", { accountId });
+    await eventually(() => expect(types(h, accountId)).toContain("ScanCompleted"));
+    const token = await secretOf(h, accountId);
+    expect(token).toMatch(/^refresh-/);
+    await h.client.call("accounts.remove", { accountId });
+    await h.idle();
+
+    const written = h.logs.join("\n");
+    expect(written).not.toMatch(/refresh-|access-/);
+    expect(written).not.toContain(FIRST);
+  });
 });

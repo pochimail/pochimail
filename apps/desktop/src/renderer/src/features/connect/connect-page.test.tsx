@@ -30,7 +30,11 @@ const harness = (
   let lists = 0;
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: existing > 0 }),
+      "app.state": () => ({
+        status: "ready" as const,
+        hasConnectedAccount: existing > 0,
+        needsReauth: [],
+      }),
       "device.name": () => "Mac" as const,
       "accounts.list": () => {
         lists += 1;

@@ -71,15 +71,32 @@ export function createHandlers(deps: HandlerDeps): WorkerHandlers {
   const { workspaceId } = deps;
   // UI-only events have no domain counterpart: tell every app.events subscriber when a scan is cancelled.
   const appEventEmitters = new Set<(event: EventOf<"app.events">) => void>();
+  // The accounts that lost access, kept here (not per subscriber) so a screen that reloads is told again.
+  const needsReauth = new Map<string, string>();
   const emitAppEvent = (event: EventOf<"app.events">) => {
+    if (event.type === "NeedsReauth") needsReauth.set(event.accountId, event.provider);
+    if (event.type === "Reconnected" || event.type === "AccountRemoved")
+      needsReauth.delete(event.accountId);
     for (const emit of appEventEmitters) emit(event);
   };
+  deps.events.subscribe("AccountStateChanged", async (event) => {
+    if (event.payload.state !== "needs_reauth") return;
+    const { accountId } = event.payload;
+    const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
+    const account = accounts.find((item) => item.id === accountId);
+    if (account === undefined) return;
+    emitAppEvent({ type: "NeedsReauth", accountId, provider: PROVIDER_NAMES[account.provider] });
+  });
   return {
     emitAppEvent,
     procedures: {
       "app.state": async () => {
         const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
-        return { status: "ready", hasConnectedAccount: accounts.length > 0 };
+        return {
+          status: "ready",
+          hasConnectedAccount: accounts.length > 0,
+          needsReauth: [...needsReauth].map(([accountId, provider]) => ({ accountId, provider })),
+        };
       },
       "device.name": () => deps.deviceName(),
       "accounts.list": async () =>
@@ -198,18 +215,6 @@ export function createHandlers(deps: HandlerDeps): WorkerHandlers {
               reason: scanFailureReason(event.payload.errorCode),
             }),
           ),
-          deps.events.subscribe("AccountStateChanged", async (event) => {
-            if (event.payload.state !== "needs_reauth") return;
-            const { accountId } = event.payload;
-            const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
-            const account = accounts.find((item) => item.id === accountId);
-            if (account === undefined) return;
-            emit({
-              type: "NeedsReauth",
-              accountId,
-              provider: PROVIDER_NAMES[account.provider],
-            });
-          }),
           deps.events.subscribe("DigestReady", (event) =>
             emit({ type: "DigestReady", itemCount: event.payload.itemCount }),
           ),

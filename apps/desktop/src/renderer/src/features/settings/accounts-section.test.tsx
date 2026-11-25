@@ -39,7 +39,11 @@ const setup = (
   let emit: ((event: EventOf<"app.events">) => void) | undefined;
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: accounts.length > 0 }),
+      "app.state": () => ({
+        status: "ready" as const,
+        hasConnectedAccount: accounts.length > 0,
+        needsReauth: [],
+      }),
       "device.name": () => "device" as const,
       "accounts.list": () => [...accounts],
       "accounts.remove": remove,

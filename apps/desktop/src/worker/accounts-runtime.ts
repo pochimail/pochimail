@@ -153,16 +153,18 @@ export const createAccountsRuntime = (
         { provider: "google", autonomy: DEFAULT_APP_SETTINGS.autonomy, config: oauthConfig },
         signal,
       ),
-    // The first scan of a new account starts right after connecting; a failure is the scan's own event, never the connect's.
+    // A scan of a new or reconnected account starts right after; a failure is the scan's own event, never the connect's.
     startScan: async (accountId) => {
       try {
-        await app.handlers.procedures["scan.start"]?.({ accountId });
+        const started = await app.handlers.procedures["scan.start"]?.({ accountId });
+        if (started === undefined) throw new Error("scan.start is not served");
+        return started;
       } catch {
-        options.logger.error("first scan could not start", {
+        options.logger.error("scan could not start", {
           operation: "scan.start",
           code: "storage.failed",
         });
-        throw new Error("first scan could not start");
+        throw new Error("scan could not start");
       }
     },
   });

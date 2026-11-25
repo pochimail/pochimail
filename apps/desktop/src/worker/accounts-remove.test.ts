@@ -147,8 +147,24 @@ describe("accounts.remove over the real worker", () => {
     expect(await h.client.call("app.state")).toEqual({
       status: "ready",
       hasConnectedAccount: false,
+      needsReauth: [],
     });
     expect(await h.client.call("accounts.list")).toEqual([]);
     expect(await h.client.call("digest.get", {})).toMatchObject({ ready: false, itemCount: 0 });
+  });
+
+  it("refuses to start a scan for an account while its removal is in progress (guards a Retry that writes rows into a deleted account)", async () => {
+    const { h, first } = await twoAccounts();
+    const revocation = h.holdRevocation();
+    const removing = h.client.call("accounts.remove", { accountId: first });
+    await eventually(() => expect(revocation.reached).toBe(true));
+
+    await expect(h.client.call("scan.start", { accountId: first })).rejects.toBeDefined();
+    revocation.release();
+    expect(await removing).toMatchObject({ status: "removed" });
+    await h.idle();
+
+    expect(h.rowsOf(first)).toBe(0);
+    expect(await h.client.call("scan.status", { accountIds: [first] })).toEqual([]);
   });
 });

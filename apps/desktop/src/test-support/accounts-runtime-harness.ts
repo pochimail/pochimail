@@ -17,14 +17,9 @@ import type { EventOf } from "../shared/ipc/contract.ts";
 import { serveRpc } from "../shared/ipc/server.ts";
 import { fromDomPort } from "../shared/ipc/transport.ts";
 import { createAccountsRuntime } from "../worker/accounts-runtime.ts";
+import { createHold, type Hold } from "./hold.ts";
 
 type AppEvent = EventOf<"app.events">;
-
-interface GmailHold {
-  /** Whether a request is waiting at the hold. */
-  readonly reached: boolean;
-  release(): void;
-}
 
 export interface RuntimeHarness {
   readonly client: RpcClient;
@@ -42,7 +37,13 @@ export interface RuntimeHarness {
   /** While set, Gmail answers 401 to the requests of this address for which `refuse` is true. */
   refuseGmail(address: string, refuse: ((url: string) => boolean) | undefined): void;
   /** Holds the Gmail requests of this address for which `when` is true until `release`; an aborted request ends at once. */
-  holdGmail(address: string, when: (url: string) => boolean): GmailHold;
+  holdGmail(address: string, when: (url: string) => boolean): Hold;
+  /** The next sign-ins wait in the browser, as a person who has not answered the consent page yet; release lets them answer. */
+  holdConsent(): Hold;
+  /** Revocation requests wait until release: an account removal that is still in progress. */
+  holdRevocation(): Hold;
+  /** Every record the worker's logger wrote, as JSON. */
+  readonly logs: readonly string[];
   /** While set, the provider's revocation endpoint cannot be reached. */
   setRevocationOffline(offline: boolean): void;
   /**
@@ -109,10 +110,10 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
   const addressOfRefresh = new Map<string, string>();
   const addressOfAccess = new Map<string, string>();
   const refusals = new Map<string, (url: string) => boolean>();
-  const holds = new Map<
-    string,
-    { when: (url: string) => boolean; wait: (signal: AbortSignal) => Promise<void> }
-  >();
+  const holds = new Map<string, { when: (url: string) => boolean; hold: Hold }>();
+  const logs: string[] = [];
+  let consent: Hold | undefined;
+  let revocation: Hold | undefined;
   let revocationOffline = false;
 
   const learn = (body: string, usedRefreshToken: string | null): void => {
@@ -130,6 +131,7 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
     if (tokens.access_token !== undefined) addressOfAccess.set(tokens.access_token, address);
   };
   const oauthFetch: typeof loopbackFetch = async (url, init) => {
+    if (url === oauth.revokeUrl) await revocation?.wait();
     if (revocationOffline && url === oauth.revokeUrl) throw new Error("offline");
     const response = await loopbackFetch(url, init);
     if (url === oauth.tokenUrl && response.ok)
@@ -145,7 +147,7 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
     if (address === undefined) return unauthorized();
     if (refusals.get(address)?.(url) === true) return unauthorized();
     const hold = holds.get(address);
-    if (hold?.when(url) === true) await hold.wait(init.signal);
+    if (hold?.when(url) === true) await hold.hold.wait(init.signal);
     return mailbox(address).fetch(url, init);
   };
 
@@ -157,9 +159,15 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
         protection: async () => ({ level: "os-keychain" as const, backend: "test" }),
       }),
       openBrowser: async (url) => {
-        const consent = await fetch(url, { redirect: "manual" });
-        const location = consent.headers.get("location");
-        if (location !== null) void fetch(location).catch(() => undefined);
+        const held = consent;
+        const answer = async () => {
+          await held?.wait();
+          const page = await fetch(url, { redirect: "manual" });
+          const location = page.headers.get("location");
+          if (location !== null) void fetch(location).catch(() => undefined);
+        };
+        if (held === undefined) await answer();
+        else void answer().catch(() => undefined);
       },
     },
     {
@@ -170,7 +178,7 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
           return () => clearTimeout(handle);
         },
       },
-      logger: createLogger({ sink: { write: () => undefined } }),
+      logger: createLogger({ sink: { write: (record) => void logs.push(JSON.stringify(record)) } }),
       deviceName: () => "Mac",
       classifier: createFakeClassifier(),
       network: {
@@ -227,30 +235,19 @@ export const startRuntimeHarness = async (): Promise<RuntimeHarness> => {
       else refusals.set(address, refuse);
     },
     holdGmail: (address, when) => {
-      let release = () => {};
-      let waiting = 0;
-      const gate = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      holds.set(address, {
-        when,
-        wait: async (signal) => {
-          waiting += 1;
-          await Promise.race([
-            gate,
-            new Promise<void>((_, reject) =>
-              signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }),
-            ),
-          ]);
-        },
-      });
-      return {
-        get reached() {
-          return waiting > 0;
-        },
-        release,
-      };
+      const hold = createHold();
+      holds.set(address, { when, hold });
+      return hold;
     },
+    holdConsent: () => {
+      consent = createHold();
+      return consent;
+    },
+    holdRevocation: () => {
+      revocation = createHold();
+      return revocation;
+    },
+    logs,
     setRevocationOffline: (offline) => {
       revocationOffline = offline;
     },

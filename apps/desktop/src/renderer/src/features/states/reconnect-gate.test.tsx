@@ -25,7 +25,11 @@ const noCounts = {
   promotions: 0,
 };
 
-const setup = (path: string, accounts = ACCOUNTS) => {
+const setup = (
+  path: string,
+  accounts = ACCOUNTS,
+  lost: { accountId: string; provider: string }[] = [],
+) => {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
@@ -35,7 +39,11 @@ const setup = (path: string, accounts = ACCOUNTS) => {
   let emit: ((event: EventOf<"app.events">) => void) | undefined;
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({
+        status: "ready" as const,
+        hasConnectedAccount: true,
+        needsReauth: lost,
+      }),
       "device.name": () => "device" as const,
       "accounts.list": () => accounts,
       "accounts.reconnect": reconnect,
@@ -122,5 +130,12 @@ describe("the reconnect gate", () => {
     await userEvent.click(screen.getByRole("button", { name: /Account: ann@example.test/ }));
     await userEvent.click(await screen.findByRole("menuitemradio", { name: "bob@example.test" }));
     await screen.findByRole("heading", { level: 1, name: "Overview" });
+  });
+
+  it("shows the gate after a reload from what the worker already knows, with no event (guards a reloaded screen that hides the Reconnect gate)", async () => {
+    setup("/overview", ACCOUNTS.slice(0, 1), [{ accountId: "a1", provider: "Gmail" }]);
+
+    expect(await screen.findByText(lostAccess)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Reconnect" })).toBeTruthy();
   });
 });

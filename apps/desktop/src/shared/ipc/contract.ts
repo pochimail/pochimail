@@ -125,6 +125,8 @@ const queries = {
     output: z.object({
       status: z.enum(["starting", "ready", "locked"]),
       hasConnectedAccount: z.boolean(),
+      /** Accounts that lost access and wait for a reconnect, so a reloaded screen asks again. */
+      needsReauth: z.array(z.object({ accountId, provider: z.string().max(50) })).max(100),
     }),
   },
   /** M4-07: copy uses deviceName(), never a hard-coded OS name (brief §5.9). */

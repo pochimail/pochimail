@@ -18,7 +18,11 @@ const renderConnect = () => {
   port2.start();
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: false }),
+      "app.state": () => ({
+        status: "ready" as const,
+        hasConnectedAccount: false,
+        needsReauth: [],
+      }),
       "device.name": () => "Mac" as const,
       "settings.get": () => ({
         autonomy: "suggest" as const,

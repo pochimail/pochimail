@@ -25,8 +25,8 @@ export interface AccountProcedureDeps {
   readonly removeAccount: RemoveAccount;
   /** Runs the Google sign-in in the system browser; tokens stay in this process. */
   readonly signIn: (signal: CancelSignal) => AsyncResult<SignInGrant, SignInError>;
-  /** Starts the scan of a newly connected account. It may throw: that never fails the connect. */
-  readonly startScan: (accountId: string) => Promise<void>;
+  /** Starts the scan of an account. It may throw: that never fails the connect. */
+  readonly startScan: (accountId: string) => Promise<{ readonly jobId: string }>;
   /** Revokes a refresh token at the provider, for a consent that is not kept. */
   readonly revoke: (refreshToken: string, signal: CancelSignal) => Promise<unknown>;
   /** Drops the account's cached access token, so the next call reads the keychain's new refresh token. */
@@ -43,8 +43,6 @@ type ConnectOutcome = OutputOf<"accounts.connect">;
 type SignInFailure = Exclude<ConnectOutcome, { status: "connected" }>;
 type ReconnectOutcome = OutputOf<"accounts.reconnect">;
 type RemoveOutcome = OutputOf<"accounts.remove">;
-
-const PROVIDERS = { gmail: "google", graph: "microsoft" } as const;
 
 /** A closed answer for the screen: nothing of the provider's reply, an address or a token goes into it. */
 const failureOf = (error: SignInError): SignInFailure => {
@@ -104,8 +102,7 @@ export const createAccountProcedures = (
   | "accounts.reconnect"
   | "accounts.remove"
   | "accounts.cancelConnect"
-  | "accounts.list"
-  | "app.state"
+  | "scan.start"
 > => {
   const list = new ListAccounts({ uow: deps.uow });
   const accounts = async () => {
@@ -113,26 +110,55 @@ export const createAccountProcedures = (
     if (!listed.ok) throw listed.error;
     return listed.value;
   };
+  // Accounts being deleted: nothing starts for them, or is stored for them, until the delete has finished.
+  const removing = new Set<string>();
   // At most one sign-in waits at a time; Cancel aborts it, which closes the loopback listener.
-  let waiting: AbortController | undefined;
-  const whileWaiting = async <T>(run: (signal: CancelSignal) => Promise<T>): Promise<T> => {
-    waiting?.abort();
+  let waiting:
+    | { controller: AbortController; accountId?: string; ended: Promise<unknown> }
+    | undefined;
+  const whileWaiting = async <T>(
+    accountId: string | undefined,
+    run: (signal: CancelSignal) => Promise<T>,
+  ): Promise<T> => {
+    waiting?.controller.abort();
     const controller = new AbortController();
-    waiting = controller;
+    const running = run(controller.signal);
+    const current = {
+      controller,
+      ended: running.catch(() => undefined),
+      ...(accountId === undefined ? {} : { accountId }),
+    };
+    waiting = current;
     try {
-      return await run(controller.signal);
+      return await running;
     } finally {
-      if (waiting === controller) waiting = undefined;
+      if (waiting === current) waiting = undefined;
     }
+  };
+  /**
+   * Refuses a grant that is not kept: it is revoked, unless another connected account holds the same
+   * mailbox, whose own grant the revocation would kill.
+   */
+  const discard = async <T>(grant: SignInGrant, except: string, answer: T): Promise<T> => {
+    const address = grant.address?.trim().toLowerCase();
+    const heldElsewhere = (await accounts()).some(
+      (account) =>
+        account.id !== except &&
+        account.provider === grant.accountProvider &&
+        account.address === address,
+    );
+    if (!heldElsewhere) await deps.revoke(grant.refreshToken, new AbortController().signal);
+    return answer;
   };
   const accountToReconnect = async (accountId: string): Promise<Account | ReconnectFailure> => {
     const id = AccountId(accountId);
-    if (!id.ok) return reconnectFailure("not-found");
+    if (!id.ok || removing.has(accountId)) return reconnectFailure("not-found");
     const found = await deps.uow.reads.accounts.get(deps.workspaceId, id.value);
     if (found.ok) return found.value;
     return reconnectFailure(found.error instanceof NotFound ? "not-found" : "storage-unavailable");
   };
   const startScan = async (accountId: string) => {
+    if (removing.has(accountId)) return;
     try {
       await deps.startScan(accountId);
     } catch {
@@ -140,21 +166,16 @@ export const createAccountProcedures = (
     }
   };
   return {
-    "app.state": async () => ({
-      status: "ready",
-      hasConnectedAccount: (await accounts()).length > 0,
-    }),
-    "accounts.list": async () =>
-      (await accounts()).map((account) => ({
-        id: account.id,
-        provider: PROVIDERS[account.provider],
-        displayName: account.address,
-      })),
+    // Neither a scan the removal is about to delete rows for, nor a Retry that arrives meanwhile, may start.
+    "scan.start": async ({ accountId }) => {
+      if (removing.has(accountId)) throw new NotFound("Account");
+      return deps.startScan(accountId);
+    },
     "accounts.cancelConnect": () => {
-      waiting?.abort();
+      waiting?.controller.abort();
     },
     "accounts.connect": (): Promise<ConnectOutcome> =>
-      whileWaiting(async (signal) => {
+      whileWaiting(undefined, async (signal) => {
         const grant = await deps.signIn(signal);
         if (!grant.ok) return failureOf(grant.error);
         if (grant.value.address === undefined) {
@@ -179,30 +200,39 @@ export const createAccountProcedures = (
     "accounts.remove": async ({ accountId }): Promise<RemoveOutcome> => {
       const id = AccountId(accountId);
       if (!id.ok) return { status: "failed", reason: "not-found" };
-      // A scan still running would write rows of the account after they are deleted.
-      await deps.stopScans(accountId);
-      deps.forgetTokens(accountId);
-      const removed = await deps.removeAccount.execute(
-        { workspaceId: deps.workspaceId, accountId: id.value },
-        new AbortController().signal,
-      );
-      if (!removed.ok) return failureOfRemove(removed.error);
-      deps.forgetDigest(accountId);
-      deps.emit({ type: "AccountRemoved", accountId });
-      return { status: "removed", remoteRevoked: removed.value.remoteRevoked };
+      removing.add(accountId);
+      try {
+        // A consent still open for this account would store a new token for it after it is deleted.
+        if (waiting?.accountId === accountId) {
+          waiting.controller.abort();
+          await waiting.ended;
+        }
+        // A scan still running would write rows of the account after they are deleted.
+        await deps.stopScans(accountId);
+        deps.forgetTokens(accountId);
+        const removed = await deps.removeAccount.execute(
+          { workspaceId: deps.workspaceId, accountId: id.value },
+          new AbortController().signal,
+        );
+        if (!removed.ok) return failureOfRemove(removed.error);
+        deps.forgetDigest(accountId);
+        deps.emit({ type: "AccountRemoved", accountId });
+        return { status: "removed", remoteRevoked: removed.value.remoteRevoked };
+      } finally {
+        removing.delete(accountId);
+      }
     },
     "accounts.reconnect": ({ accountId }): Promise<ReconnectOutcome> =>
-      whileWaiting(async (signal) => {
+      whileWaiting(accountId, async (signal) => {
         const account = await accountToReconnect(accountId);
         if ("status" in account) return account;
         const grant = await deps.signIn(signal);
         if (!grant.ok) return failureOf(grant.error);
         const { refreshToken, scopes, accountProvider } = grant.value;
         const refused = refusal(account, grant.value);
-        if (refused !== undefined) {
-          await deps.revoke(refreshToken, new AbortController().signal);
-          return refused;
-        }
+        if (refused !== undefined) return discard(grant.value, account.id, refused);
+        // The account may have been removed while the consent was open.
+        if (removing.has(accountId)) return { status: "cancelled" };
         const stored = await deps.connectAccount.execute(
           {
             workspaceId: deps.workspaceId,

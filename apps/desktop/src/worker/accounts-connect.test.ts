@@ -1,6 +1,7 @@
 // Guards: a sign-in that leaks a token to the renderer, stores one outside the keychain, or leaves the person on a wrong state.
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
 import { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import { StorageError } from "@pochimail/kernel/errors";
 import { WorkspaceId } from "@pochimail/kernel/ids";
@@ -86,6 +87,7 @@ const setup = async (options: {
   const procedures = createAccountProcedures({
     startScan: async () => {
       if (options.failScan) throw new Error("scan.start failed");
+      return { jobId: "job_1" };
     },
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
     forgetTokens: () => {},
@@ -109,7 +111,18 @@ const setup = async (options: {
     signIn: (signal) => signIn.execute({ provider: "google", autonomy: "suggest", config }, signal),
   });
   const { port1, port2 } = new MessageChannel();
-  serveRpc(fromDomPort(port2), { procedures, subscriptions: {} });
+  const listed = new ListAccounts({ uow });
+  // The list belongs to the worker's handlers; here it only shows what connecting stored.
+  const list = async () =>
+    unwrap(await listed.execute(workspaceId)).map((account) => ({
+      id: account.id,
+      provider: "google" as const,
+      displayName: account.address,
+    }));
+  serveRpc(fromDomPort(port2), {
+    procedures: { ...procedures, "accounts.list": list },
+    subscriptions: {},
+  });
   const client = createRpcClient(fromDomPort(port1));
   return {
     client,
@@ -139,7 +152,6 @@ describe("accounts.connect", () => {
         displayName: "person@example.test",
       },
     ]);
-    expect(await client.call("app.state")).toEqual({ status: "ready", hasConnectedAccount: true });
     const stored = await secrets.get(`account/${workspaceId}/${accounts[0]?.id}`);
     expect(stored.ok && stored.value).toMatch(/^refresh-/);
     close();

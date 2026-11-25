@@ -17,7 +17,7 @@ const open = async (path: string) => {
   port2.start();
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
       "accounts.list": () => [
         { id: "a1", provider: "google" as const, displayName: "a@example.test" },

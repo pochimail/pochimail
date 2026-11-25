@@ -2,6 +2,7 @@ import { toast } from "@pochimail/ui/components/sonner";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
+import type { RpcClient } from "#shared/ipc/client.ts";
 import {
   noRequiredStates,
   reduceRequiredStates,
@@ -20,13 +21,19 @@ export const recordAccountEvent = (queryClient: QueryClient, event: AccountEvent
   );
 };
 
-/** Only the worker's events fill this; nothing is ever fetched for it. */
+const needsReauthQuery = (client: RpcClient) => ({
+  queryKey: queryKeys.needsReauth(),
+  queryFn: async (): Promise<NeedsReauthAccounts> => (await client.call("app.state")).needsReauth,
+  // The worker's events keep it current after this first read.
+  staleTime: Number.POSITIVE_INFINITY,
+});
+
+/** Seeds the cache with what the worker already knows, so a reloaded screen still shows the Reconnect gate. */
+export const seedNeedsReauth = (queryClient: QueryClient, client: RpcClient): Promise<void> =>
+  queryClient.prefetchQuery(needsReauthQuery(client));
+
 export const useNeedsReauth = (): NeedsReauthAccounts =>
-  useQuery<NeedsReauthAccounts>({
-    queryKey: queryKeys.needsReauth(),
-    queryFn: () => noRequiredStates.needsReauth,
-    initialData: noRequiredStates.needsReauth,
-  }).data;
+  useQuery(needsReauthQuery(useWorkerClient())).data ?? noRequiredStates.needsReauth;
 
 /** Runs the consent again for one account; the screen then follows `Reconnected`, and only a failure is said aloud. */
 export function useReconnect(): (accountId: string) => Promise<void> {
