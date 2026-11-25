@@ -7,6 +7,7 @@
   "exports": {
     "./egress/allowlist": "./src/egress/allowlist.ts",
     "./egress/http-client": "./src/egress/http-client.ts",
+    "./egress/model-download": "./src/egress/model-download.ts",
     "./egress/rate-limit": "./src/egress/rate-limit.ts",
     "./oauth/http": "./src/oauth/http.ts",
     "./oauth/loopback": "./src/oauth/loopback.ts",
