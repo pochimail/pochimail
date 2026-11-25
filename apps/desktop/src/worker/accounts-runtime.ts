@@ -27,7 +27,7 @@ import type { DeviceName } from "../shared/platform-port.ts";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
 import { createAccountProcedures } from "./account-procedures.ts";
 import { createWorkerApp, type WorkerApp } from "./app.ts";
-import { createMemorySettingsStore } from "./memory-settings.ts";
+import { createSqliteSettingsStore } from "./sqlite-settings-store.ts";
 import type { WorkerStart } from "./start.ts";
 
 /** The one local workspace of a device (Pochimail has no accounts of its own). */
@@ -105,7 +105,7 @@ export const createAccountsRuntime = (
     uow,
     outboxStore,
     queue: createSqliteJobQueue(storage.value, clock),
-    settings: createMemorySettingsStore(),
+    settings: createSqliteSettingsStore(storage.value),
     classifier: options.classifier,
     providerFor: (account) =>
       createGmailProvider({

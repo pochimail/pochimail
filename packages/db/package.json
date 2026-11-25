@@ -10,7 +10,8 @@
     "./sqlite-unit-of-work": "./src/sqlite-unit-of-work.ts",
     "./prune": "./src/prune.ts",
     "./sqlite-job-queue": "./src/sqlite-job-queue.ts",
-    "./sqlite-repositories": "./src/sqlite-repositories.ts"
+    "./sqlite-repositories": "./src/sqlite-repositories.ts",
+    "./sqlite-settings-repository": "./src/settings/sqlite-settings-repository.ts"
   },
   "scripts": {
     "typecheck": "tsc",
