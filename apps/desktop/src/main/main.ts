@@ -29,6 +29,7 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
+import { smokeRuntimes } from "./smoke-runtimes.ts";
 import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
@@ -206,7 +207,15 @@ const createWindow = (): void => {
           utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
             serviceName: "pochimail-storage-smoke",
           }),
-      }).finally(() => app.quit());
+      })
+        .then(() =>
+          smokeRuntimes(() =>
+            utilityProcess.fork(join(import.meta.dirname, "runtime-smoke.js"), [], {
+              serviceName: "pochimail-runtime-smoke",
+            }),
+          ),
+        )
+        .finally(() => app.quit());
     });
   if (devServerUrl === undefined) void window.loadFile(rendererFile);
   else void window.loadURL(devServerUrl);

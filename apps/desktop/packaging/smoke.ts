@@ -5,6 +5,7 @@ import { FuseState, FuseV1Options, getCurrentFuseWire } from "@electron/fuses";
 import { fuses } from "../src/main/fuses.ts";
 import { electronBinaryPath } from "./apply-fuses.ts";
 import { galleryLeaksIn } from "./gallery-check.ts";
+import { checkRuntimesOutput, checkUnpackedRuntimes } from "./runtime-check.ts";
 import { checkStorageOutput, storageSummary } from "./storage-check.ts";
 
 /** Smoke test of a packaged build: fuses are flipped on the binary and the app starts, loads its window and quits. */
@@ -31,16 +32,20 @@ const binary = electronBinaryPath({
 });
 
 // M4-18: the dev gallery route must not ship.
-const asarPath = join(
+const resourcesDir =
   process.platform === "darwin"
     ? join(appOutDir, "Pochimail.app", "Contents", "Resources")
-    : join(appOutDir, "resources"),
-  "app.asar",
-);
+    : join(appOutDir, "resources");
+const asarPath = join(resourcesDir, "app.asar");
 const leaked = galleryLeaksIn(readFileSync(asarPath));
 if (leaked.length > 0)
   throw new Error(`The packaged app contains the dev gallery (${leaked.join(", ")})`);
 console.log("gallery: absent");
+
+// M3: the local model runtimes ship unpacked, for the target OS only.
+const unpacked = checkUnpackedRuntimes(resourcesDir, process.platform);
+if (unpacked.length > 0) throw new Error(`Local model runtimes: ${unpacked.join("; ")}`);
+console.log("runtimes: unpacked");
 
 const wire = await getCurrentFuseWire(binary);
 const expected = {
@@ -78,6 +83,10 @@ if (code !== 0 || !output.includes("smoke:window-loaded")) {
   throw new Error(`App did not start cleanly (exit ${code}). Output: ${output}`);
 }
 console.log("launch: ok");
+
+// M3: the packaged app loaded onnxruntime-node, Transformers.js and node-llama-cpp in a utility process.
+for (const line of checkRuntimesOutput(output)) console.log(`runtime ${line}`);
+console.log("runtimes: ok");
 
 // M0-12: the packaged app opened an encrypted WAL database with FTS5 in a utility process, with the key from safeStorage.
 const storage = checkStorageOutput(output);

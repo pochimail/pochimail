@@ -1,6 +1,7 @@
+import { createEmbedder } from "@pochimail/ai/embeddings/embedder";
 import { createLlmProvider } from "@pochimail/ai/llm/llm-provider";
+import { createFakeFeatureExtractor } from "@pochimail/ai/test-support/fake-feature-extractor";
 import { createFakeLlmRuntime } from "@pochimail/ai/test-support/fake-llm-runtime";
-import { createFakeEmbedder } from "@pochimail/classification/testing/fake-ai";
 import { createCancelSource } from "@pochimail/kernel/common";
 import { createFakeTimer } from "@pochimail/testing/fake-timer";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,7 @@ import { z } from "zod";
 import { fromDomPort } from "../shared/ipc/transport.ts";
 import { createModelHostClient } from "../worker/model-host-client.ts";
 import { loadEngine } from "./engine.ts";
+import { createLocalEngine } from "./local-engine.ts";
 import { serveModelHost } from "./serve.ts";
 
 const answer = z.object({ answer: z.enum(["yes", "no"]) });
@@ -19,6 +21,7 @@ afterEach(() => {
 /** The worker's client talking to the host's `serveModelHost` over a real MessageChannel, with the local models faked at the native boundary. */
 const wire = (options: { modelPath?: string | undefined } = {}) => {
   const runtime = createFakeLlmRuntime();
+  const extractor = createFakeFeatureExtractor();
   const present = async () => ("modelPath" in options ? options.modelPath : "model");
   const { port1, port2 } = new MessageChannel();
   open.push(port1, port2);
@@ -26,7 +29,7 @@ const wire = (options: { modelPath?: string | undefined } = {}) => {
   port2.start();
   serveModelHost(fromDomPort(port2), {
     llm: createLlmProvider({ runtime, modelPath: present }),
-    embedder: createFakeEmbedder(384),
+    embedder: createEmbedder({ load: extractor.loader, modelDir: present }),
   });
   const client = createModelHostClient({ timer: createFakeTimer(), embedderDimensions: 384 });
   client.attach(fromDomPort(port1));
@@ -86,11 +89,19 @@ describe("local engine behind the model host", () => {
       ...[await client.llm.completeJson({ prompt: "p", schema: answer }, live())].map((r) =>
         r.ok ? "ok" : r.error.code,
       ),
+      ...[await client.embedder.embed(["a"], live())].map((r) => (r.ok ? "ok" : r.error.code)),
       ...[await client.classifier.classify([], live())].map((r) => (r.ok ? "ok" : r.error.code)),
     ];
-    expect(await codes()).toEqual(Array(3).fill("ai.unavailable"));
+    expect(await codes()).toEqual(Array(4).fill("ai.unavailable"));
     port1.postMessage({ id: 99, method: "complete", prompt: "again" });
     await vi.waitFor(() => expect(raw).toContainEqual({ id: 99, ok: false, error: "unavailable" }));
+  });
+
+  // Guards: vectors that do not survive the port, or a size the heads cannot take.
+  it("sends embeddings to the worker in memory, one 384-wide vector per text", async () => {
+    const { client } = wire();
+    const out = await client.embedder.embed(["a", "b"], live());
+    expect(out.ok ? out.value.map((v) => v.length) : out).toEqual([384, 384]);
   });
 
   // Guards: a schema or request the host did not validate, or a bad one stopping the host.
@@ -118,5 +129,10 @@ describe("loadEngine", () => {
     const engine = await loadEngine({ POCHIMAIL_LLM_MODEL: "/nonexistent/model.gguf" });
     const out = await engine?.llm.complete({ prompt: "p" }, live());
     expect(out?.ok ? "ok" : out?.error.code).toBe("ai.unavailable");
+    const embedded = await createLocalEngine({
+      llmModel: undefined,
+      embeddingModelDir: undefined,
+    }).embedder.embed(["a"], live());
+    expect(embedded.ok ? "ok" : embedded.error.code).toBe("ai.unavailable");
   });
 });

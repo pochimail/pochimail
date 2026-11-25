@@ -4,10 +4,10 @@ import type { LlmRuntime } from "./llm-runtime.ts";
 const CONTEXT_TOKENS = 2048;
 
 type GrammarSchema = Parameters<Llama["createGrammarForJsonSchema"]>[0];
-type Library = typeof import("node-llama-cpp");
+export type Library = typeof import("node-llama-cpp");
 
 /** node-llama-cpp with prebuilt binaries only (never a source build in a packaged app): GPU when usable, else CPU. */
-const startLlama = async ({ getLlama }: Library): Promise<Llama> => {
+export const startLlama = async ({ getLlama }: Library): Promise<Llama> => {
   try {
     return await getLlama({ build: "never", progressLogs: false });
   } catch {

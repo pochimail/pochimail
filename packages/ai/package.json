@@ -5,10 +5,14 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./embeddings/embedder": "./src/embeddings/embedder.ts",
+    "./embeddings/transformers-extractor": "./src/embeddings/transformers-extractor.ts",
     "./llm/deadline-extraction": "./src/llm/deadline-extraction.ts",
     "./llm/json-schema": "./src/llm/json-schema.ts",
     "./llm/llama-runtime": "./src/llm/llama-runtime.ts",
     "./llm/llm-provider": "./src/llm/llm-provider.ts",
+    "./runtime-smoke": "./src/runtime-smoke.ts",
+    "./test-support/fake-feature-extractor": "./src/test-support/fake-feature-extractor.ts",
     "./test-support/fake-llm-runtime": "./src/test-support/fake-llm-runtime.ts"
   },
   "scripts": {
@@ -18,13 +22,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.2",
     "@pochimail/classification": "workspace:*",
     "@pochimail/kernel": "workspace:*",
     "node-llama-cpp": "3.22.3",
+    "onnxruntime-node": "1.30.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@huggingface/transformers": "4.3.2",
     "@pochimail/typescript-config": "workspace:*",
     "@types/node": "26.6.6",
     "typescript": "7.0.2",

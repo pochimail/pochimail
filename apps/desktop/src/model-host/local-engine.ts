@@ -1,15 +1,17 @@
 import { access } from "node:fs/promises";
 import { availableMemory } from "node:process";
+import { createEmbedder } from "@pochimail/ai/embeddings/embedder";
+import { loadTransformersExtractor } from "@pochimail/ai/embeddings/transformers-extractor";
 import { createLlamaRuntime } from "@pochimail/ai/llm/llama-runtime";
 import { createLlmProvider } from "@pochimail/ai/llm/llm-provider";
-import { AiUnavailable } from "@pochimail/classification/errors";
-import { err } from "@pochimail/kernel/result";
 import type { ModelHostEngine } from "./serve.ts";
 
 /** Where the model files are. Until the downloader lands (#281) the owner points the host at them. */
 export interface ModelPaths {
   /** A GGUF file for the generative model. */
   readonly llmModel: string | undefined;
+  /** A folder with multilingual-e5-small in Transformers.js layout. */
+  readonly embeddingModelDir: string | undefined;
 }
 
 /** The idle model is unloaded when less than this is free (a loaded model is several GB). */
@@ -27,14 +29,18 @@ const present = (path: string | undefined) => async (): Promise<string | undefin
   }
 };
 
-/** The real generative model. Nothing loads until the first request. No classifier yet (M3), and embeddings come with #283. */
+/** The real generative model and embedder. Nothing loads until the first request. No classifier yet (M3). */
 export const createLocalEngine = (paths: ModelPaths): ModelHostEngine => {
   const llm = createLlmProvider({
     runtime: createLlamaRuntime(),
     modelPath: present(paths.llmModel),
   });
+  const embedder = createEmbedder({
+    load: loadTransformersExtractor,
+    modelDir: present(paths.embeddingModelDir),
+  });
   setInterval(() => {
     if (availableMemory() < LOW_MEMORY_BYTES) void llm.unload();
   }, MEMORY_CHECK_MS).unref();
-  return { llm, embedder: { dimensions: 384, embed: async () => err(new AiUnavailable()) } };
+  return { llm, embedder };
 };
