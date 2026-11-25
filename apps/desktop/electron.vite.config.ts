@@ -5,6 +5,7 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import type { Plugin } from "vite";
 import { buildCsp } from "./src/shared/csp.ts";
+import { adoptRuntimeStyles } from "./src/shared/csp-safe-styles.ts";
 import { E2E_OUT_DIR, galleryDefine, galleryEnabled } from "./src/shared/gallery-build.ts";
 
 const injectCsp = (): Plugin => {
@@ -17,6 +18,14 @@ const injectCsp = (): Plugin => {
     transformIndexHtml: (html) => html.replace("%CSP%", buildCsp({ dev })),
   };
 };
+
+const cspSafeStyles = (): Plugin => ({
+  name: "pochimail:csp-safe-styles",
+  transform: (code, id) => {
+    const rewritten = adoptRuntimeStyles(id, code);
+    return rewritten === null ? null : { code: rewritten, map: null };
+  },
+});
 
 const outRoot = resolve(
   import.meta.dirname,
@@ -54,6 +63,12 @@ export default defineConfig(({ command }) => ({
       outDir: resolve(outRoot, "renderer"),
       rollupOptions: { input: { index: resolve(import.meta.dirname, "src/renderer/index.html") } },
     },
-    plugins: [injectCsp(), tailwindcss(), react(), babel({ presets: [reactCompilerPreset()] })],
+    plugins: [
+      injectCsp(),
+      cspSafeStyles(),
+      tailwindcss(),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
+    ],
   },
 }));

@@ -158,3 +158,39 @@ it.each(["checkbox", "radio-group", "pill-radio-group"])(
     expect(src).not.toMatch(/border-(input|border)\b/);
   },
 );
+
+// Guards: a Dialog surface that blends into the dimmed page behind its overlay, or whose edge and nested field outline vanish (#245, #266).
+describe.each(["light", "dark"] as const)("%s theme dialog", (theme) => {
+  const source = readFileSync(new URL("../components/dialog.tsx", import.meta.url), "utf8");
+  const surface = /data-slot="dialog-content"[^"]*"[^"]*\bbg-(\w+)/.exec(source)?.[1];
+  const overlay = /data-slot="dialog-overlay"[\s\S]*?\bbg-(\w+)\/(\d+)/.exec(source);
+  const field = readFileSync(new URL("../components/text-field.tsx", import.meta.url), "utf8");
+  const fieldOutline = /\bborder-(input|border)\b/.exec(field)?.[1];
+
+  const mix = (top: string, bottom: string, alpha: number): string =>
+    `#${[1, 3, 5]
+      .map((i) => {
+        const [t, b] = [top, bottom].map((hex) => Number.parseInt(hex.slice(i, i + 2), 16));
+        return Math.round((t as number) * alpha + (b as number) * (1 - alpha))
+          .toString(16)
+          .padStart(2, "0");
+      })
+      .join("")}`;
+
+  it("stands out from the dimmed page and keeps its border and nested field visible", () => {
+    const tokens = themes[theme];
+    const [surfaceColor, pageColor, overlayColor, border, outline] = [
+      surface,
+      "background",
+      overlay?.[1],
+      "border",
+      fieldOutline,
+    ].map((name) => tokens[name ?? ""]);
+    if (!surfaceColor || !pageColor || !overlayColor || !border || !outline)
+      throw new Error("dialog tokens not found in dialog.tsx or text-field.tsx");
+    const dimmed = mix(overlayColor, pageColor, Number(overlay?.[2]) / 100);
+    expect(contrast(surfaceColor, dimmed)).toBeGreaterThanOrEqual(1.1);
+    expect(contrast(border, surfaceColor)).toBeGreaterThanOrEqual(1.1);
+    expect(contrast(outline, surfaceColor)).toBeGreaterThanOrEqual(1.1);
+  });
+});

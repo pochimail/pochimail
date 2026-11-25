@@ -31,9 +31,10 @@ export function SetupPage({ pose }: { pose: MascotPose }) {
   });
   // The form starts from the saved answers, so it waits for them; the title stays put so focus is not lost.
   return (
-    <div className="flex w-full flex-col gap-8">
-      {/* Shown on focus so the keyboard focus the layout moves here is visible (docs/design.md, focus). */}
-      <h1 className="sr-only rounded-md focus:not-sr-only focus:self-center focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+    <div className="relative flex w-full flex-col gap-8">
+      {/* Shown on focus so the keyboard focus the layout moves here is visible (docs/design.md, focus).
+          It floats above the form instead of taking a row, so losing focus never moves a control. */}
+      <h1 className="sr-only rounded-md focus:not-sr-only focus:absolute focus:-top-8 focus:left-1/2 focus:-translate-x-1/2 focus:whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
         {t("setup.title")}
       </h1>
       {settings.data ? <SetupForm initial={settings.data} idlePose={pose} /> : null}
