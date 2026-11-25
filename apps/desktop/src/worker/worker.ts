@@ -29,13 +29,13 @@ const logger = createLogger({
 });
 
 // A graceful shutdown from main releases the database handle before the worker stops.
-let closeDatabase: (() => void) | undefined;
+let closeDatabase: (() => Promise<void>) | undefined;
 let shuttingDown = false;
 const requestShutdown = (): void => {
   shuttingDown = true;
   const close = closeDatabase;
   closeDatabase = undefined;
-  close?.();
+  void close?.();
 };
 
 // Models run in their own process; main hands this worker a new port every time that process (re)starts.

@@ -8,13 +8,15 @@
     "./events": "./src/events.ts",
     "./jobs/limit-classifier": "./src/jobs/limit-classifier.ts",
     "./jobs/pause-scans-on-low-power": "./src/jobs/pause-scans-on-low-power.ts",
+    "./jobs/poll-accounts": "./src/jobs/poll-accounts.ts",
     "./jobs/scan-pipeline": "./src/jobs/scan-pipeline.ts",
     "./ports/mail-provider": "./src/ports/mail-provider.ts",
     "./ports/notifier": "./src/ports/notifier.ts",
     "./ports/unit-of-work": "./src/ports/unit-of-work.ts",
     "./use-cases/run-incremental-sync": "./src/use-cases/run-incremental-sync.ts",
     "./use-cases/run-scan": "./src/use-cases/run-scan.ts",
-    "./use-cases/scan-runner": "./src/use-cases/scan-runner.ts"
+    "./use-cases/scan-runner": "./src/use-cases/scan-runner.ts",
+    "./use-cases/sync-runner": "./src/use-cases/sync-runner.ts"
   },
   "scripts": {
     "typecheck": "tsc",

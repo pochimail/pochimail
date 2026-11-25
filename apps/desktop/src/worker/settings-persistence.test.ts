@@ -51,7 +51,7 @@ it("a worker reopened on the same database finds theme, language and autonomy un
     locale: "ja",
     autonomy: "autopilot",
   });
-  first.close();
+  await first.close();
 
   const second = start();
   cleanups.push(() => second.close());

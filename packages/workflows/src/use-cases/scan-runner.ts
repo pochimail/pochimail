@@ -126,6 +126,13 @@ export class ScanRunner {
     );
   }
 
+  /** Whether a scan of this account reached the end of its mailbox in this session. */
+  hasCompleted(accountId: AccountId): boolean {
+    return [...this.jobs.values()].some(
+      (j) => j.accountId === accountId && j.status === "completed",
+    );
+  }
+
   /** Resolves when no job is running; for orderly shutdown and tests. */
   async idle(): Promise<void> {
     await Promise.all(this.running);

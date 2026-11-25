@@ -16,6 +16,7 @@ import type { RetryPolicy } from "@pochimail/pipeline/retry";
 import { flagSuspicious } from "../flag-suspicious.ts";
 import type { MailProvider } from "../ports/mail-provider.ts";
 import type { WorkflowUnitOfWork } from "../ports/unit-of-work.ts";
+import type { CursorCodec } from "../use-cases/run-incremental-sync.ts";
 
 export const SCAN_PIPELINE_NAME = "scan";
 
@@ -142,3 +143,6 @@ function decode(c: SyncCursor | null): SyncCursor | null {
     return null;
   }
 }
+
+/** How the scan keeps its cursor, so the incremental sync after it continues from the same one. */
+export const scanCursorCodec: CursorCodec = { scope: SCAN_PIPELINE_NAME, encode, decode };

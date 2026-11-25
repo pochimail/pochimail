@@ -6,6 +6,7 @@ import { openStorage } from "@pochimail/db/open-storage";
 import { createSqliteJobQueue } from "@pochimail/db/sqlite-job-queue";
 import { createSqliteUnitOfWork } from "@pochimail/db/sqlite-unit-of-work";
 import { createGmailProvider } from "@pochimail/gmail/provider";
+import type { Clock } from "@pochimail/kernel/clock";
 import { WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import type { Logger } from "@pochimail/logger/logger";
@@ -22,6 +23,8 @@ import { createOAuthRevoker } from "@pochimail/net/oauth/revoke";
 import { OAuthSignIn } from "@pochimail/net/oauth/sign-in";
 import { createAccessTokenSource } from "@pochimail/net/oauth/tokens";
 import type { Timer } from "@pochimail/pipeline/event-batching";
+import type { PowerMonitor } from "@pochimail/pipeline/power-monitor";
+import type { WindowActivity } from "@pochimail/pipeline/window-activity";
 import type { Handlers } from "../shared/ipc/server.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
@@ -41,6 +44,10 @@ export interface AccountsRuntimeOptions {
   readonly classifier: Classifier;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
+  /** Tests drive time and the machine's state; the app leaves these out. */
+  readonly clock?: Clock;
+  readonly power?: PowerMonitor;
+  readonly activity?: WindowActivity;
   /** Tests point the providers at local fakes; the app leaves this out and uses the real hosts. */
   readonly network?: {
     readonly oauthConfig: OAuthProviderConfig;
@@ -57,12 +64,12 @@ export interface AccountsRuntimeOptions {
 export const createAccountsRuntime = (
   start: WorkerStart,
   options: AccountsRuntimeOptions,
-): (WorkerApp & { readonly close: () => void }) | undefined => {
+): (WorkerApp & { readonly close: () => Promise<void> }) | undefined => {
   if (start.databaseKey === undefined) return undefined;
   const storage = openStorage(start.databasePath, start.databaseKey);
   start.databaseKey.fill(0);
   if (!storage.ok) return undefined;
-  const clock = { now: () => new Date() };
+  const clock = options.clock ?? { now: () => new Date() };
   const { uow, outboxStore } = createSqliteUnitOfWork(storage.value, clock);
   const oauthConfig = options.network?.oauthConfig ?? oauthProviderConfig("google");
   const oauthFetch = options.network?.oauthFetch ?? platformFetch;
@@ -109,6 +116,8 @@ export const createAccountsRuntime = (
     queue: createSqliteJobQueue(storage.value, clock),
     settings: createSqliteSettingsStore(storage.value),
     classifier: options.classifier,
+    ...(options.power === undefined ? {} : { power: options.power }),
+    ...(options.activity === undefined ? {} : { activity: options.activity }),
     ...(options.clearClassifierCache === undefined
       ? {}
       : { clearClassifierCache: options.clearClassifierCache }),
@@ -164,5 +173,13 @@ export const createAccountsRuntime = (
     procedures: { ...app.handlers.procedures, ...accounts },
     subscriptions: app.handlers.subscriptions,
   };
-  return { handlers, idle: app.idle, close: () => storage.value.close() };
+  return {
+    handlers,
+    idle: app.idle,
+    stop: app.stop,
+    close: async () => {
+      await app.stop();
+      storage.value.close();
+    },
+  };
 };

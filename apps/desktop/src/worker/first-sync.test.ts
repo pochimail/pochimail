@@ -102,7 +102,7 @@ it("connecting starts the first scan on the real database, tells the renderer an
   expect(JSON.stringify(gmail.requests().map((r) => r.query.toString()))).not.toMatch(
     /Subject|snippet/i,
   );
-  runtime.close();
+  await runtime.close();
   cleanups.pop();
   const storage = openStorage(databasePath, key);
   if (!storage.ok) throw storage.error;

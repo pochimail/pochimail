@@ -25,10 +25,19 @@ export const INCREMENTAL_SYNC_JOB = "sync.incremental";
 export const DEFAULT_CURSOR_SCOPE = "inbox";
 export const DEFAULT_RATE_LIMIT_DELAY_MS = 60_000;
 
+/** How a cursor is stored when it is not kept as the provider wrote it (the scan keeps its own form). */
+export interface CursorCodec {
+  readonly scope: string;
+  encode(cursor: SyncCursor): SyncCursor;
+  decode(stored: SyncCursor | null): SyncCursor | null;
+}
+
 export interface RunIncrementalSyncDeps {
   readonly uow: WorkflowUnitOfWork;
   readonly provider: MailProvider;
   readonly clock: Clock;
+  /** Reads and writes the cursor in another form; by default it is stored as the provider wrote it. */
+  readonly cursorCodec?: CursorCodec;
 }
 
 export interface RunIncrementalSyncRequest {
@@ -80,10 +89,11 @@ export class RunIncrementalSync {
 
     const account = await uow.reads.accounts.get(workspaceId, accountId);
     if (!account.ok) return account;
-    const stored = await uow.reads.cursors.get(workspaceId, accountId, scope);
+    const { cursorCodec } = this.deps;
+    const stored = await uow.reads.cursors.get(workspaceId, accountId, cursorCodec?.scope ?? scope);
     if (!stored.ok) return stored;
 
-    let cursor: SyncCursor | null = stored.value;
+    let cursor: SyncCursor | null = cursorCodec ? cursorCodec.decode(stored.value) : stored.value;
     let progress: Progress = { batches: 0, fetched: 0, stored: 0 };
     let restarted = false;
 
@@ -163,7 +173,11 @@ export class RunIncrementalSync {
         if (!rows.ok) return rows;
         const threads = await new UpsertThreads().execute(tx, keep);
         if (!threads.ok) return threads;
-        const saved = await tx.repositories.cursors.set(workspaceId, accountId, nextCursor);
+        const saved = await tx.repositories.cursors.set(
+          workspaceId,
+          accountId,
+          cursorCodec ? cursorCodec.encode(nextCursor) : nextCursor,
+        );
         if (!saved.ok) return saved;
         const events = [
           event("SyncBatchFetched", `${key}:fetched`, { accountId, fetched: messages.length }),

@@ -15,13 +15,18 @@ import type { OutboxStore } from "@pochimail/pipeline/outbox";
 import { createOutboxRelay } from "@pochimail/pipeline/outbox-relay";
 import { createPowerLimiter } from "@pochimail/pipeline/power-limiter";
 import type { PowerMonitor } from "@pochimail/pipeline/power-monitor";
+import type { WindowActivity } from "@pochimail/pipeline/window-activity";
 import { parseDomainEvent } from "@pochimail/workflows/events";
 import { CLASSIFY_LIMITS, limitClassifier } from "@pochimail/workflows/jobs/limit-classifier";
 import { pauseScansOnLowPower } from "@pochimail/workflows/jobs/pause-scans-on-low-power";
+import { pollAccounts } from "@pochimail/workflows/jobs/poll-accounts";
+import { scanCursorCodec } from "@pochimail/workflows/jobs/scan-pipeline";
 import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
 import type { WorkflowUnitOfWork as UnitOfWork } from "@pochimail/workflows/ports/unit-of-work";
+import { RunIncrementalSync } from "@pochimail/workflows/use-cases/run-incremental-sync";
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
 import { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
+import { SyncRunner } from "@pochimail/workflows/use-cases/sync-runner";
 import type { Handlers } from "../shared/ipc/server.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { SettingsStore } from "../shared/settings.ts";
@@ -29,6 +34,7 @@ import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers } from "./handlers.ts";
 import { ManageSettings } from "./manage-settings.ts";
 import { resolvePendingActions } from "./pending-actions.ts";
+import { ALWAYS_PLUGGED, ALWAYS_VISIBLE } from "./static-environment.ts";
 
 /**
  * Everything the worker needs from the outside, as ports. The fixture bundle (dev/E2E) and M2's SQLite and real
@@ -49,6 +55,8 @@ export interface WorkerAdapters {
   readonly classifier: Classifier;
   /** Without it scans keep one classify batch at a time and never pause for power. */
   readonly power?: PowerMonitor;
+  /** What the main window is doing, for the polling cadence. Without it the window counts as visible. */
+  readonly activity?: WindowActivity;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
@@ -58,8 +66,10 @@ export interface WorkerAdapters {
 
 export interface WorkerApp {
   readonly handlers: Handlers;
-  /** Resolves once every running scan has stopped (orderly shutdown, tests). */
+  /** Resolves once every running scan and sync has stopped (orderly shutdown, tests). */
   idle(): Promise<void>;
+  /** Stops polling and waits for the syncs it started: call before the database closes. */
+  stop(): Promise<void>;
 }
 
 /** The worker's composition root: domain use cases and workflows wired to the adapters it is given, behind the typed IPC handlers. */
@@ -120,6 +130,31 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
 
   if (adapters.power) pauseScansOnLowPower(scans, adapters.power);
 
+  const syncs = new SyncRunner({
+    uow,
+    workspaceId,
+    clock,
+    scans,
+    syncFor: (account) =>
+      new RunIncrementalSync({
+        uow,
+        provider: adapters.providerFor(account),
+        clock,
+        cursorCodec: scanCursorCodec,
+      }),
+    flush,
+  });
+  const stopPolling = pollAccounts({
+    uow,
+    workspaceId,
+    syncs,
+    timer: adapters.timer,
+    onError: () => adapters.logger.error("sync poll failed", { operation: "sync.poll" }),
+    power: adapters.power ?? ALWAYS_PLUGGED,
+    activity: adapters.activity ?? ALWAYS_VISIBLE,
+    events: bus,
+  });
+
   const handlers = createHandlers({
     workspaceId,
     listAccounts: new ListAccounts({ uow }),
@@ -135,7 +170,12 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     handlers,
     idle: async () => {
       await recovery;
+      await syncs.idle();
       await scans.idle();
+    },
+    stop: async () => {
+      stopPolling();
+      await syncs.idle();
     },
   };
 }
