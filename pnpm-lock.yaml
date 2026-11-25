@@ -427,28 +427,31 @@ importers:
       '@pochimail/kernel':
         specifier: workspace:*
         version: link:../kernel
+      node-llama-cpp:
+        specifier: 3.22.3
+        version: 3.22.3(supports-color@7.2.0)(typescript@7.0.2)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@huggingface/transformers':
         specifier: 4.3.2
         version: 4.3.2(@types/node@26.6.6)
+      '@pochimail/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@pochimail/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
-      node-llama-cpp:
-        specifier: 3.22.3
-        version: 3.22.3(supports-color@7.2.0)(typescript@7.0.2)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(jsdom@31.0.1(@noble/hashes@1.8.0))(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
 
   packages/classification:
     dependencies:
