@@ -16,7 +16,7 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 - **On-device learning**: corrections become rules keyed by sender hash and type ([ADR 0014](0014-store-reports-and-actions-not-mail.md)); heads are re-fitted locally when idle.
 - **Distribution**: models download on first launch from exactly `huggingface.co` and its CDN hosts `us.aws.cdn.hf.co`, `us.gcp.cdn.hf.co`, `cdn-lfs-us-1.hf.co`, `cdn-lfs-eu-1.hf.co`, `transfer.xethub.hf.co`, `transfer.xethub-eu.hf.co` (no wildcard), resumable, SHA-256 verified, listed in a signed manifest. Our downloader resumes by range and checks the hash before rename.
 - **Eval**: fixture mailbox and a labeled multilingual set; precision, recall and emails per minute per tier; CI fails on regression.
-- **Packaging**: prebuilt binaries only; keep only the target OS and arch of `onnxruntime-node`; `asarUnpack` native modules.
+- **Packaging**: prebuilt binaries only; keep the target OS and arch of `onnxruntime-node`; `asarUnpack` native modules.
 
 ## Consequences
 Rules carry the bulk on T0 machines, and Autopilot acts only above the calibrated threshold, so weak machines see fewer automatic actions.
