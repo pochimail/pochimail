@@ -86,7 +86,7 @@ describe("Mascot public behavior", () => {
     // Guards: a rim layer painted in light mode, where the charcoal night pose must stay unchanged.
     expect(night).toMatch(/data-slot="mascot-rim"[^>]*class="[^"]*\bhidden\b[^"]*\bdark:block\b/);
     expect(night).toContain("bg-mascot-rim");
-    expect(night).toContain("blur-[0.5px]");
+    expect(night).toContain("blur-hairline");
     // Guards: a file URL mask, which Chromium refuses to fetch from file:// (the packaged app), so the rim would never render.
     expect(night).toMatch(/mask-image: url\((?:&quot;|"|')?data:image\/png;base64,/);
     for (const pose of ["default", "happy", "reading", "saving"] as const) {
