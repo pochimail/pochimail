@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
 import { serveRpc } from "#shared/ipc/server.ts";
 import { fromDomPort } from "#shared/ipc/transport.ts";
@@ -9,20 +9,8 @@ import type { AppSettings } from "#shared/settings.ts";
 import { App } from "../../app/app.tsx";
 import { createAppRouter } from "../../router.tsx";
 
-// Radix checkboxes measure themselves; jsdom has no ResizeObserver.
-beforeEach(() => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
-});
 afterEach(() => {
   cleanup();
-  vi.unstubAllGlobals();
 });
 
 type Saved = Pick<AppSettings, "autonomy" | "capabilities">;
