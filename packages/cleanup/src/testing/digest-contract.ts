@@ -16,7 +16,7 @@ const DAY = 86_400_000;
 
 export const digestChecks: readonly Check<DigestHarness>[] = [
   check(
-    "a digest after a second sync holds only mail new since the first (guards re-reporting old mail)",
+    "a digest after a second sync holds only mail new since the first and flags no unsure guess (guards re-reporting old mail and noisy attention)",
     async (h) => {
       const base = h.clock.now().getTime();
       const at = (ms: number) => new Date(base + ms).toISOString();
@@ -39,6 +39,12 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
           signals: ["needs-reply"],
         },
         5: { message: { receivedAt: at(2_000_000) }, category: "promotions" },
+        6: {
+          message: { receivedAt: at(2_100_000), from: "bob@example.com" },
+          category: "people",
+          confidence: 0.3,
+          unsureSignals: ["needs-reply"],
+        },
       });
       const second = unwrap(
         await build.execute(
@@ -46,8 +52,8 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
           live(),
         ),
       );
-      expect(second.newMessageCount).toBe(2);
-      expect(second.byCategory).toEqual({ people: 1, promotions: 1 });
+      expect(second.newMessageCount).toBe(3);
+      expect(second.byCategory).toEqual({ people: 2, promotions: 1 });
       expect(second.attention).toEqual([{ messageId: idOf(4), kind: "needs-reply" }]);
       expect((await h.eventTypes()).filter((t) => t === "DigestReady")).toHaveLength(2);
     },

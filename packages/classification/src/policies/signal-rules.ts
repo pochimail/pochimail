@@ -1,3 +1,4 @@
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import type { Category, SignalKind } from "../model/category.ts";
 import type { SignalSettings } from "../model/signal-settings.ts";
 
@@ -6,8 +7,6 @@ const DAY_MS = 86_400_000;
 export const OLD_AFTER_DAYS = 30;
 /** A sender we replied to this often is important even without a VIP mark. */
 export const IMPORTANT_REPLY_COUNT = 3;
-/** A classifier answer below this confidence is "unsure". */
-export const UNSURE_BELOW = 0.6;
 /** Confidence of a signal raised only because a gate was unsure. */
 export const UNSURE_CONFIDENCE = 0.5;
 /** "Deadlines this week": a recent unopened notice is time-sensitive for this long. */
@@ -101,7 +100,6 @@ export function signalRules(i: RuleInput): Hit[] {
   const owner = sentByOwner(i);
   const last = known(i.lastInThread);
   const { recentDays, waitingAfterDays } = i.settings;
-  const attachments = i.attachmentCount ?? 0;
   const oldUnopenedBulk = combine(
     typeIn(i, BULK_CATEGORIES),
     known(!i.opened),
@@ -127,9 +125,13 @@ export function signalRules(i: RuleInput): Hit[] {
       0.9,
       "You often reply to this sender or marked them VIP",
     ),
-    // An unknown attachment count is not a document: has-document is a Catch what matters
-    // signal, and flagging every message the provider did not describe would bury the rest.
-    ...hit("has-document", known(attachments > 0), 0.9, "Carries an attachment"),
+    // ADR 0012: an unknown attachment count may hide a document, so it protects.
+    ...hit(
+      "has-document",
+      i.attachmentCount === undefined ? "unsure" : known(i.attachmentCount > 0),
+      0.9,
+      "Carries an attachment",
+    ),
     // Text-free proxy for "time-sensitive": a deadline cannot be read without the subject or
     // body, which are not stored (ADR 0014). Until dates are extracted from display fields
     // fetched on demand, a recent unopened records notice counts, and so does any recent

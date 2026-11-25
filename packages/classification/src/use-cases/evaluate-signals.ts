@@ -59,7 +59,7 @@ export class EvaluateSignals {
         hasListUnsubscribe: f.hasListUnsubscribe,
         attachmentCount: f.attachmentCount,
         settings: this.deps.settings ?? DEFAULT_SIGNAL_SETTINGS,
-      })) {
+      }).sort((a, b) => (a.kind < b.kind ? -1 : 1))) {
         out.push({
           schemaVersion: 1,
           workspaceId: ws,

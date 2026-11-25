@@ -5,6 +5,7 @@ export const POLICY_DENIAL_REASONS = [
   "read-only",
   "needs-confirmation",
   "protected-category",
+  "unsure-category",
   "unknown-category",
   "below-confidence-threshold",
   "not-autopilot-eligible",

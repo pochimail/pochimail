@@ -1,5 +1,6 @@
 import type { Clock } from "@pochimail/kernel/clock";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import type {
   Cancelled,
   InvalidIdError,
@@ -65,9 +66,7 @@ export class ProposeSuggestions {
     const createdAt = clock.now().toISOString();
     const proposals: Suggestion[] = [];
     for (const [sender, rows] of [...collected.value].sort(([a], [b]) => (a < b ? -1 : 1))) {
-      if (rows.length < MIN_SENDER_MESSAGES) continue;
-      if (rows.some((r) => this.deps.protectedLabels.includes(r.message.category))) continue;
-      if (!rows.every((r) => PROPOSABLE_LABELS.includes(r.message.category))) continue;
+      if (!mayPropose(rows, this.deps.protectedLabels)) continue;
       const proposal = propose(rows);
       if (!proposal) continue;
       const id = SuggestionId(`sug:${request.accountId}:${sender}:${proposal.kind}`);
@@ -157,9 +156,17 @@ async function collect(
   return ok(bySender);
 }
 
+function mayPropose(rows: readonly Row[], protectedLabels: readonly string[]): boolean {
+  if (rows.length < MIN_SENDER_MESSAGES) return false;
+  if (rows.some((r) => protectedLabels.includes(r.message.category))) return false;
+  if (!rows.every((r) => PROPOSABLE_LABELS.includes(r.message.category))) return false;
+  // ADR 0012: an unsure or undecided email is protected, whatever label it was filed under.
+  return rows.every((r) => r.decision !== null && r.decision.confidence >= UNSURE_BELOW);
+}
+
 function propose(rows: readonly Row[]) {
   const unopened = rows.every((r) => !r.message.opened);
-  const confidence = Math.min(0.99, ...rows.map((r) => r.decision?.confidence ?? 0.5));
+  const confidence = Math.min(0.99, ...rows.map((r) => r.decision?.confidence ?? 0));
   const why = [...new Set(rows.flatMap((r) => (r.decision ? [r.decision.reason] : [])))];
   const evidence = `${rows.length} emails from this sender, ${unopened ? "none" : "some"} opened`;
   if (unopened && rows.every((r) => r.message.hasListUnsubscribe))

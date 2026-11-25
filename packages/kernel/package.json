@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./clock": "./src/clock.ts",
+    "./confidence": "./src/confidence.ts",
     "./common": "./src/common.ts",
     "./errors": "./src/errors.ts",
     "./event": "./src/event.ts",

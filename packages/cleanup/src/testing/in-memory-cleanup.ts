@@ -1,3 +1,4 @@
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import { Cancelled, NotFound } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
@@ -15,7 +16,7 @@ const byText = (a: string, b: string) => {
 interface StoredFact extends MessageFact {
   readonly seq: number;
   readonly decision: Omit<DecisionFact, "messageId"> | null;
-  readonly signals: readonly string[];
+  readonly signals: readonly { readonly kind: string; readonly confidence: number }[];
 }
 interface Data {
   suggestions: Map<string, Suggestion>;
@@ -92,7 +93,8 @@ export function createInMemoryCleanup(): InMemoryCleanup {
       for (const id of [...ids].sort()) {
         const f = facts.get(`${ws}/${id}`);
         if (!f) return err(new NotFound("Message"));
-        for (const kind of [...f.signals].sort()) out.push({ messageId: id, kind });
+        for (const s of [...f.signals].sort((a, b) => byText(a.kind, b.kind)))
+          out.push({ messageId: id, ...s });
       }
       return ok(out);
     },
@@ -187,7 +189,10 @@ export function createInMemoryCleanup(): InMemoryCleanup {
             reason: row.reason ?? "Weekly newsletter, never opened",
             confidence: row.confidence ?? 0.9,
           },
-          signals: row.signals ?? [],
+          signals: [
+            ...(row.signals ?? []).map((kind) => ({ kind, confidence: 1 })),
+            ...(row.unsureSignals ?? []).map((kind) => ({ kind, confidence: UNSURE_BELOW - 0.1 })),
+          ],
         });
       }
     },

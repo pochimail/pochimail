@@ -57,13 +57,18 @@ export const signalsChecks: readonly Check<SignalsHarness>[] = [
       ),
   ),
   check(
-    "has-document fires on an attachment and not without one or when the count is unknown (guards flagging every email)",
+    "has-document fires on an attachment, protects at 0.5 when the count is unknown, and not at 0 (guards a hidden document being cleaned)",
     async (h) => {
       await h.seed({ 1: { attachmentCount: 2 }, 2: { attachmentCount: 0 }, 3: {} });
       const got = await kinds(h, [1, 2, 3]);
       expect(got.get(1)).toContain("has-document");
       expect(got.get(2)).not.toContain("has-document");
-      expect(got.get(3)).not.toContain("has-document");
+      expect(got.get(3)).toContain("has-document");
+      const unknown = unwrap(await h.uow.reads.signals.listForMessages(WS_A, [idOf(3)])).find(
+        (s) => s.kind === "has-document",
+      );
+      expect(unknown?.confidence).toBe(0.5);
+      expect(unknown?.reason).toContain("Not sure, kept safe");
     },
   ),
   check(

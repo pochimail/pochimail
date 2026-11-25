@@ -61,7 +61,13 @@ export function mailboxFactsOver(reads: Reads): MailboxFacts {
     async signals(ws, accountId, ids, now) {
       const found = await evaluate.execute({ workspaceId: ws, accountId, messageIds: ids }, now);
       return found.ok
-        ? ok(found.value.map((s) => ({ messageId: s.messageId, kind: s.kind })))
+        ? ok(
+            found.value.map((s) => ({
+              messageId: s.messageId,
+              kind: s.kind,
+              confidence: s.confidence,
+            })),
+          )
         : found;
     },
   };
