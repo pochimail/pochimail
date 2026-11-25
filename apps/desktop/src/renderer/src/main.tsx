@@ -9,6 +9,6 @@ if (root === null) throw new Error("missing #root");
 const workerClient = connectWorker();
 createRoot(root).render(
   <StrictMode>
-    <App workerClient={workerClient} />
+    <App workerClient={workerClient} storage={window.pochimail.storage} />
   </StrictMode>,
 );

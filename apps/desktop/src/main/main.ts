@@ -32,6 +32,8 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
+import { registerStorageCalls } from "./storage-calls.ts";
+import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { keyProtection, loadOrCreateDatabaseKey } from "./storage-key.ts";
 import { createAppTray } from "./tray.ts";
 import { linkWorkerOnEveryLoad } from "./worker-link.ts";
@@ -88,6 +90,20 @@ const processSecretVault = (): SecretVault => {
     logger,
   });
   return secretVault;
+};
+
+// One gate per process: every window's worker waits on the same choice, and the person is asked at most once.
+let storageGate: StorageGate | undefined;
+const processStorageGate = (): StorageGate => {
+  const userData = app.getPath("userData");
+  storageGate ??= createStorageGate({
+    vault: safeStorage,
+    platform: process.platform,
+    directory: userData,
+    databaseFile: databasePathFor(userData),
+    logger,
+  });
+  return storageGate;
 };
 
 // Demo mode (fixture mailbox, no real account) is for dev and E2E only: a packaged app never honours it.
@@ -153,13 +169,7 @@ const connectWorker = (window: BrowserWindow): void => {
     worker,
     secrets: processSecretVault(),
     databasePath,
-    loadKey: () =>
-      loadOrCreateDatabaseKey(
-        safeStorage,
-        join(userData, "db.key"),
-        process.platform,
-        databasePath,
-      ),
+    loadKey: () => processStorageGate().key(),
     createChannel: () => new MessageChannelMain(),
     // Sign-in consent opens in the user's browser, never in an app window (ADR 0007).
     openExternal: (url) => shell.openExternal(url),
@@ -255,6 +265,11 @@ void app.whenReady().then(() => {
     isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
     appDataDirs: () => [app.getPath("userData")],
   });
+  registerStorageCalls({
+    ipc: ipcMain,
+    gate: processStorageGate(),
+    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
+  });
   createWindow();
   const locale = localeFromLanguages(app.getPreferredSystemLanguages());
   // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
@@ -289,6 +304,7 @@ void app.whenReady().then(() => {
     quit: () => app.quit(),
   });
   app.on("will-quit", appTray.dispose);
+  app.on("will-quit", () => processStorageGate().dispose());
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

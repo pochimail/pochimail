@@ -5,12 +5,10 @@ import {
   mailAppLinkSchema,
   osChannels,
 } from "../shared/os-calls.ts";
+import { type IpcHandle, onlyFromAppPage } from "./ipc-guard.ts";
 
-type Sender = { senderFrame?: { url: string } | null };
 export type OsCallDeps = {
-  ipc: {
-    handle: (channel: string, listener: (event: Sender, ...args: unknown[]) => unknown) => void;
-  };
+  ipc: { handle: IpcHandle };
   openExternal: (url: string) => Promise<void>;
   showItemInFolder: (path: string) => void;
   chooseFolder: () => Promise<string | null>;
@@ -25,20 +23,13 @@ const isInside = (root: string, path: string): boolean => {
 };
 
 /**
- * The only `ipcMain` handlers in the app. They carry no mail data: renderer <-> worker traffic uses the MessagePort and
+ * The OS `ipcMain` handlers (the storage prompt's are in storage-calls.ts). They carry no mail data: renderer <-> worker traffic uses the MessagePort and
  * never reaches main. Calls from any frame that is not the app's own page are refused.
  */
 export const registerOsCalls = (deps: OsCallDeps): void => {
   // showInFinder is not a general file-reveal: only folders the user picked, or the app's own data folders.
   const pickedFolders = new Set<string>();
-  const guarded =
-    <T>(run: (...args: unknown[]) => T) =>
-    (event: Sender, ...args: unknown[]): T => {
-      const url = event.senderFrame?.url;
-      if (url === undefined || !deps.isAppUrl(url))
-        throw new Error("os call refused: unknown sender");
-      return run(...args);
-    };
+  const guarded = onlyFromAppPage(deps.isAppUrl);
 
   deps.ipc.handle(
     osChannels.openMailAppLink,

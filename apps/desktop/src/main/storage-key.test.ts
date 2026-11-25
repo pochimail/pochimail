@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { fakeVault } from "../test-support/fake-key-vault.ts";
 import {
   DatabaseKeyError,
   type KeyVault,
@@ -9,16 +10,6 @@ import {
   loadOrCreateDatabaseKey,
 } from "./storage-key.ts";
 
-/** Reversible stand-in for the OS keychain: the "ciphertext" visibly differs from the plaintext. */
-const fakeVault = (overrides: Partial<KeyVault> = {}): KeyVault => ({
-  isAsyncEncryptionAvailable: async () => true,
-  encryptStringAsync: async (plain) => Buffer.from(`wrapped:${plain}`),
-  decryptStringAsync: async (cipher) => ({
-    result: cipher.toString().replace("wrapped:", ""),
-    shouldReEncrypt: false,
-  }),
-  ...overrides,
-});
 const dbFor = (file: string) => join(dirname(file), "pochimail.db");
 /** Value of a successful load, or the typed error. */
 const load = async (vault: KeyVault, file: string, platform: NodeJS.Platform) => {

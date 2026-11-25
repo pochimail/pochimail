@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
 /**
@@ -116,6 +117,7 @@ export const fr = {
   "onboarding.progress": entry("Étape {current} sur {total}", ["current", "total"]),
 
   ...connectMessages.fr,
+  ...storageMessages.fr,
   "setup.title": entry("Configuration", []),
   "setup.description": entry("Choisissez comment Pochi peut vous aider.", []),
   "setup.bubble": entry(

@@ -71,4 +71,12 @@ describe("worker boot", () => {
       { type: "start", databasePath: "/dev-data/pochimail.db", databaseKeyHex: "01".repeat(32) },
     ]);
   });
+
+  // Guards: the key staying readable in main's memory after it was handed to the worker.
+  it("zeroes the key buffer once the worker has it", async () => {
+    const t = setup();
+    const key = Buffer.alloc(32, 1);
+    await bootWorker({ ...t.options, loadKey: async () => ok(key) });
+    expect(key.every((byte) => byte === 0)).toBe(true);
+  });
 });
