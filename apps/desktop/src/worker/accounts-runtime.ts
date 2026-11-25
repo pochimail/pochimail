@@ -137,6 +137,9 @@ export const createAccountsRuntime = (
     forgetTokens: (accountId) => tokenSources.delete(accountId),
     stopScans: app.stopScans,
     forgetDigest: app.forgetDigest,
+    ...(options.clearClassifierCache === undefined
+      ? {}
+      : { clearClassifierCache: options.clearClassifierCache }),
     emit: app.emitAppEvent,
     workspaceId: LOCAL_WORKSPACE,
     uow,

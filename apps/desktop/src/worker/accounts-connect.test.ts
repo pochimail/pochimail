@@ -39,6 +39,7 @@ const setup = async (options: {
   failTokenExchange?: boolean;
   /** Local storage refuses the account row, as it does when the worker has no database key. */
   failStorage?: boolean;
+  clearClassifierCache?: () => void;
 }) => {
   const server = await startFakeOAuthServer(
     options.address === undefined ? {} : { address: options.address },
@@ -93,6 +94,9 @@ const setup = async (options: {
     forgetTokens: () => {},
     stopScans: async () => {},
     forgetDigest: () => {},
+    ...(options.clearClassifierCache === undefined
+      ? {}
+      : { clearClassifierCache: options.clearClassifierCache }),
     removeAccount: new RemoveAccount({
       uow,
       secrets,
@@ -242,6 +246,26 @@ describe("accounts.connect", () => {
     await client.call("accounts.cancelConnect");
     expect(await waiting).toEqual({ status: "cancelled" });
     await expect(fetch(redirect, { signal: AbortSignal.timeout(1000) })).rejects.toThrow();
+    close();
+  });
+
+  it("removing an account clears the classifier cache itself, and a removal that fails does not (guards mail-derived answers waiting on an outbox event)", async () => {
+    const clear = vi.fn();
+    const { client, close } = await setup({
+      address: "person@example.test",
+      clearClassifierCache: clear,
+    });
+    const connected = await client.call("accounts.connect", { provider: "google" });
+    if (connected.status !== "connected") throw new Error("connect failed");
+
+    expect(await client.call("accounts.remove", { accountId: "acc_missing" })).toMatchObject({
+      status: "failed",
+    });
+    expect(clear).not.toHaveBeenCalled();
+    expect(await client.call("accounts.remove", { accountId: connected.accountId })).toMatchObject({
+      status: "removed",
+    });
+    expect(clear).toHaveBeenCalledTimes(1);
     close();
   });
 });

@@ -35,6 +35,8 @@ export interface AccountProcedureDeps {
   readonly stopScans: (accountId: string) => Promise<void>;
   /** Drops the digest figures held in memory for the account. */
   readonly forgetDigest: (accountId: string) => void;
+  /** Drops what the model host remembers of mail; the removal does not wait for the outbox event to do it. */
+  readonly clearClassifierCache?: () => void;
   /** Tells every `app.events` subscriber. */
   readonly emit: (event: EventOf<"app.events">) => void;
 }
@@ -216,6 +218,7 @@ export const createAccountProcedures = (
         );
         if (!removed.ok) return failureOfRemove(removed.error);
         deps.forgetDigest(accountId);
+        deps.clearClassifierCache?.();
         deps.emit({ type: "AccountRemoved", accountId });
         return { status: "removed", remoteRevoked: removed.value.remoteRevoked };
       } finally {
