@@ -5,12 +5,15 @@ import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
 import type { SignalDetected } from "../events.ts";
 import type { StoredSignal } from "../model/signal.ts";
+import type { SignalSettings } from "../model/signal-settings.ts";
 import type { ClassificationUnitOfWork } from "../ports/unit-of-work.ts";
 import { EvaluateSignals } from "./evaluate-signals.ts";
 
 export interface DetectSignalsDeps {
   readonly uow: ClassificationUnitOfWork;
   readonly clock: Clock;
+  /** The age windows of the thread signals; the defaults when omitted. */
+  readonly settings?: SignalSettings;
 }
 
 export interface DetectSignalsRequest {
@@ -24,8 +27,8 @@ export type DetectSignalsError = StorageError | NotFound | Cancelled;
 export type MessageSignal = StoredSignal;
 
 /**
- * Evaluates the six signals for stored messages (brief §3). Reads headers, metadata and the
- * derived data only (category, short snippet); it never needs a body (proposed D11). Output is
+ * Evaluates the six signals for stored messages (brief §3). Reads ids, dates, flags, counts and
+ * the derived decision only; it never reads a subject, snippet or body (ADR 0014). Output is
  * sorted, so a given mailbox and clock always give the same answer. Each detection is announced
  * once through the outbox (`SignalDetected`, one stable id per message and kind).
  */
@@ -37,7 +40,10 @@ export class DetectSignals {
     signal: CancelSignal,
   ): AsyncResult<readonly MessageSignal[], DetectSignalsError> {
     const { uow, clock } = this.deps;
-    const detected = await new EvaluateSignals(uow.reads).execute(request, clock.now());
+    const detected = await new EvaluateSignals({
+      ...uow.reads,
+      ...(this.deps.settings ? { settings: this.deps.settings } : {}),
+    }).execute(request, clock.now());
     if (!detected.ok) return detected;
 
     // Re-detection keeps the first `detectedAt` of a signal that still applies, so rows are stable.

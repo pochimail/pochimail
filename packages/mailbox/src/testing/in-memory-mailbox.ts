@@ -99,6 +99,15 @@ export function createInMemoryMailbox(): InMemoryMailbox {
         const s = data().senders.get(`${ws}/${accountId}/${address}`);
         return s ? ok(copy(s)) : err(new NotFound("Sender"));
       },
+      ofMessage: async (ws: string, id: string, ownerAddress: string) => {
+        const m = data().messages.get(`${ws}/${id}`);
+        if (!m) return err(new NotFound("Message"));
+        const stats = data().senders.get(`${ws}/${m.accountId}/${m.from}`);
+        return ok({
+          fromOwner: m.from.toLowerCase() === ownerAddress.toLowerCase(),
+          stats: stats ? copy(stats) : undefined,
+        });
+      },
       list: async (ws: string, accountId: string, p: { limit: number; cursor?: string }) => {
         const rows = [...data().senders.values()]
           .filter((s) => s.workspaceId === ws && s.accountId === accountId)

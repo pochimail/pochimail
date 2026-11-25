@@ -64,7 +64,11 @@ export function createSqliteRepositories(
   };
   const derived = { get: lift(core.derived.get), list: lift(core.derived.list) };
   const threads = { get: lift(core.threads.get) };
-  const senders = { get: lift(core.senders.get), list: lift(core.senders.list) };
+  const senders = {
+    get: lift(core.senders.get),
+    list: lift(core.senders.list),
+    ofMessage: lift(core.senders.ofMessage),
+  };
   const suggestions = {
     get: lift(core.suggestions.get),
     listPending: lift(core.suggestions.listPending),

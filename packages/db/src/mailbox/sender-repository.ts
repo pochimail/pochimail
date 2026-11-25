@@ -58,6 +58,30 @@ export function createSenderRepository(db: Database, context: RepositoryContext)
           (r) => [text(r.sender_hash)],
         );
       }),
+    ofMessage: (ws: string, id: string, ownerAddress: string) =>
+      find("Message", () => {
+        const m = one(
+          "SELECT account_id, sender_hash FROM message WHERE workspace_id = ? AND id = ?",
+          ws,
+          id,
+        );
+        if (m === undefined) return undefined;
+        const account = text(m.account_id);
+        const hash = text(m.sender_hash);
+        if (hash === "") return { fromOwner: undefined, stats: undefined };
+        const row = one(
+          "SELECT * FROM sender_stats WHERE workspace_id = ? AND account_id = ? AND sender_hash = ?",
+          ws,
+          account,
+          hash,
+        );
+        return {
+          fromOwner: [ownerAddress, ownerAddress.toLowerCase()].some(
+            (a) => hash === senderHasher.hash(account, a),
+          ),
+          stats: row === undefined ? undefined : senderOf(row, context),
+        };
+      }),
     upsert: (s: z.infer<typeof senderStatsSchema>) =>
       guard(() => {
         const v = senderStatsSchema.parse(s);

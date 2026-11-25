@@ -69,13 +69,12 @@ export class GetOverview {
       figures.unsubscribed += row.unsubscribed;
       figures.totalSize += row.totalSize;
     }
-    const { signals, categories } = summary.value;
-    const waiting = signals["needs-reply"] ?? 0;
+    const { signals, categories, waiting, toReview } = summary.value;
     const deadlines = signals["time-sensitive"] ?? 0;
     const important = signals["important-sender"] ?? 0;
     return ok({
       scanned: summary.value.emails,
-      toReview: waiting + deadlines + important,
+      toReview,
       waiting,
       deadlines,
       important,

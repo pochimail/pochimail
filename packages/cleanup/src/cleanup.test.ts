@@ -67,6 +67,22 @@ describe("GetOverview", () => {
     ]);
   });
 
+  // Guards: a guess inflating "to review", and one email counted twice in the headline (ADR 0012).
+  it("counts only sure signals and counts an email once across waiting and important", async () => {
+    const cleanup = createInMemoryCleanup();
+    await cleanup.seed({
+      1: { category: "people", signals: ["needs-reply"] },
+      2: { category: "people", signals: ["needs-reply", "important-sender"] },
+      3: { category: "people", signals: ["important-sender", "time-sensitive"] },
+      4: { category: "people", unsureSignals: ["needs-reply", "time-sensitive", "has-document"] },
+    });
+    const overview = unwrap(
+      await new GetOverview({ uow: cleanup.uow, clock: fakeClock() }).execute(WS_A, ACCOUNT_1),
+    );
+    expect([overview.waiting, overview.deadlines, overview.important]).toEqual([1, 1, 2]);
+    expect(overview.toReview).toBe(3);
+  });
+
   // Guards: Overview figures counting unknown sizes or attachment facts, or inventing action totals (#114).
   it("sums the stored attachment and size facts, leaving unknown rows out of the sums", async () => {
     const cleanup = createInMemoryCleanup();

@@ -3,6 +3,9 @@ import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
 import { AiUnavailable } from "./errors.ts";
 import type { Category } from "./model/category.ts";
+import { DEFAULT_SIGNAL_SETTINGS, signalSettingsSchema } from "./model/signal-settings.ts";
+import { type RuleInput, signalRules, UNSURE_CONFIDENCE } from "./policies/signal-rules.ts";
+import { suspiciousDomainFlag, suspiciousRules } from "./policies/suspicious-rules.ts";
 import {
   classifierContract,
   embedderContract,
@@ -19,6 +22,7 @@ import { createInMemoryClassification } from "./testing/in-memory-classification
 import { ACCOUNT_1, live, WS_A } from "./testing/samples.ts";
 import { signalRepositoryContract } from "./testing/signal-repository-contract.ts";
 import { signalsContract } from "./testing/signals-contract.ts";
+import { signalsSafetyContract } from "./testing/signals-safety-contract.ts";
 import { ClassifyBatch } from "./use-cases/classify-batch.ts";
 import { CountCategories } from "./use-cases/count-categories.ts";
 
@@ -34,7 +38,7 @@ const fakeClock = () => {
 
 derivedContract(() => createInMemoryClassification());
 signalRepositoryContract(() => createInMemoryClassification());
-signalsContract(() => {
+const signalsHarness = () => {
   const labels = new Map<string, Category>();
   return {
     ...createInMemoryClassification(),
@@ -42,7 +46,9 @@ signalsContract(() => {
     classifier: createGroundTruthClassifier(labels),
     labels,
   };
-});
+};
+signalsContract(signalsHarness);
+signalsSafetyContract(signalsHarness);
 classifierContract(createFakeClassifier);
 embedderContract(() => createFakeEmbedder(8));
 llmProviderContract(createFakeLlmProvider);
@@ -78,5 +84,62 @@ describe("classification", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBeInstanceOf(AiUnavailable);
     expect(c.committedEvents()).toEqual([]);
+  });
+});
+
+describe("suspicious domain flag", () => {
+  it("flags lookalike and punycode domains and spares legitimate ones, digit domains included (guards phishing missed and real mail flagged)", () => {
+    for (const a of ["a@id-examp1e-verify.example.net", "a@xn--pypal-4ve.example.net"])
+      expect(suspiciousDomainFlag(a)?.confidence).toBeGreaterThan(0);
+    for (const a of [
+      "a@account.example.net",
+      "a@web3.example.net",
+      "a@s3-notify.example.net",
+      "a@x",
+      "",
+    ])
+      expect(suspiciousDomainFlag(a)).toBeUndefined();
+  });
+
+  it("a stored flag is not shown for a VIP or a sender you replied to (guards warning about a friend)", () => {
+    const flag = suspiciousDomainFlag("a@examp1e-mail.example.net");
+    expect(suspiciousRules({ flag, senderVip: false, senderRepliedCount: 0 })).toEqual(flag);
+    expect(suspiciousRules({ flag, senderVip: true, senderRepliedCount: 0 })).toBeUndefined();
+    expect(suspiciousRules({ flag, senderVip: false, senderRepliedCount: 1 })).toBeUndefined();
+  });
+});
+
+describe("signal rules", () => {
+  const input: RuleInput = {
+    fromOwner: false,
+    receivedAt: "2026-01-01T00:00:00.000Z",
+    opened: true,
+    category: "people",
+    confidence: 0.9,
+    now: new Date("2026-01-02T00:00:00.000Z"),
+    lastInThread: true,
+    important: false,
+    hasListUnsubscribe: false,
+    attachmentCount: 0,
+    settings: DEFAULT_SIGNAL_SETTINGS,
+  };
+
+  it("an unreadable sender or date still protects at reduced confidence (guards a silent rule on missing facts, ADR 0012)", () => {
+    for (const unreadable of [{ fromOwner: undefined }, { receivedAt: "not a date" }]) {
+      const hit = signalRules({ ...input, ...unreadable }).find((h) => h.kind === "needs-reply");
+      expect(hit?.confidence).toBe(UNSURE_CONFIDENCE);
+    }
+    expect(signalRules(input).find((h) => h.kind === "needs-reply")?.confidence).toBeGreaterThan(
+      UNSURE_CONFIDENCE,
+    );
+  });
+
+  it("settings reject a waiting age beyond the recent window (guards a window that can never match)", () => {
+    expect(signalSettingsSchema.safeParse({ recentDays: 3, waitingAfterDays: 7 }).success).toBe(
+      false,
+    );
+    expect(signalSettingsSchema.safeParse({ recentDays: 0, waitingAfterDays: 0 }).success).toBe(
+      false,
+    );
   });
 });

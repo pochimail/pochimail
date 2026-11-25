@@ -1,3 +1,4 @@
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import { MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import type { Result } from "@pochimail/kernel/result";
 import { unwrap } from "@pochimail/kernel/result";
@@ -119,6 +120,14 @@ export function authorizeContract(authorize: Authorize, labels: PolicyLabels): v
             expect(allowed(kind, ctx("autopilot", cat, conf, false))).toBe(
               conf >= AUTOPILOT_CONFIDENCE_THRESHOLD,
             );
+    });
+
+    it("autopilot refuses an unsure or undecided answer at any threshold (ADR 0012)", () => {
+      for (const cat of CATEGORIES)
+        for (const conf of [0, UNSURE_BELOW - 0.01, Number.NaN]) {
+          const denied = authorize(cmd("archive"), ctx("autopilot", cat, conf, false));
+          expect(!denied.ok && denied.error.reason).toBe("unsure-category");
+        }
     });
 
     it("autopilot treats a NaN confidence as below threshold", () => {

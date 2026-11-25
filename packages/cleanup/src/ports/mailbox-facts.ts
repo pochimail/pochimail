@@ -32,6 +32,8 @@ export interface MessageFactsQuery {
 export interface SignalFact {
   readonly messageId: MessageId;
   readonly kind: string;
+  /** How sure the detector is; under `UNSURE_BELOW` the signal only protects, it is not counted. */
+  readonly confidence: number;
 }
 
 /** The decision recorded for a message: why it was classified as it was. */

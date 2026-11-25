@@ -1,3 +1,4 @@
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok, type Result } from "@pochimail/kernel/result";
 import { type PolicyDenialReason, PolicyDenied } from "../errors.ts";
@@ -29,6 +30,22 @@ const deny = (reason: PolicyDenialReason) => err(new PolicyDenied(reason));
 const hasProtected = (ctx: AuthorizationContext) =>
   ctx.categories.some((c) => ctx.protectedCategories.includes(c));
 
+function autopilotRules(
+  command: Command,
+  ctx: AuthorizationContext,
+): Result<Authorization, PolicyDenied> {
+  // No categories means we cannot prove the mail is not People: refuse.
+  if (ctx.categories.length === 0) return deny("unknown-category");
+  // ADR 0012: an unsure or undecided answer is protected, at any autopilot threshold.
+  if (!(ctx.confidence >= UNSURE_BELOW)) return deny("unsure-category");
+  if (hasProtected(ctx)) return deny("protected-category");
+  if (!AUTOPILOT_ELIGIBLE[command.kind]) return deny("not-autopilot-eligible");
+  // `>=` is false for NaN, so a missing score never passes.
+  if (!(ctx.confidence >= AUTOPILOT_CONFIDENCE_THRESHOLD))
+    return deny("below-confidence-threshold");
+  return ok({ mode: "auto" });
+}
+
 function autonomyRules(
   command: Command,
   ctx: AuthorizationContext,
@@ -41,17 +58,8 @@ function autonomyRules(
       return deny("read-only");
     case "suggest":
       return ctx.userConfirmed ? ok({ mode: "confirmed" }) : deny("needs-confirmation");
-    case "autopilot": {
-      if (ctx.userConfirmed) return ok({ mode: "confirmed" });
-      // No categories means we cannot prove the mail is not People: refuse.
-      if (ctx.categories.length === 0) return deny("unknown-category");
-      if (hasProtected(ctx)) return deny("protected-category");
-      if (!AUTOPILOT_ELIGIBLE[command.kind]) return deny("not-autopilot-eligible");
-      // `>=` is false for NaN, so a missing score never passes.
-      if (!(ctx.confidence >= AUTOPILOT_CONFIDENCE_THRESHOLD))
-        return deny("below-confidence-threshold");
-      return ok({ mode: "auto" });
-    }
+    case "autopilot":
+      return ctx.userConfirmed ? ok({ mode: "confirmed" }) : autopilotRules(command, ctx);
     default: {
       const unreachable: never = ctx.autonomy;
       return unreachable;

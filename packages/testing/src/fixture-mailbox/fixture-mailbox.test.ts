@@ -51,7 +51,8 @@ describe("generateMailbox", () => {
     expect(labels.totals.documents).toBe(MOCK_DATASET.documents);
     const count = (kind: string) =>
       labels.messages.filter((m) => m.signals.includes(kind as never)).length;
-    expect(count("needs-reply")).toBe(MOCK_DATASET.peopleWaiting);
+    // An unanswered recent message from an important person also waits on the owner.
+    expect(count("needs-reply")).toBe(MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant);
     expect(count("time-sensitive")).toBe(MOCK_DATASET.deadlinesThisWeek);
     expect(count("important-sender")).toBe(MOCK_DATASET.newFromImportant);
   }, 60_000);

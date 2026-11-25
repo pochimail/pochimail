@@ -14,5 +14,7 @@ export const evalReportSchema = z.object({
   categoryAccuracy: z.number().min(0).max(1),
   categories: z.record(z.enum(CATEGORIES), classMetricsSchema),
   signals: z.record(z.enum(SIGNAL_KINDS), classMetricsSchema),
+  /** The phishing flag, scored on its own: it is a flag on top of a type, not a signal. */
+  suspicious: classMetricsSchema,
 });
 export type EvalReport = z.infer<typeof evalReportSchema>;

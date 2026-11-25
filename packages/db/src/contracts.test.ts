@@ -8,6 +8,7 @@ import { derivedContract } from "@pochimail/classification/testing/derived-contr
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { signalRepositoryContract } from "@pochimail/classification/testing/signal-repository-contract";
 import { signalsContract } from "@pochimail/classification/testing/signals-contract";
+import { signalsSafetyContract } from "@pochimail/classification/testing/signals-safety-contract";
 import type { KeepRuleRepository } from "@pochimail/cleanup/ports/keep-rule-repository";
 import { digestContract } from "@pochimail/cleanup/testing/digest-contract";
 import { digestStateContract } from "@pochimail/cleanup/testing/digest-state-contract";
@@ -44,7 +45,7 @@ figuresContract(uowHarness);
 derivedContract(uowHarness);
 signalRepositoryContract(uowHarness);
 digestStateContract(uowHarness);
-signalsContract(() => {
+const signalsHarness = () => {
   const h = harness();
   const labels = new Map<string, Category>();
   return {
@@ -55,7 +56,9 @@ signalsContract(() => {
     labels,
     snapshot: h.snapshot,
   };
-});
+};
+signalsContract(signalsHarness);
+signalsSafetyContract(signalsHarness);
 suggestionRepositoryContract(uowHarness);
 suggestionsContract(() => {
   const h = harness();

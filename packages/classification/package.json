@@ -12,8 +12,10 @@
     "./model/message-facts": "./src/model/message-facts.ts",
     "./model/scores": "./src/model/scores.ts",
     "./model/signal": "./src/model/signal.ts",
+    "./model/signal-settings": "./src/model/signal-settings.ts",
     "./model/topic": "./src/model/topic.ts",
     "./policies/signal-rules": "./src/policies/signal-rules.ts",
+    "./policies/suspicious-rules": "./src/policies/suspicious-rules.ts",
     "./ports/classifier": "./src/ports/classifier.ts",
     "./ports/derived-repository": "./src/ports/derived-repository.ts",
     "./ports/message-source": "./src/ports/message-source.ts",
@@ -24,6 +26,7 @@
     "./use-cases/count-categories": "./src/use-cases/count-categories.ts",
     "./use-cases/detect-signals": "./src/use-cases/detect-signals.ts",
     "./use-cases/evaluate-signals": "./src/use-cases/evaluate-signals.ts",
+    "./use-cases/evaluate-suspicious": "./src/use-cases/evaluate-suspicious.ts",
     "./testing/*": "./src/testing/*.ts"
   },
   "scripts": {

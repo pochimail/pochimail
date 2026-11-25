@@ -1,6 +1,6 @@
 import type { CancelSignal } from "@pochimail/kernel/common";
 import type { AccountId, MessageId, ThreadId, WorkspaceId } from "@pochimail/kernel/ids";
-import type { Category } from "../model/category.ts";
+import type { Category, SuspiciousFlag } from "../model/category.ts";
 import type { DerivedMessage } from "../model/derived.ts";
 import type { ClassifiableMessage } from "../model/message-facts.ts";
 
@@ -47,7 +47,12 @@ export const makeDerived = (n: number, over: Partial<DerivedMessage> = {}): Deri
 export interface SeedRow {
   readonly message?: Partial<ClassifiableMessage>;
   readonly category?: Category;
-  readonly derived?: Partial<DerivedMessage>;
+  /** `null` stores no derived data, as for a message the classifier has not answered yet. */
+  readonly derived?: Partial<DerivedMessage> | null;
+  /** Attachments the provider reported; left out when it reported none. */
+  readonly attachmentCount?: number;
+  /** The domain flag ingest stored on the message, when it raised one. */
+  readonly suspicious?: SuspiciousFlag;
 }
 
 /** What the signal rules read about a sender (the mailbox's sender statistics). */

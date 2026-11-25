@@ -7,7 +7,7 @@ Understanding each email: its category, signals and the reason and confidence be
 ## Owns
 - The seven categories until the types-and-topics model replaces them, signal kinds, derived data (`DerivedMessage`), stored signals.
 - Ports: `Classifier`, `Embedder`, `LlmProvider`, derived and signal repositories, plain-data message and signal-facts sources, `ClassificationUnitOfWork`.
-- `ClassifyBatch`, `DetectSignals`, `EvaluateSignals`, `CountCategories`, the signal rules, and the `MessageClassified` and `SignalDetected` events.
+- `ClassifyBatch`, `DetectSignals`, `EvaluateSignals`, `EvaluateSuspicious`, `CountCategories`, the signal and suspicious rules, the signal age windows (`SignalSettings`), and the `MessageClassified` and `SignalDetected` events.
 - An in-memory adapter, fakes, and contract suites under `./testing/*`.
 
 ## May import

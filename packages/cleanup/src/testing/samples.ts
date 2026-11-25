@@ -32,6 +32,8 @@ export interface SeedRow {
   readonly confidence?: number;
   /** Signals the message carries. Adapters that evaluate signals themselves must agree with it. */
   readonly signals?: readonly string[];
+  /** Signals raised only because a gate was unsure (ADR 0012): they protect but are never counted. */
+  readonly unsureSignals?: readonly string[];
 }
 
 /** What a cleanup contract needs to arrange before it runs; each adapter fills it its own way. */

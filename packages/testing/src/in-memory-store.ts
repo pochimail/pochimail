@@ -10,7 +10,7 @@ import type { OutboxEntry, OutboxRecord, OutboxStore } from "@pochimail/pipeline
 import { eventSinkOver } from "@pochimail/pipeline/outbox-event-sink";
 import { copy, type Data, emptyData, key, removeAccount } from "./in-memory-store-data.ts";
 import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
-import { inMemoryReads } from "./read-models/in-memory-reads.ts";
+import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
 
 function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
@@ -41,7 +41,6 @@ function inSequenceRange(
 }
 
 const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-
 export interface InMemoryUnitOfWork {
   readonly uow: UnitOfWork;
   /** Everything committed to the outbox so far, in order. */
@@ -131,6 +130,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
       },
       senders: {
         get: (ws, acc, address) => found(data().senders, key(ws, acc, address), "Sender"),
+        ofMessage: (ws, id, o) => guarded(() => senderOfMessage(data(), ws, id, o)),
         list: (ws, acc, page) =>
           guarded(() => {
             const rows = [...data().senders.values()]

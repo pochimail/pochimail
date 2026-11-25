@@ -24,7 +24,11 @@ describe(`eval gate (${scale})`, () => {
   it("matches the committed baseline within tolerance", async () => {
     if (scale !== "small" && scale !== "full") throw new Error("EVAL_SCALE is small or full");
     if (!baselinePath) throw new Error("EVAL_BASELINE is required");
-    const mailbox = generateMailbox({ seed: SEED, scale: scale as MailboxScale });
+    const mailbox = generateMailbox({
+      seed: SEED,
+      scale: scale as MailboxScale,
+      hardCases: true,
+    });
     const labels = new Map<string, Category>(
       mailbox.labels.messages.map((l) => [l.messageId, l.category]),
     );
@@ -39,6 +43,7 @@ describe(`eval gate (${scale})`, () => {
     for (const [group, rows] of [
       ["category", report.categories],
       ["signal", report.signals],
+      ["suspicious", { suspicious: report.suspicious }],
     ] as const)
       for (const [name, m] of Object.entries(rows))
         console.log(

@@ -1,5 +1,6 @@
 import type { Clock } from "@pochimail/kernel/clock";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import type { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
@@ -87,7 +88,7 @@ export class BuildDigest {
     const byCategory: Digest["byCategory"] = {};
     for (const f of fresh) byCategory[f.category] = (byCategory[f.category] ?? 0) + 1;
     const attention = signals.value
-      .filter((s) => ATTENTION_SIGNALS.includes(s.kind))
+      .filter((s) => ATTENTION_SIGNALS.includes(s.kind) && s.confidence >= UNSURE_BELOW)
       .map((s) => ({ messageId: s.messageId, kind: s.kind }))
       .sort((a, b) => (a.messageId + a.kind < b.messageId + b.kind ? -1 : 1));
 

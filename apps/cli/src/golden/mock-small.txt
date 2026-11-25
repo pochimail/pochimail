@@ -1,11 +1,11 @@
 pochi run fixtures/mock (seed 20261117, small), all in memory
-sync        2 accounts · 483 emails · 5 batches · 0 pauses · 0 deferred
+sync        2 accounts · 483 emails · 6 batches · 0 pauses · 0 deferred
 classify    people 68 · records 21 · purchases-travel 36 · sign-ins-security 20 · notifications 142 · newsletters 104 · promotions 92
-signals     needs-reply 27 · waiting-on-them 2 · important-sender 12 · has-document 28 · time-sensitive 11 · old-never-opened 277
-catch       27 people waiting (oldest 3143 days) · 11 time-sensitive · 12 from important people · 28 documents
-suggest     0 archive · 1 unsubscribe (never sent: cannot be undone)
-apply       approved as archives · 1 applied · 0 refused · 0 failed
-undo        1 undone · 0 failed · mailbox restored: yes
+signals     needs-reply 19 · waiting-on-them 4 · important-sender 12 · has-document 4 · time-sensitive 3 · old-never-opened 257
+catch       7 people waiting (oldest 9 days) · 3 time-sensitive · 12 from important people · 4 documents
+suggest     2 archive · 0 unsubscribe (never sent: cannot be undone)
+apply       approved as archives · 2 applied · 0 refused · 0 failed
+undo        2 undone · 0 failed · mailbox restored: yes
 eval        category accuracy 1.00 · 483 labelled · 0 unclassified
   people             precision 1.00 recall 1.00 support 68
   records            precision 1.00 recall 1.00 support 21
@@ -14,9 +14,9 @@ eval        category accuracy 1.00 · 483 labelled · 0 unclassified
   notifications      precision 1.00 recall 1.00 support 142
   newsletters        precision 1.00 recall 1.00 support 104
   promotions         precision 1.00 recall 1.00 support 92
-  needs-reply        precision 0.26 recall 1.00 support 7
-  waiting-on-them    precision 0.00 recall 1.00 support 0
+  needs-reply        precision 1.00 recall 1.00 support 19
+  waiting-on-them    precision 1.00 recall 1.00 support 4
   important-sender   precision 1.00 recall 1.00 support 12
-  has-document       precision 0.07 recall 0.50 support 4
-  time-sensitive     precision 0.00 recall 0.00 support 3
-  old-never-opened   precision 0.58 recall 1.00 support 161
+  has-document       precision 1.00 recall 1.00 support 4
+  time-sensitive     precision 1.00 recall 1.00 support 3
+  old-never-opened   precision 1.00 recall 1.00 support 257

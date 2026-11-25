@@ -1,4 +1,5 @@
 import type { Clock } from "@pochimail/kernel/clock";
+import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import { ok, unwrap } from "@pochimail/kernel/result";
 import { type Check, check, registerContract } from "@pochimail/kernel/testing/contract";
 import { expect } from "vitest";
@@ -74,6 +75,20 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
       const all = unwrap(await h.uow.reads.suggestions.listPending(WS_A, { limit: 100 }));
       for (const s of all.items)
         expect(["archive", "unsubscribe"]).toContain(s.recommendation.kind);
+    },
+  ),
+  check(
+    "a sender whose mail is unsure is never proposed, whatever label it was filed under (guards ADR 0012: unsure means protected)",
+    async (h) => {
+      await h.seed(
+        Object.fromEntries(
+          Object.entries(unopenedPromos()).map(([n, row]) => [
+            n,
+            { ...row, confidence: UNSURE_BELOW - 0.01 },
+          ]),
+        ),
+      );
+      expect(await suggestionsFor(h)).toEqual([]);
     },
   ),
   check(
