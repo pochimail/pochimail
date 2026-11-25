@@ -7,7 +7,7 @@ import { DatabaseKeyError } from "./storage-key.ts";
 import { passphraseChoiceSchema } from "./storage-passphrase.ts";
 
 /** What the person chose on basic-text: a passphrase (parameters and salt only) or, as a second explicit choice, nothing. */
-export const storageChoiceSchema = z.discriminatedUnion("mode", [
+const storageChoiceSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("unprotected") }),
   passphraseChoiceSchema,
 ]);
