@@ -17,16 +17,24 @@ export const ja = {
   "overview.email.count": entry("{count, plural, =0 {メールはありません} other {#件のメール}}", [
     "count",
   ]),
+  "overview.size.gb": entry("{size, number} GB", ["size"]),
+  "overview.size.mb": entry("{size, number} MB", ["size"]),
+  "overview.size.underTenthMb": entry("0.1 MB未満", []),
   "overview.size.free": entry("合計{total, number} GBのうち、{size, number} GBを空けられます。", [
     "size",
     "total",
   ]),
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
-  "overview.size.mb": entry("{size, number} MB", ["size"]),
   "overview.size.freeMb": entry("合計{total, number} MBのうち、{size, number} MBを空けられます。", [
     "size",
     "total",
   ]),
+  "overview.size.freeUnderTenthMb": entry(
+    "合計{total, number} MBのうち、0.1 MB未満を空けられます。",
+    ["total"],
+  ),
+  "overview.figure.archived": entry("アーカイブしたメール", []),
+  "overview.figure.saved": entry("保存した添付ファイル", []),
+  "overview.figure.unsubscribed": entry("登録解除したニュースレター", []),
   "scan.failed": entry(
     "仕分けを最後まで終えられませんでした。何も変更していません。もう一度始めると、止まったところから続けます。",
     [],

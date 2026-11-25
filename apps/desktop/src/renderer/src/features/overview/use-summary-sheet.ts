@@ -22,10 +22,13 @@ export type SummarySheetController = {
 export function useSummarySheet(
   client: RpcClient,
   queryClient: QueryClient,
+  accountId: string | undefined,
 ): SummarySheetController {
   const digest = useQuery({
-    queryKey: queryKeys.digest(),
-    queryFn: () => client.call("digest.get"),
+    queryKey: queryKeys.digest(accountId),
+    // The empty id is unreachable while disabled; it only keeps the queryFn's input typed.
+    queryFn: () => client.call("digest.get", { accountId: accountId ?? "" }),
+    enabled: accountId !== undefined,
   });
   // The same key as AppearanceProvider: one read, one cache, two independent choices in it.
   const settings = useQuery({

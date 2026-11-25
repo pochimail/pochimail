@@ -22,7 +22,7 @@ export const suggestionApprovedEvent = defineEvent(
 // Partial figures keep older events valid; a missing count means "none new", never a cumulative total.
 export const digestReadyEvent = defineEvent(
   "DigestReady",
-  digestFiguresSchema.partial().extend({ itemCount: count }),
+  digestFiguresSchema.partial().extend({ itemCount: count, accountId: accountIdSchema }),
 );
 export const cleanupEvents = [
   suggestionCreatedEvent,

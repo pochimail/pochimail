@@ -162,22 +162,22 @@ it("shows only the newest digest figures after a second sync", async () => {
     settings: settings({ summaryShown: true }),
   });
   const first = await openSheet(user);
-  expect(within(first).getByText("emails archived")).toBeTruthy();
-  expect(within(first).getByText("newsletters unsubscribed")).toBeTruthy();
+  expect(within(first).getByText("can be archived")).toBeTruthy();
+  expect(within(first).getByText("newsletters to unsubscribe")).toBeTruthy();
   await user.click(within(first).getByRole("button", { name: "Later" }));
 
   state.digest = digest({ itemCount: 4, saved: 4 });
   await state.digestReady(4);
   const second = await openSheet(user);
-  await waitFor(() => expect(within(second).queryByText("emails archived")).toBeNull());
+  await waitFor(() => expect(within(second).queryByText("can be archived")).toBeNull());
   expect(
     within(second)
       .getAllByRole("definition")
       .map((node) => node.textContent),
   ).toEqual(["4"]);
-  expect(within(second).getByText("attachments saved")).toBeTruthy();
-  expect(within(second).queryByText("emails archived")).toBeNull();
-  expect(within(second).queryByText("newsletters unsubscribed")).toBeNull();
+  expect(within(second).getByText("attachments to save")).toBeTruthy();
+  expect(within(second).queryByText("can be archived")).toBeNull();
+  expect(within(second).queryByText("newsletters to unsubscribe")).toBeNull();
 });
 
 // Guards: a cadence choice that is lost on close or reopens with a different label.

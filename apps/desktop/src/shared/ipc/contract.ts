@@ -86,9 +86,9 @@ const queries = {
       )
       .max(100),
   },
-  /** The latest digest's new items only; never the Overview's cumulative action totals (#227). */
+  /** One account's newest digest items only; never the Overview's cumulative action totals (#227). */
   "digest.get": {
-    input: z.undefined(),
+    input: z.object({ accountId }),
     output: z.object({ ready: z.boolean(), itemCount: count }).extend(digestFiguresSchema.shape),
   },
   "settings.get": {

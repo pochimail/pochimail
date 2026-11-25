@@ -35,17 +35,25 @@ export const messages = {
   "overview.email.count": entry("{count, plural, =0 {No emails} one {# email} other {# emails}}", [
     "count",
   ]),
+  /** One size for a figure (#114): unit follows the rounded value, never a raw byte count. */
+  "overview.size.gb": entry("{size, number} GB", ["size"]),
+  "overview.size.mb": entry("{size, number} MB", ["size"]),
+  "overview.size.underTenthMb": entry("< 0.1 MB", []),
   "overview.size.free": entry("{size, number} GB you can free, out of {total, number} GB", [
     "size",
     "total",
   ]),
-  /** One size for a figure (#114): MB below 1 GB so small sizes never round to zero. */
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
-  "overview.size.mb": entry("{size, number} MB", ["size"]),
   "overview.size.freeMb": entry("{size, number} MB you can free, out of {total, number} MB", [
     "size",
     "total",
   ]),
+  "overview.size.freeUnderTenthMb": entry("< 0.1 MB you can free, out of {total, number} MB", [
+    "total",
+  ]),
+  /** Cumulative Overview actions (#114); the Summary's figures are proposals, not these. */
+  "overview.figure.archived": entry("emails archived", []),
+  "overview.figure.saved": entry("attachments saved", []),
+  "overview.figure.unsubscribed": entry("newsletters unsubscribed", []),
   "scan.failed": entry(
     "I could not finish sorting. Nothing was changed. Start again and I will continue where I stopped.",
     [],

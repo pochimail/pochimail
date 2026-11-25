@@ -128,22 +128,34 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
 };
 
 const GB = 1e9;
+const MB = 1e6;
 
 /** Bytes to whole-or-one-decimal units for the locale-formatted size keys (#114). */
 const toGb = (bytes: number): number => Math.round((bytes / GB) * 10) / 10;
-const toMb = (bytes: number): number => Math.round((bytes / 1e6) * 10) / 10;
+const toMb = (bytes: number): number => Math.round((bytes / MB) * 10) / 10;
+/** A nonzero size that rounds to 0.0 MB must not claim to be zero. */
+const isUnderTenthMb = (bytes: number, mb: number): boolean => bytes > 0 && mb < 0.1;
 
-/** One locale-formatted size: MB under 1 GB, so small fixtures never round to 0 GB. */
-export const sizeLabel = (bytes: number, t: T): string =>
-  bytes < GB
-    ? t("overview.size.mb", { size: toMb(bytes) })
-    : t("overview.size.gb", { size: toGb(bytes) });
+/** One locale-formatted size: the unit follows the rounded value, not the raw byte count. */
+export const sizeLabel = (bytes: number, t: T): string => {
+  const gb = toGb(bytes);
+  if (gb >= 1) return t("overview.size.gb", { size: gb });
+  const mb = toMb(bytes);
+  return isUnderTenthMb(bytes, mb)
+    ? t("overview.size.underTenthMb")
+    : t("overview.size.mb", { size: mb });
+};
 
-/** The free-space sentence uses the same unit as the two sizes it reports. */
-export const freeSizeLabel = (sizeBytes: number, totalBytes: number, t: T): string =>
-  totalBytes < GB
-    ? t("overview.size.freeMb", { size: toMb(sizeBytes), total: toMb(totalBytes) })
-    : t("overview.size.free", { size: toGb(sizeBytes), total: toGb(totalBytes) });
+/** The freed size picks the unit for both figures, so a small size never reads as 0 GB. */
+export const freeSizeLabel = (sizeBytes: number, totalBytes: number, t: T): string => {
+  const gb = toGb(sizeBytes);
+  if (gb >= 1) return t("overview.size.free", { size: gb, total: toGb(totalBytes) });
+  const mb = toMb(sizeBytes);
+  const totalMb = toMb(totalBytes);
+  return isUnderTenthMb(sizeBytes, mb)
+    ? t("overview.size.freeUnderTenthMb", { total: totalMb })
+    : t("overview.size.freeMb", { size: mb, total: totalMb });
+};
 
 /** One cumulative action figure for the Overview; only positive figures are shown, never a zero. */
 export type OverviewFigure = {
@@ -157,14 +169,14 @@ export type OverviewFigure = {
 export const overviewFigures = (data: OverviewData): OverviewFigure[] => {
   const { archived, savedCount, savedSize, unsubscribed } = data.figures;
   const figures: OverviewFigure[] = [];
-  if (archived > 0) figures.push({ count: archived, labelKey: "summary.figure.archived" });
+  if (archived > 0) figures.push({ count: archived, labelKey: "overview.figure.archived" });
   if (savedCount > 0)
     figures.push({
       count: savedCount,
-      labelKey: "summary.figure.saved",
+      labelKey: "overview.figure.saved",
       sizeBytes: savedSize,
     });
   if (unsubscribed > 0)
-    figures.push({ count: unsubscribed, labelKey: "summary.figure.unsubscribed" });
+    figures.push({ count: unsubscribed, labelKey: "overview.figure.unsubscribed" });
   return figures;
 };

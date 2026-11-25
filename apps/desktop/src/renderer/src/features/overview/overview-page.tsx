@@ -36,6 +36,16 @@ const scanStatusLine = (scan: ScanStatus, t: T): string => {
   return t("overview.scan.progress", { processed: scan.processed, total: scan.total });
 };
 
+/** The Overview contract accepts no input for all accounts, an id for one (#110). */
+const overviewInput = (accountId: string | undefined): { accountId?: string } =>
+  accountId === undefined ? {} : { accountId };
+
+/** The route's account wins; before it is set the first connected account feeds the Summary (#110). */
+const selectedAccount = (
+  account: string | undefined,
+  accounts: readonly { id: string }[] | undefined,
+): string | undefined => account ?? accounts?.[0]?.id;
+
 type SectionProps = {
   t: T;
   locale: UserLocale;
@@ -164,20 +174,20 @@ export function OverviewPage() {
   const t = useT();
   const client = useWorkerClient();
   const queryClient = useQueryClient();
-  const summary = useSummarySheet(client, queryClient);
   const navigate = useNavigate();
   const { account } = useSearch({ strict: false });
   const accounts = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: () => client.call("accounts.list"),
   });
+  const summary = useSummarySheet(client, queryClient, selectedAccount(account, accounts.data));
   const deviceName = useQuery({
     queryKey: queryKeys.deviceName(),
     queryFn: () => client.call("device.name"),
   });
   const overview = useQuery({
     queryKey: queryKeys.overview(account),
-    queryFn: () => client.call("overview.get", account === undefined ? {} : { accountId: account }),
+    queryFn: () => client.call("overview.get", overviewInput(account)),
   });
   const scopedAccounts = (accounts.data ?? []).filter(
     (a) => account === undefined || a.id === account,

@@ -38,7 +38,8 @@ export type BuildDigestError = StorageError | NotFound | Cancelled;
 /**
  * Builds the "what's new" summary: only mail received after `since`, never totals of old mail
  * (brief §7). Counts by category plus the new messages that need attention. A digest with
- * nothing new is returned but announces nothing (`DigestReady` only when there are items).
+ * nothing new is returned but its `DigestReady` still announces zero items, so a previous
+ * Summary cannot keep showing old mail as new.
  */
 export class BuildDigest {
   constructor(private readonly deps: BuildDigestDeps) {}
@@ -123,14 +124,18 @@ export class BuildDigest {
         newest.value,
       );
       if (!advanced.ok) return advanced;
-      if (fresh.length === 0) return ok(undefined);
       const event = {
         id: `digest:${request.accountId}:${since}`,
         type: "DigestReady",
         version: 1,
         workspaceId: request.workspaceId,
         occurredAt: generatedAt,
-        payload: { itemCount: fresh.length, ...figures, generatedAt },
+        payload: {
+          itemCount: fresh.length,
+          accountId: request.accountId,
+          ...figures,
+          generatedAt,
+        },
       } satisfies DigestReady;
       return tx.events.append([event]);
     }, signal);

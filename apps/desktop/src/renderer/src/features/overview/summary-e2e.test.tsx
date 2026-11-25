@@ -46,7 +46,7 @@ it("fills the three Summary slots from a real scan without hand-injected figures
   const accountId = mailbox.accounts[0]?.id ?? "";
   await client.call("scan.start", { accountId });
   const dialog = await screen.findByRole("dialog");
-  const digest = await client.call("digest.get");
+  const digest = await client.call("digest.get", { accountId });
   const view = summaryView(digest);
 
   expect(view.figures.map((figure) => figure.labelKey)).toEqual([
@@ -55,8 +55,14 @@ it("fills the three Summary slots from a real scan without hand-injected figures
     "summary.figure.unsubscribed",
   ]);
   expect(digest.generatedAt).toBeTypeOf("string");
-  for (const label of ["emails archived", "attachments saved", "newsletters unsubscribed"])
+  for (const label of ["can be archived", "attachments to save", "newsletters to unsubscribe"])
     expect(within(dialog).getByText(label)).toBeTruthy();
+  const otherAccount = mailbox.accounts.find((a) => a.id !== accountId)?.id;
+  if (otherAccount !== undefined)
+    expect(await client.call("digest.get", { accountId: otherAccount })).toMatchObject({
+      ready: false,
+      itemCount: 0,
+    });
   expect(within(dialog).getAllByRole("definition")).toHaveLength(3);
   expect(within(dialog).getByText(/From Pochi · .* · on this Mac/)).toBeTruthy();
   expect(within(dialog).queryByText("Nothing new since the last summary.")).toBeNull();

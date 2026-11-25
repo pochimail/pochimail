@@ -1,4 +1,5 @@
 // Guards: a protected sender proposed for cleanup, a digest that re-reports old mail, an Overview figure that drifts, and a lost or phantom event.
+import type { AccountId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
 import { type DigestReady, digestReadyEvent } from "./events.ts";
@@ -24,6 +25,20 @@ const fakeClock = () => {
     },
   };
 };
+
+const digestEvent = (
+  id: string,
+  accountId: AccountId,
+  occurredAt: string,
+  payload: Omit<DigestReady["payload"], "accountId">,
+): DigestReady => ({
+  id,
+  type: "DigestReady",
+  version: 1,
+  workspaceId: WS_A,
+  occurredAt,
+  payload: { ...payload, accountId },
+});
 
 digestStateContract(() => createInMemoryCleanup());
 suggestionRepositoryContract(() => createInMemoryCleanup());
@@ -115,7 +130,7 @@ describe("digest status", () => {
       if (event.type === "DigestReady")
         new RecordDigestReady({ tally }).execute(digestReadyEvent.parse(event));
 
-    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toEqual({
       ready: true,
       itemCount: 4,
       archived: 1,
@@ -134,11 +149,11 @@ describe("digest status", () => {
       version: 1 as const,
       workspaceId: WS_A,
       occurredAt: "2026-01-01T00:00:00.000Z",
-      payload: { itemCount: 3 },
+      payload: { itemCount: 3, accountId: ACCOUNT_1 },
     };
     record.execute(event);
     record.execute(event);
-    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toEqual({
       ready: true,
       itemCount: 3,
       archived: 0,
@@ -152,15 +167,12 @@ describe("digest status", () => {
   it("replaces the figures with the newest digest, not their sum", () => {
     const tally = createInMemoryDigestTally();
     const record = new RecordDigestReady({ tally });
-    const delivered = (id: string, at: string, payload: DigestReady["payload"]) =>
-      record.execute({
-        id,
-        type: "DigestReady" as const,
-        version: 1 as const,
-        workspaceId: WS_A,
-        occurredAt: at,
-        payload,
-      });
+    const delivered = (
+      id: string,
+      at: string,
+      payload: Omit<DigestReady["payload"], "accountId">,
+      accountId: AccountId = ACCOUNT_1,
+    ) => record.execute(digestEvent(id, accountId, at, payload));
     delivered("digest:acc-1:one", "2026-01-01T00:00:00.000Z", {
       itemCount: 3,
       archived: 3,
@@ -185,13 +197,88 @@ describe("digest status", () => {
       saved: 9,
       unsubscribed: 9,
     });
-    expect(new GetDigestStatus({ tally }).execute()).toEqual({
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toEqual({
       ready: true,
       itemCount: 1,
       archived: 0,
       saved: 1,
       unsubscribed: 0,
       generatedAt: "2026-01-02T00:00:00.000Z",
+    });
+  });
+
+  // Guards: a later digest with no new items leaving old items on the Summary as if they were new.
+  it("resets the Summary when the newest digest has no new items", async () => {
+    const h = createInMemoryCleanup();
+    await h.seed({
+      1: { category: "notifications" },
+      2: { category: "records" },
+    });
+    const clock = fakeClock();
+    const build = new BuildDigest({ uow: h.uow, clock });
+    const tally = createInMemoryDigestTally();
+    const record = new RecordDigestReady({ tally });
+    const replay = () => {
+      for (const event of h.committedEvents())
+        if (event.type === "DigestReady") record.execute(digestReadyEvent.parse(event));
+    };
+    const first = unwrap(await build.execute({ workspaceId: WS_A, accountId: ACCOUNT_1 }, live()));
+    replay();
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toMatchObject({
+      ready: true,
+      itemCount: 2,
+      archived: 1,
+      saved: 1,
+    });
+
+    clock.advance(60_000);
+    const second = unwrap(await build.execute({ workspaceId: WS_A, accountId: ACCOUNT_1 }, live()));
+    replay();
+    expect(second.newMessageCount).toBe(0);
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toEqual({
+      ready: false,
+      itemCount: 0,
+      archived: 0,
+      saved: 0,
+      unsubscribed: 0,
+      generatedAt: second.generatedAt,
+    });
+    expect(first.generatedAt).not.toBe(second.generatedAt);
+  });
+
+  // Guards: one account's digest being shown on another account's Summary (#110).
+  it("keeps each account's figures separate", () => {
+    const tally = createInMemoryDigestTally();
+    const record = new RecordDigestReady({ tally });
+    const other = "acc-2" as AccountId;
+    record.execute(
+      digestEvent("digest:acc-1:one", ACCOUNT_1, "2026-01-01T00:00:00.000Z", {
+        itemCount: 3,
+        archived: 2,
+      }),
+    );
+    record.execute(
+      digestEvent("digest:acc-2:one", other, "2026-01-01T00:00:00.000Z", {
+        itemCount: 1,
+        saved: 1,
+      }),
+    );
+
+    expect(new GetDigestStatus({ tally }).execute(ACCOUNT_1)).toEqual({
+      ready: true,
+      itemCount: 3,
+      archived: 2,
+      saved: 0,
+      unsubscribed: 0,
+      generatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(new GetDigestStatus({ tally }).execute(other)).toEqual({
+      ready: true,
+      itemCount: 1,
+      archived: 0,
+      saved: 1,
+      unsubscribed: 0,
+      generatedAt: "2026-01-01T00:00:00.000Z",
     });
   });
 });

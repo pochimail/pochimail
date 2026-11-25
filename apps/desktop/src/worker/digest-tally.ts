@@ -1,34 +1,38 @@
 import type { DigestStatus, DigestTally } from "@pochimail/cleanup/ports/digest-tally";
+import type { AccountId } from "@pochimail/kernel/ids";
 
-/** The newest digest's new-item figures, kept in memory for the life of the worker. */
+const empty = (): DigestStatus => ({
+  ready: false,
+  itemCount: 0,
+  archived: 0,
+  saved: 0,
+  unsubscribed: 0,
+});
+
+/** Each account's newest digest's new-item figures, in memory for the life of the worker. */
 export function createDigestTally(): DigestTally {
   const seen = new Set<string>();
-  let current: DigestStatus = {
-    ready: false,
-    itemCount: 0,
-    archived: 0,
-    saved: 0,
-    unsubscribed: 0,
-  };
+  const byAccount = new Map<AccountId, DigestStatus>();
   return {
     record(eventId, digest) {
       if (seen.has(eventId)) return;
       seen.add(eventId);
+      const current = byAccount.get(digest.accountId) ?? empty();
       if (
         current.generatedAt !== undefined &&
         digest.generatedAt !== undefined &&
         digest.generatedAt < current.generatedAt
       )
         return;
-      current = {
+      byAccount.set(digest.accountId, {
         ready: digest.itemCount > 0,
         itemCount: digest.itemCount,
         archived: digest.archived ?? 0,
         saved: digest.saved ?? 0,
         unsubscribed: digest.unsubscribed ?? 0,
         ...(digest.generatedAt === undefined ? {} : { generatedAt: digest.generatedAt }),
-      };
+      });
     },
-    status: () => current,
+    status: (accountId) => byAccount.get(accountId) ?? empty(),
   };
 }

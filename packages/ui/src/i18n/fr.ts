@@ -18,16 +18,21 @@ export const fr = {
     "{count, plural, =0 {Aucun email} one {# email} other {# emails}}",
     ["count"],
   ),
+  "overview.size.gb": entry("{size, number} Go", ["size"]),
+  "overview.size.mb": entry("{size, number} Mo", ["size"]),
+  "overview.size.underTenthMb": entry("< 0,1 Mo", []),
   "overview.size.free": entry("{size, number} Go à libérer, sur {total, number} Go", [
     "size",
     "total",
   ]),
-  "overview.size.gb": entry("{size, number} Go", ["size"]),
-  "overview.size.mb": entry("{size, number} Mo", ["size"]),
   "overview.size.freeMb": entry("{size, number} Mo à libérer, sur {total, number} Mo", [
     "size",
     "total",
   ]),
+  "overview.size.freeUnderTenthMb": entry("< 0,1 Mo à libérer, sur {total, number} Mo", ["total"]),
+  "overview.figure.archived": entry("emails archivés", []),
+  "overview.figure.saved": entry("pièces jointes enregistrées", []),
+  "overview.figure.unsubscribed": entry("newsletters désabonnées", []),
   "scan.failed": entry(
     "Je n'ai pas pu finir le tri. Rien n'a été modifié. Relancez-le et je reprendrai là où je me suis arrêté.",
     [],
