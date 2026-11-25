@@ -82,7 +82,7 @@ export const messages = {
   "overview.rec.newsletters.reason": entry("Regular senders you can leave", []),
   "overview.rec.promotions.sentence": entry("Delete old promotions", []),
   "overview.rec.promotions.reason": entry("Sales and marketing emails", []),
-  "overview.rec.notifications.sentence": entry("Archive app and social notifications", []),
+  "overview.rec.notifications.sentence": entry("Archive alert emails", []),
   "overview.rec.notifications.reason": entry(
     "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
@@ -189,7 +189,7 @@ export const messages = {
   "category.records": entry("Records", []),
   "category.purchasesTravel": entry("Purchases & travel", []),
   "category.signInsSecurity": entry("Sign-ins & security", []),
-  "category.notifications": entry("Notifications", []),
+  "category.notifications": entry("Alert emails", []),
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Emails in this category will appear here.", []),

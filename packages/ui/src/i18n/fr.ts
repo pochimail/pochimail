@@ -67,10 +67,7 @@ export const fr = {
   "overview.rec.newsletters.reason": entry("Des expéditeurs réguliers que vous pouvez quitter", []),
   "overview.rec.promotions.sentence": entry("Supprimer les anciennes promotions", []),
   "overview.rec.promotions.reason": entry("Des emails de ventes et de marketing", []),
-  "overview.rec.notifications.sentence": entry(
-    "Archiver les notifications d’applications et de réseaux sociaux",
-    [],
-  ),
+  "overview.rec.notifications.sentence": entry("Archiver les emails d’alerte", []),
   "overview.rec.notifications.reason": entry(
     "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
@@ -199,7 +196,7 @@ export const fr = {
   "category.records": entry("Documents officiels", []),
   "category.purchasesTravel": entry("Achats et voyages", []),
   "category.signInsSecurity": entry("Connexions et sécurité", []),
-  "category.notifications": entry("Notifications", []),
+  "category.notifications": entry("Emails d’alerte", []),
   "category.newsletters": entry("Newsletters", []),
   "category.promotions": entry("Promotions", []),
   "category.placeholder": entry("Les emails de cette catégorie apparaîtront ici.", []),
