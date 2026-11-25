@@ -29,6 +29,8 @@ export interface ScanPipelineDeps {
   readonly workspaceId: WorkspaceId;
   readonly accountId: AccountId;
   readonly maxInFlightBatches?: number;
+  /** Batches classified at once. Default 1; the caller raises it together with a power limit on `classifier`. */
+  readonly classifyConcurrency?: number;
   readonly retryPolicy?: RetryPolicy;
   /** Called after each batch left the last stage, with its message count (progress reporting). */
   readonly onBatchProcessed?: (count: number) => Promise<void> | void;
@@ -78,7 +80,7 @@ export function createScanPipeline(deps: ScanPipelineDeps): Pipeline {
   };
   const classifyStage: Stage<Stored, Stored> = {
     name: "classify",
-    concurrency: 1,
+    concurrency: deps.classifyConcurrency ?? 1,
     process: async (item) => {
       if (item.ids.length === 0) return ok(item);
       const done = await classify.execute({ workspaceId, messageIds: item.ids }, never);
