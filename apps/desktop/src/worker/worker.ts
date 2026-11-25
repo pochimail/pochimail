@@ -5,6 +5,7 @@ import type { Handlers } from "../shared/ipc/server.ts";
 import { serveRpc } from "../shared/ipc/server.ts";
 import { createPlatformAdapter } from "../shared/platform.ts";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
+import { DATABASE_CLOSED } from "../shared/worker-shutdown.ts";
 import { createAccountsRuntime } from "./accounts-runtime.ts";
 import { createWorkerApp } from "./app.ts";
 import { createModelHostClient } from "./model-host-client.ts";
@@ -35,7 +36,10 @@ const requestShutdown = (): void => {
   shuttingDown = true;
   const close = closeDatabase;
   closeDatabase = undefined;
-  close?.();
+  if (close === undefined) return;
+  close();
+  // Main waits for this before it stops the process, so the handle is never cut off mid-close.
+  process.parentPort.postMessage(DATABASE_CLOSED);
 };
 
 // Models run in their own process; main hands this worker a new port every time that process (re)starts.

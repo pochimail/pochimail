@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { electronBinaryPath, isUniversalSlice } from "./apply-fuses.ts";
 import { galleryLeaksIn } from "./gallery-check.ts";
 import { sizeTable } from "./size-report.ts";
+import { checkKeychainRestart, type StorageSmoke } from "./storage-check.ts";
 
 const app = { appOutDir: "release/x", productFilename: "Pochimail", executableName: "pochimail" };
 
@@ -93,5 +94,38 @@ describe("gallery leak check", () => {
         }),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("real keychain restart check", () => {
+  const launch = (
+    source: "created" | "read",
+    sha256: string,
+    level: "os-keychain" | "basic-text" = "os-keychain",
+  ): StorageSmoke => ({
+    protection: level === "os-keychain" ? { level, backend: "keychain" } : { level },
+    report: {} as StorageSmoke["report"],
+    keyCheck: { source, sha256 },
+  });
+
+  // Guards: a keychain that loses or changes the key across a restart passing the smoke, which would make the mailbox database unreadable.
+  it.each([
+    ["a different key", launch("read", "bb")],
+    ["no key read back", { ...launch("read", "aa"), keyCheck: undefined }],
+    ["a key created again", launch("created", "aa")],
+  ])("fails on macOS when the second launch has %s", (_name, second) => {
+    expect(() => checkKeychainRestart("darwin", launch("created", "aa"), second)).toThrow();
+  });
+
+  it("passes when the second launch reads the same key back", () => {
+    expect(checkKeychainRestart("win32", launch("created", "aa"), launch("read", "aa"))).toContain(
+      "survived a restart",
+    );
+  });
+
+  // Guards: the Linux runner (no secret service) failing the build, or the missing proof going unrecorded.
+  it("records that Linux without a secret service was not exercised", () => {
+    const none = { ...launch("created", "aa", "basic-text"), keyCheck: undefined };
+    expect(checkKeychainRestart("linux", none, none)).toContain("not exercised");
   });
 });
