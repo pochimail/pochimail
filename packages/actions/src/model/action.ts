@@ -113,20 +113,31 @@ export const actionLogSchema = z
   });
 export type ActionLog = z.infer<typeof actionLogSchema>;
 
+/** An entry with its position in the log: the write order every adapter keeps, whatever the clock said. */
+export interface Sequenced {
+  readonly seq: number;
+  readonly entry: ActionLog;
+}
+
 /**
- * The `pending` entries written before `before` with no later `applied`, `failed`, `undone` or
- * `refused` entry for the same key: the provider call may have happened without being recorded.
- * A retry after a failure writes a new `pending` that counts again. `entries` must be oldest
- * first, ties in write order (SQL orders by `at, seq`). The in-memory adapters use this, SQL
- * repeats it and the contract suite keeps them equal.
+ * The `pending` entries written at or before `bootSeq` (the log's last sequence number when this
+ * process started) with no later `applied`, `failed`, `undone` or `refused` entry for the same
+ * key: the provider call may have happened without being recorded. A retry after a failure
+ * writes a new `pending` that counts again. `rows` must be oldest first by `seq`. The in-memory
+ * adapters use this, SQL repeats it and the contract suite keeps them equal.
  */
-export function unresolvedPending(entries: readonly ActionLog[], before: string): ActionLog[] {
+export function unresolvedPending(rows: readonly Sequenced[], bootSeq: number): ActionLog[] {
   const lastSettled = new Map<string, number>();
-  entries.forEach((e, i) => {
-    if (e.outcome !== "pending") lastSettled.set(settleKey(e), i);
-  });
-  return entries.filter(
-    (e, i) => e.outcome === "pending" && e.at < before && i > (lastSettled.get(settleKey(e)) ?? -1),
-  );
+  for (const { seq, entry } of rows) {
+    if (entry.outcome !== "pending") lastSettled.set(settleKey(entry), seq);
+  }
+  return rows
+    .filter(
+      ({ seq, entry }) =>
+        entry.outcome === "pending" &&
+        seq <= bootSeq &&
+        seq > (lastSettled.get(settleKey(entry)) ?? 0),
+    )
+    .map((r) => r.entry);
 }
 const settleKey = (e: ActionLog) => `${e.workspaceId}\u0000${e.idempotencyKey}`;

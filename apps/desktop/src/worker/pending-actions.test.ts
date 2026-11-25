@@ -55,10 +55,10 @@ it("starting the worker settles an action a crash left pending (guards an undo t
 // Guards: recovery replaying an action the user started after the worker did, as ApplyAction is mid-flight.
 it("recovery leaves an entry written after the worker started alone (guards a replay racing a running action)", async () => {
   const { adapters, uow, workspaceId, pending: make } = await start();
-  const running = make({ at: new Date(adapters.clock.now().getTime() + 60_000).toISOString() });
-  unwrap(await uow.run(async (tx) => tx.repositories.actionLog.append(running)));
+  const running = make({});
 
   const app = createWorkerApp(adapters);
+  unwrap(await uow.run(async (tx) => tx.repositories.actionLog.append(running)));
   await app.idle();
 
   const logged = unwrap(await uow.reads.actionLog.listForKey(workspaceId, running.idempotencyKey));

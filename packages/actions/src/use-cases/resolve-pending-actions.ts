@@ -34,7 +34,7 @@ const TRY_AGAIN_LATER: readonly ErrorCode[] = [
   "provider.failed",
 ];
 
-/** A `pending` entry older than this is not replayed any more: it is closed `failed` (`action.replay_expired`). */
+/** A `pending` entry older than this whose replay still fails transiently is closed `failed` (`action.replay_expired`). */
 export const MAX_REPLAY_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
@@ -43,20 +43,21 @@ export const MAX_REPLAY_AGE_MS = 3 * 24 * 60 * 60 * 1000;
  * happened changes nothing, and one that never happened completes what the user asked. The entry
  * then becomes `applied` with the provider's inverse, so Activity shows it and Undo reverses it.
  * An unsubscribe is never sent twice: it is closed as `failed` (`action.outcome_unknown`, the
- * request may or may not have left) and the user may ask again. An entry that stays deferred
- * past `MAX_REPLAY_AGE_MS` is given up the same way. Only entries older than `before`, the start
- * of this process, are touched: actions running now are never replayed.
+ * request may or may not have left) and the user may ask again. Every other entry gets one
+ * replay, however old; one whose replay fails transiently past `MAX_REPLAY_AGE_MS` is given up
+ * the same way. Only entries written up to `bootSeq`, the log's last sequence number when this
+ * process started, are touched: actions running now are never replayed.
  */
 export class ResolvePendingActions {
   constructor(private readonly deps: ResolvePendingActionsDeps) {}
 
   async execute(
     workspaceId: WorkspaceId,
-    before: string,
+    bootSeq: number,
     signal: CancelSignal,
   ): AsyncResult<ResolvePendingReport, StorageError> {
     const { uow } = this.deps;
-    const pending = await uow.reads.actionLog.listPending(workspaceId, before);
+    const pending = await uow.reads.actionLog.listPending(workspaceId, bootSeq);
     if (!pending.ok) return pending;
     let settled = 0;
     let deferred = 0;
@@ -99,9 +100,7 @@ export class ResolvePendingActions {
     };
 
     if (entry.command.kind === "unsubscribe") return close("action.outcome_unknown");
-    if (clock.now().getTime() - Date.parse(entry.at) > MAX_REPLAY_AGE_MS) {
-      return close("action.replay_expired");
-    }
+    const expired = () => clock.now().getTime() - Date.parse(entry.at) > MAX_REPLAY_AGE_MS;
     const provider = await this.deps.providerFor(entry);
     if (!provider.ok) {
       return provider.error.code === "storage.not_found" ? close("storage.not_found") : "deferred";
@@ -112,7 +111,7 @@ export class ResolvePendingActions {
       !(result.error instanceof PartiallyApplied) &&
       TRY_AGAIN_LATER.includes(result.error.code)
     ) {
-      return "deferred";
+      return expired() ? close("action.replay_expired") : "deferred";
     }
     const done = await settleProviderResult({
       record,

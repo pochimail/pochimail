@@ -27,11 +27,12 @@ export function createInMemoryActions(): InMemoryActions {
       ok(logs.filter((e) => e.workspaceId === ws && e.idempotencyKey === key).map(copy)),
     listForBatch: async (ws, id) =>
       ok(logs.filter((e) => e.workspaceId === ws && e.batchId === id).map(copy)),
-    listPending: async (ws, before) =>
+    lastSeq: async (ws) => ok(logs.findLastIndex((e) => e.workspaceId === ws) + 1),
+    listPending: async (ws, bootSeq) =>
       ok(
         unresolvedPending(
-          logs.filter((e) => e.workspaceId === ws),
-          before,
+          logs.map((entry, i) => ({ seq: i + 1, entry })).filter((r) => r.entry.workspaceId === ws),
+          bootSeq,
         ).map(copy),
       ),
     list: async (ws) =>

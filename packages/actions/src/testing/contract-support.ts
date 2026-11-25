@@ -34,7 +34,8 @@ export const signal: CancelSignal = {
   removeEventListener() {},
 };
 export const ws = unwrap(WorkspaceId("wsp_1"));
-export const FAR_FUTURE = "2100-01-01T00:00:00.000Z";
+/** A boot mark past every entry: lists all unresolved `pending` entries. */
+export const ALL_ENTRIES = Number.MAX_SAFE_INTEGER;
 export const confirmed: ApplyActionItem["authorization"] = {
   autonomy: "suggest",
   categories: ["newsletters"],

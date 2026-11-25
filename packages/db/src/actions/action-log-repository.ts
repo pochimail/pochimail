@@ -48,7 +48,7 @@ export function createActionLogRepository(db: Database) {
   const logs = (where: string, ...params: unknown[]) =>
     guard(() =>
       all(
-        `SELECT * FROM action_log WHERE workspace_id = ? AND ${where} ORDER BY at, seq`,
+        `SELECT * FROM action_log WHERE workspace_id = ? AND ${where} ORDER BY seq`,
         ...params,
       ).map(logOf),
     );
@@ -61,14 +61,21 @@ export function createActionLogRepository(db: Database) {
     listForAction: (ws: string, actionId: string) => logs("action_id = ?", ws, actionId),
     listForKey: (ws: string, key: string) => logs("idempotency_key = ?", ws, key),
     listForBatch: (ws: string, batchId: string) => logs("batch_id = ?", ws, batchId),
-    listPending: (ws: string, before: string) =>
+    lastSeq: (ws: string) =>
+      guard(() =>
+        num(
+          one("SELECT COALESCE(MAX(seq), 0) AS last FROM action_log WHERE workspace_id = ?", ws)
+            ?.last,
+        ),
+      ),
+    listPending: (ws: string, bootSeq: number) =>
       logs(
-        `outcome = 'pending' AND at < ? AND NOT EXISTS (
+        `outcome = 'pending' AND seq <= ? AND NOT EXISTS (
            SELECT 1 FROM action_log o WHERE o.workspace_id = action_log.workspace_id
              AND o.idempotency_key = action_log.idempotency_key AND o.outcome <> 'pending'
-             AND (o.at > action_log.at OR (o.at = action_log.at AND o.seq > action_log.seq)))`,
+             AND o.seq > action_log.seq)`,
         ws,
-        before,
+        bootSeq,
       ),
     list: (ws: string, p: { limit: number; cursor?: string }) =>
       guard(() => {

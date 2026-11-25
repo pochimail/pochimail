@@ -12,26 +12,29 @@ export interface ActionLogReader {
     ws: WorkspaceId,
     actionId: ActionId,
   ): AsyncResult<readonly ActionLog[], StorageError>;
-  /** Every entry (applied, failed, refused) recorded for the key, oldest first. */
+  /** Every entry (applied, failed, refused) recorded for the key, in write order. */
   listForKey(
     ws: WorkspaceId,
     idempotencyKey: string,
   ): AsyncResult<readonly ActionLog[], StorageError>;
-  /** Every entry of a batch, oldest first, so undo can reverse the whole batch after a restart. */
+  /** Every entry of a batch, in write order, so undo can reverse the whole batch after a restart. */
   listForBatch(ws: WorkspaceId, batchId: string): AsyncResult<readonly ActionLog[], StorageError>;
+  /** The sequence number of the workspace's last entry (0 when empty): the mark a start records. */
+  lastSeq(ws: WorkspaceId): AsyncResult<number, StorageError>;
   /**
-   * `pending` entries written before `before` (the start time of this process) with no later
-   * `applied`, `failed`, `undone` or `refused` entry for the same key, later meaning greater
-   * `(at, seq)`: the provider call may have happened without being recorded. A retry after a
-   * failure writes a new `pending`, which counts again. Entries from `before` on belong to
-   * actions running now and are never listed, so recovery cannot replay them. Oldest first.
+   * `pending` entries written at or before `bootSeq` (`lastSeq` at the start of this process)
+   * with no later `applied`, `failed`, `undone` or `refused` entry for the same key, later
+   * meaning a greater sequence number, never the wall clock: the provider call may have happened
+   * without being recorded. A retry after a failure writes a new `pending`, which counts again.
+   * Later entries belong to actions running now and are never listed, so recovery cannot replay
+   * them. Oldest first.
    *
    * Recovery replays what this lists, with two rules: a cancelled action is closed `failed`
-   * (`operation.cancelled`) when it is cancelled and never replayed; a replay that stays
-   * deferred (provider offline, rate limited, auth expired, `provider.failed`) is given up
-   * after `MAX_REPLAY_AGE_MS`, closed `failed` with `action.replay_expired`.
+   * (`action.outcome_unknown`) and never replayed; every entry gets one replay, and one whose
+   * replay fails transiently (provider offline, rate limited, auth expired, `provider.failed`)
+   * after `MAX_REPLAY_AGE_MS` is closed `failed` with `action.replay_expired`.
    */
-  listPending(ws: WorkspaceId, before: string): AsyncResult<readonly ActionLog[], StorageError>;
+  listPending(ws: WorkspaceId, bootSeq: number): AsyncResult<readonly ActionLog[], StorageError>;
   /** Every row in write order: one action yields its `pending` row and its final row. */
   list(ws: WorkspaceId, page: PageRequest): AsyncResult<Page<ActionLog>, StorageError>;
 }

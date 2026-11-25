@@ -22,15 +22,18 @@ import { derivedReads } from "./read-models/derived-reads.ts";
 import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
 
+const sequenced = (log: Map<string, ActionLog>, ws: WorkspaceId) =>
+  [...log.values()]
+    .map((entry, seq) => ({ seq: seq + 1, entry }))
+    .filter((r) => r.entry.workspaceId === ws);
 const oldestFirst = (
   log: Map<string, ActionLog>,
   ws: WorkspaceId,
-  match: (l: ActionLog) => boolean = () => true,
+  match = (_: ActionLog) => true,
 ) =>
-  [...log.values()]
-    .filter((l) => l.workspaceId === ws && match(l))
-    .sort((a, b) => byText(a.at, b.at))
-    .map(copy);
+  sequenced(log, ws)
+    .filter((r) => match(r.entry))
+    .map((r) => copy(r.entry));
 function inSequenceRange(
   data: Data,
   m: Message,
@@ -70,6 +73,8 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
       const failure = fail();
       return Promise.resolve(failure ? err(failure) : read());
     };
+    const logs = (ws: WorkspaceId, match: (l: ActionLog) => boolean) =>
+      guarded(() => ok(oldestFirst(data().actionLog, ws, match))) as never;
     const found = <T>(map: Map<string, T>, k: string, what: string) =>
       guarded(() => {
         const v = map.get(k);
@@ -144,20 +149,15 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
       },
       actionLog: {
         get: (ws, id) => found(data().actionLog, key(ws, id), "Action log entry"),
-        listForAction: (ws, actionId) =>
+        listForAction: (ws, actionId) => logs(ws, (l) => l.actionId === actionId),
+        listForKey: (ws, key) => logs(ws, (l) => l.idempotencyKey === key),
+        listForBatch: (ws, batchId) => logs(ws, (l) => l.batchId === batchId),
+        lastSeq: (ws) =>
+          guarded(() => ok(sequenced(data().actionLog, ws).at(-1)?.seq ?? 0)) as never,
+        listPending: (ws, bootSeq) =>
           guarded(() =>
-            ok(oldestFirst(data().actionLog, ws, (l) => l.actionId === actionId)),
+            ok(unresolvedPending(sequenced(data().actionLog, ws), bootSeq).map(copy)),
           ) as never,
-        listForKey: (ws, idempotencyKey) =>
-          guarded(() =>
-            ok(oldestFirst(data().actionLog, ws, (l) => l.idempotencyKey === idempotencyKey)),
-          ) as never,
-        listForBatch: (ws, batchId) =>
-          guarded(() =>
-            ok(oldestFirst(data().actionLog, ws, (l) => l.batchId === batchId)),
-          ) as never,
-        listPending: (ws, before) =>
-          guarded(() => ok(unresolvedPending(oldestFirst(data().actionLog, ws), before))) as never,
         list: (ws, page) =>
           guarded(() => {
             const rows = [...data().actionLog.values()].filter((l) => l.workspaceId === ws);
