@@ -102,6 +102,8 @@ const emptyHandlers: Handlers = {
       promotions: 0,
     }),
     "scan.status": () => [],
+    "sync.status": () => [],
+    "sync.now": () => ({ results: [] }),
     "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
     "settings.get": () => DEFAULT_APP_SETTINGS,
   },

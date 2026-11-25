@@ -163,6 +163,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     digestStatus: new GetDigestStatus({ tally }),
     settings: new ManageSettings({ store: adapters.settings }),
     scans,
+    syncs,
     events: bus,
     deviceName: adapters.deviceName,
   });
@@ -175,7 +176,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     },
     stop: async () => {
       stopPolling();
-      await syncs.idle();
+      await syncs.stop();
     },
   };
 }

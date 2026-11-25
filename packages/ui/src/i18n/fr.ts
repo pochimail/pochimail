@@ -6,6 +6,7 @@ import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
+import { syncMessages } from "./sync-messages.ts";
 
 /**
  * French catalog. Typed against the English keys: a missing key or a renamed placeholder fails
@@ -106,7 +107,7 @@ export const fr = {
   "overview.loading": entry("Chargement de la vue d’ensemble", []),
   ...summaryMessages.fr,
 
-  "sync.progress": entry("Synchronisation de vos emails", []),
+  ...syncMessages.fr,
   "shell.loading": entry("Démarrage…", []),
   "shell.error.title": entry("Un problème est survenu", []),
   "shell.error.body": entry(

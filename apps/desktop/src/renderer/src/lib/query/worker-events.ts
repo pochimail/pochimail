@@ -11,6 +11,7 @@ type AppEventHandlers = {
   readonly onScanFailed: () => void;
   readonly onScanEnded: () => void;
   readonly onDigestReady: () => void;
+  readonly onSyncChanged: (finished: boolean) => void;
 };
 
 /** Routes one global app event to the reconciliation or shell callback that owns it. */
@@ -36,6 +37,9 @@ const dispatchAppEvent = (event: EventOf<"app.events">, handlers: AppEventHandle
     case "DigestReady":
       handlers.onDigestReady();
       break;
+    case "SyncChanged":
+      handlers.onSyncChanged(!event.running);
+      break;
   }
 };
 
@@ -50,6 +54,8 @@ export const subscribeAppEvents = (
   onScanEnded: () => void = () => {},
   /** A digest was tallied: the summary's counts must be re-read. */
   onDigestReady: () => void = () => {},
+  /** A sync started or ended: the shell's Sync now state must be re-read, and the figures when it ended. */
+  onSyncChanged: (finished: boolean) => void = () => {},
 ): (() => void) => {
   let closed = false;
   let currentUnsubscribe: (() => void) | undefined;
@@ -70,6 +76,7 @@ export const subscribeAppEvents = (
             onScanFailed,
             onScanEnded,
             onDigestReady,
+            onSyncChanged,
           });
         },
         (error) => {

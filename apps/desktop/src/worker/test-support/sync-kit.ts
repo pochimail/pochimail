@@ -19,7 +19,10 @@ import { createFakeTimer } from "@pochimail/testing/fake-timer";
 import { createFakeWindowActivity } from "@pochimail/testing/fake-window-activity";
 import { loopbackFetch } from "@pochimail/testing/loopback-fetch";
 import { expect, vi } from "vitest";
+import { createRpcClient } from "../../shared/ipc/client.ts";
 import type { EventOf } from "../../shared/ipc/contract.ts";
+import { serveRpc } from "../../shared/ipc/server.ts";
+import { fromDomPort } from "../../shared/ipc/transport.ts";
 import { createAccountsRuntime } from "../accounts-runtime.ts";
 
 /** A new message for the fake Gmail; the number only makes ids and dates unique. */
@@ -53,12 +56,14 @@ export async function createSyncKit(accounts = 1) {
   const power = createFakePowerMonitor();
   const activity = createFakeWindowActivity("focused");
   const online = { value: true };
+  let held: Promise<void> | null = null;
 
   // Each account's token is bound to the next unbound fake Gmail the first time it is used.
   const bound = new Map<string, FakeGmailServer>();
   let connecting = 0;
   const gmailFetch = async (url: string, init: FetchInit) => {
     if (!online.value) throw new TypeError("offline");
+    if (held !== null) await held;
     const auth = init.headers?.authorization ?? init.headers?.Authorization ?? "";
     let server = bound.get(auth);
     if (server === undefined) {
@@ -154,6 +159,33 @@ export async function createSyncKit(accounts = 1) {
       return outcome.accountId;
     },
     call,
+    /** The real IPC layer over a MessageChannel, as the renderer talks to the worker. */
+    rpc() {
+      const { port1, port2 } = new MessageChannel();
+      port1.start();
+      port2.start();
+      const dispose = serveRpc(fromDomPort(port2), runtime.handlers);
+      const client = createRpcClient(fromDomPort(port1));
+      return {
+        client,
+        close: () => {
+          dispose();
+          port1.close();
+          port2.close();
+        },
+      };
+    },
+    /** Every Gmail request waits until the returned function is called: a sync that is slow to answer. */
+    hold(): () => void {
+      let release: () => void = () => {};
+      held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return () => {
+        held = null;
+        release();
+      };
+    },
     /** Moves time forward in poll-sized steps; each poll that comes due finishes before the next. */
     async advance(ms: number, step = 60_000): Promise<void> {
       for (let left = ms; left > 0; left -= step) {

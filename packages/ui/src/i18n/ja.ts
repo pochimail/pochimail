@@ -6,6 +6,7 @@ import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
+import { syncMessages } from "./sync-messages.ts";
 
 /**
  * Japanese catalog. Polite です・ます register, natural product Japanese, no machine-literal
@@ -95,7 +96,7 @@ export const ja = {
   "overview.loading": entry("概要を読み込んでいます", []),
   ...summaryMessages.ja,
 
-  "sync.progress": entry("メールを同期しています", []),
+  ...syncMessages.ja,
   "shell.loading": entry("起動しています…", []),
   "shell.error.title": entry("問題が発生しました", []),
   "shell.error.body": entry(
