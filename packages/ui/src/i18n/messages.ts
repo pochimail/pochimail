@@ -196,6 +196,7 @@ export const messages = {
   "switcher.menu": entry("Account", []),
   "switcher.all": entry("All accounts", []),
   "switcher.add": entry("Add another account", []),
+  "nav.empty": entry("{name}, empty", ["name"]),
   "nav.topics": entry("Topics", []),
   "type.personal": entry("Personal", []),
   "type.transactional": entry("Transactional", []),

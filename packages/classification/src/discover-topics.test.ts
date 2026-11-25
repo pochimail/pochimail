@@ -105,16 +105,18 @@ describe("DiscoverTopics", () => {
     expect(unwrap(await c.uow.reads.topics.list(WS_A))).toEqual([]);
   });
 
-  it("the sidebar counts list only topics that hold email, by name (guards an empty topic shown)", async () => {
+  it("the sidebar counts list every topic by name, 0 when it holds no email (guards an empty topic dropped, #291)", async () => {
     const { c, discover } = await mailbox();
     unwrap(await discover());
     const empty = { schemaVersion: 1 as const, id: "top_empty", workspaceId: WS_A, name: "Alpha" };
     unwrap(await c.uow.run(async (tx) => tx.repositories.topics.save(empty as never), live()));
     const counts = unwrap(await new CountTopics({ uow: c.uow }).execute(WS_A, [ACCOUNT_1]));
     expect(counts.map((t) => [t.name, t.count])).toEqual([
+      ["Alpha", 0],
       ["Club", 2],
       ["Shop", 2],
     ]);
-    expect(unwrap(await new CountTopics({ uow: c.uow }).execute(WS_A, []))).toEqual([]);
+    const none = unwrap(await new CountTopics({ uow: c.uow }).execute(WS_A, []));
+    expect(none.map((t) => t.count)).toEqual([0, 0, 0]);
   });
 });

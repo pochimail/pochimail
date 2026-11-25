@@ -22,7 +22,8 @@ const zero: Counts = {
   newsletter: 0,
   promotion: 0,
 };
-/** Topics each account holds, by name; a topic with no email is never listed by the worker. */
+/** Topics each account holds, by name; the worker lists every topic that exists, 0 when it has no email. */
+const TOPICS = ["Job search", "Kindergarten"];
 const topicsByAccount: Record<string, Record<string, number>> = {
   a1: { "Job search": 214, Kindergarten: 3 },
   a2: { "Job search": 6 },
@@ -60,11 +61,11 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
         return sum;
       },
       "mailbox.topics": ({ accountIds }) => {
-        const sum: Record<string, number> = {};
-        for (const id of accountIds)
-          for (const [name, n] of Object.entries(topicsByAccount[id] ?? {}))
-            sum[name] = (sum[name] ?? 0) + n;
-        return Object.entries(sum).map(([name, count]) => ({ id: `top_${name}`, name, count }));
+        return TOPICS.map((name) => ({
+          id: `top_${name}`,
+          name,
+          count: accountIds.reduce((n, id) => n + (topicsByAccount[id]?.[name] ?? 0), 0),
+        }));
       },
       "overview.get": () => ({
         scanned: 0,
@@ -201,16 +202,40 @@ describe("app frame", () => {
     },
   );
 
-  it("hides a type with no email and shows it once it gets mail (guards D5: empty types listed)", async () => {
+  const TYPE_NAMES = ["Personal", "Transactional", "Alert emails", "Newsletters", "Promotions"];
+  const MUTED = /(^|\s)opacity-60(\s|$)/;
+  const link = (nav: ReturnType<typeof within>, name: string) =>
+    nav.getByRole("link", { name: new RegExp(`^${name}(, empty)?[\\d,]*$`) });
+
+  // Guards: a sidebar that looks empty or broken when a new account has no mail (#291).
+  it("lists all five types for an account with no mail, each muted and named empty", async () => {
+    const state = setup();
+    state.mailboxes.a1 = { ...zero };
+    state.mailboxes.a2 = { ...zero };
+    const nav = await sidebar();
+    for (const name of TYPE_NAMES) {
+      await waitFor(() =>
+        expect(link(nav, name).getAttribute("aria-label")).toBe(`${name}, empty`),
+      );
+      expect(link(nav, name).className).toMatch(MUTED);
+    }
+  });
+
+  // Guards: an entry that stays muted after mail arrives, or one that needs a reload (#291).
+  it("shows every type at all times and un-mutes one as soon as it gets mail, without a reload", async () => {
     const state = setup();
     const nav = await sidebar();
-    await waitFor(() => expect(nav.getByRole("link", { name: /Personal/ })).toBeTruthy());
-    expect(nav.queryByRole("link", { name: /Promotions/ })).toBeNull();
-    expect(nav.queryByRole("link", { name: /Alert emails/ })).toBeNull();
+    await waitFor(() => expect(link(nav, "Personal").textContent).toContain("12"));
+    const promotions = link(nav, "Promotions");
+    expect(promotions.getAttribute("aria-label")).toBe("Promotions, empty");
+    expect(promotions.className).toMatch(MUTED);
+    expect(link(nav, "Personal").getAttribute("aria-label")).toBeNull();
+    expect(link(nav, "Personal").className).not.toMatch(MUTED);
 
     state.mailboxes.a1 = { ...zero, personal: 10, newsletter: 5, promotion: 4 };
     state.emit({ type: "ScanCompleted", accountId: "a1", processed: 4 });
-    expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
+    await waitFor(() => expect(link(nav, "Promotions").getAttribute("aria-label")).toBeNull());
+    expect(link(nav, "Promotions").textContent).toContain("4");
   });
 
   it("changes the counts when switching account, without remounting the content (guards a reload on switch)", async () => {
@@ -229,8 +254,10 @@ describe("app frame", () => {
     await waitFor(() =>
       expect(nav.getByRole("link", { name: /Personal/ }).textContent).toContain("2"),
     );
-    expect(nav.queryByRole("link", { name: /Newsletters/ })).toBeNull();
-    expect(nav.getByRole("link", { name: /Transactional/ }).textContent).toContain("3");
+    // One account lists the same sections as All accounts: the empty ones stay, muted (#291).
+    for (const name of TYPE_NAMES) expect(link(nav, name)).toBeTruthy();
+    expect(link(nav, "Newsletters").getAttribute("aria-label")).toBe("Newsletters, empty");
+    expect(link(nav, "Transactional").textContent).toContain("3");
     expect(screen.getByRole("main")).toBe(main);
   });
 
@@ -249,7 +276,7 @@ describe("app frame", () => {
     await waitFor(() =>
       expect(nav.getByRole("link", { name: /Job search/ }).textContent).toContain("6"),
     );
-    expect(nav.queryByRole("link", { name: /Kindergarten/ })).toBeNull();
+    expect(nav.getByRole("link", { name: "Kindergarten, empty" })).toBeTruthy();
   });
 
   it("opens a topic with its name as the title (guards a topic link that lands on a nameless screen)", async () => {
@@ -334,14 +361,14 @@ describe("app frame", () => {
     expect(screen.getByRole("button", { name: /Teams/ }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows a type as soon as scan progress brings mail, before the scan completes (guards D5 waiting for ScanCompleted)", async () => {
+  it("counts a type as soon as scan progress brings mail, before the scan completes (guards waiting for ScanCompleted)", async () => {
     const state = setup();
     const nav = await sidebar();
     await waitFor(() => expect(nav.getByRole("link", { name: /Personal/ })).toBeTruthy());
     await waitFor(() => expect(state.emitters.length).toBeGreaterThan(0));
     state.mailboxes.a1 = { ...zero, personal: 10, newsletter: 5, promotion: 4 };
     state.progress({ accountId: "a1", phase: "classifying", processed: 4, total: 100 });
-    expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
+    await waitFor(() => expect(link(nav, "Promotions").textContent).toContain("4"));
   });
 
   it("tabs through the switcher, then Overview and the types in order (guards a rail or tab bar that reorders focus)", async () => {

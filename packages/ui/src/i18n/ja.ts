@@ -182,6 +182,7 @@ export const ja = {
   "switcher.menu": entry("アカウント", []),
   "switcher.all": entry("すべてのアカウント", []),
   "switcher.add": entry("別のアカウントを追加", []),
+  "nav.empty": entry("{name}、空", ["name"]),
   "nav.topics": entry("トピック", []),
   "type.personal": entry("個人", []),
   "type.transactional": entry("取引", []),

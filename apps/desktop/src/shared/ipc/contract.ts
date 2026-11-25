@@ -88,12 +88,10 @@ const queries = {
     input: z.object({ accountIds: z.array(accountId).max(100) }),
     output: z.record(emailTypeSchema, z.number().int().nonnegative()),
   },
-  /** Emails per topic over the given accounts, for the topics that hold email; names and counts only, never content. */
+  /** Emails per topic over the given accounts, for every topic (0 when empty); names and counts only, never content. */
   "mailbox.topics": {
     input: z.object({ accountIds: z.array(accountId).max(100) }),
-    output: z
-      .array(z.object({ id: z.string().min(1), name: z.string().min(1), count: count.positive() }))
-      .max(500),
+    output: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), count })).max(500),
   },
   /** Read-only: the live (running or paused) scan jobs of the given accounts, so a screen can show Pause or Resume after a reload. */
   "scan.status": {

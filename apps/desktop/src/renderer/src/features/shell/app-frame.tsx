@@ -51,7 +51,6 @@ import { useTopics } from "../../lib/use-topics.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { TopicsGroup, TypeItems } from "./mail-nav.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
-import { visibleTypes } from "./visible-types.ts";
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";
 
@@ -81,7 +80,7 @@ function NavItem({
 
 const REFRESH_EVERY_MS = 2000;
 
-/** A type appears when it gets mail (D5): while an account scans, refresh the counts at most every 2 s. */
+/** A section's count follows the mail it gets: while an account scans, refresh the counts at most every 2 s. */
 function useRefreshCountsWhileScanning(accounts: readonly { id: string }[]) {
   const accountIds = accounts.map((a) => a.id);
   const client = useWorkerClient();
@@ -130,7 +129,6 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
     queryFn: () => client.call("mailbox.types", { accountIds }),
     enabled: loaded,
   });
-  const types = visibleTypes(counts.data);
   const topics = useTopics(accountIds, loaded).data ?? [];
   const current = accountList.find((a) => a.id === selected);
   const currentLabel = current?.displayName ?? t("switcher.all");
@@ -202,7 +200,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
                   icon={LayoutGridIcon}
                   active={pathname}
                 />
-                <TypeItems types={types} pathname={pathname} />
+                <TypeItems counts={counts.data} pathname={pathname} />
               </SidebarMenu>
             </SidebarGroup>
             <TopicsGroup topics={topics} pathname={pathname} />

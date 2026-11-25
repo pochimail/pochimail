@@ -220,8 +220,8 @@ describe("worker app over the real IPC layer", () => {
     close();
   });
 
-  // Guards: the sidebar listing an empty topic, or counts that ignore the account switcher (ADR 0016).
-  it("mailbox.topics lists only topics that hold email for the selected accounts", async () => {
+  // Guards: a sidebar that drops an empty topic, or counts that ignore the account switcher (#291).
+  it("mailbox.topics lists every topic, with 0 when it has no email for the selected accounts", async () => {
     const { client, app, adapters, close } = await connect();
     const accountIds = mailbox.accounts.map((a) => a.id);
     expect(await client.call("mailbox.topics", { accountIds })).toEqual([]);
@@ -253,7 +253,7 @@ describe("worker app over the real IPC layer", () => {
     );
     const all = await client.call("mailbox.topics", { accountIds });
     expect(all.length).toBeGreaterThan(0);
-    for (const topic of all) expect(topic.count).toBeGreaterThan(0);
+    expect(all.some((t) => t.count > 0)).toBe(true);
     const total = all.reduce((sum, t) => sum + t.count, 0);
     const [first] = accountIds;
     const scoped = await client.call("mailbox.topics", { accountIds: first ? [first] : [] });

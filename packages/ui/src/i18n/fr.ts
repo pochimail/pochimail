@@ -202,6 +202,7 @@ export const fr = {
   "switcher.menu": entry("Compte", []),
   "switcher.all": entry("Tous les comptes", []),
   "switcher.add": entry("Ajouter un autre compte", []),
+  "nav.empty": entry("{name}, vide", ["name"]),
   "nav.topics": entry("Sujets", []),
   "type.personal": entry("Personnel", []),
   "type.transactional": entry("Transactionnel", []),

@@ -11,7 +11,7 @@ export interface TopicCount {
   readonly count: number;
 }
 
-/** Counts only: the topics that hold email for the selected accounts, by name (the sidebar's numbers). */
+/** Counts only: every topic with its emails for the selected accounts (0 when empty), by name (the sidebar's numbers). */
 export class CountTopics {
   constructor(private readonly deps: { readonly uow: ClassificationUnitOfWork }) {}
 
@@ -27,7 +27,6 @@ export class CountTopics {
     return ok(
       known.value
         .map((t) => ({ id: t.id, name: t.name, count: counted.value[t.id] ?? 0 }))
-        .filter((t) => t.count > 0)
         .sort((a, b) => (a.name < b.name ? -1 : 1)),
     );
   }

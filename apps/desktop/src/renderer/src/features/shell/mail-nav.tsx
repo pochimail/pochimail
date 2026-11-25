@@ -1,4 +1,4 @@
-import type { EmailType } from "@pochimail/classification/model/email-type";
+import { EMAIL_TYPES, type EmailType } from "@pochimail/classification/model/email-type";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -23,6 +23,9 @@ const TYPE_NAV: Record<EmailType, { label: MessageKey; icon: ComponentType }> = 
   promotion: { label: TYPE_LABELS.promotion, icon: TagIcon },
 };
 
+/** An empty section stays listed and clickable, muted, and its name says it is empty. */
+const EMPTY_CLASS = "opacity-60";
+
 /** The inside of a sidebar link: icon, label and email count. */
 function RowContent({
   icon: Icon,
@@ -43,32 +46,42 @@ function RowContent({
   );
 }
 
-/** The types that hold email, in the fixed order of ADR 0016. */
+/** Every type, always, with its count (0 when it has no email) in the fixed order of ADR 0016. */
 export function TypeItems({
-  types,
+  counts,
   pathname,
 }: {
-  types: readonly { id: EmailType; count: number }[];
+  counts: Readonly<Partial<Record<EmailType, number>>> | undefined;
   pathname: string;
 }) {
   const t = useT();
-  return types.map(({ id, count }) => (
-    <SidebarMenuItem key={id} reach="wide">
-      <SidebarMenuButton
-        asChild
-        isActive={pathname === `/type/${id}`}
-        tone="muted"
-        tooltip={t(TYPE_NAV[id].label)}
-      >
-        <Link to="/type/$typeId" params={{ typeId: id }} search={(prev) => prev}>
-          <RowContent icon={TYPE_NAV[id].icon} label={t(TYPE_NAV[id].label)} count={count} />
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  ));
+  return EMAIL_TYPES.map((id) => {
+    const count = counts?.[id] ?? 0;
+    const label = t(TYPE_NAV[id].label);
+    return (
+      <SidebarMenuItem key={id} reach="wide">
+        <SidebarMenuButton
+          asChild
+          isActive={pathname === `/type/${id}`}
+          tone="muted"
+          tooltip={label}
+          className={count === 0 ? EMPTY_CLASS : undefined}
+        >
+          <Link
+            to="/type/$typeId"
+            params={{ typeId: id }}
+            search={(prev) => prev}
+            aria-label={count === 0 ? t("nav.empty", { name: label }) : undefined}
+          >
+            <RowContent icon={TYPE_NAV[id].icon} label={label} count={count} />
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  });
 }
 
-/** The topics that hold email; the group is absent while there are none. */
+/** Every topic that exists, with its count; the group is absent only while no topic exists. */
 export function TopicsGroup({
   topics,
   pathname,
@@ -89,8 +102,14 @@ export function TopicsGroup({
               isActive={pathname === `/topic/${id}`}
               tone="muted"
               tooltip={name}
+              className={count === 0 ? EMPTY_CLASS : undefined}
             >
-              <Link to="/topic/$topicId" params={{ topicId: id }} search={(prev) => prev}>
+              <Link
+                to="/topic/$topicId"
+                params={{ topicId: id }}
+                search={(prev) => prev}
+                aria-label={count === 0 ? t("nav.empty", { name }) : undefined}
+              >
                 <RowContent icon={HashIcon} label={name} count={count} />
               </Link>
             </SidebarMenuButton>
