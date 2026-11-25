@@ -185,6 +185,9 @@ const routeTree = rootRoute.addChildren([
   ...galleryRoutes,
 ]);
 
+// Dev and E2E builds: the in-memory router starts where the page URL's hash says, so a test can open any screen (a production bundle always starts at "/").
+const startPath = (): string => (__POCHIMAIL_GALLERY__ ? location.hash.slice(1) : "") || "/";
+
 export type AppRouter = ReturnType<typeof createAppRouter>;
 
 /** Creates the renderer router. File-based loading (file://) has no server, so it uses in-memory history. */
@@ -195,7 +198,7 @@ export const createAppRouter = (
   createRouter({
     routeTree,
     context,
-    history: createMemoryHistory({ initialEntries: options.initialEntries ?? ["/"] }),
+    history: createMemoryHistory({ initialEntries: options.initialEntries ?? [startPath()] }),
   });
 
 declare module "@tanstack/react-router" {

@@ -8,6 +8,9 @@ export const galleryEnabled = (
   env: { POCHIMAIL_E2E?: string | undefined },
 ): boolean => command === "serve" || env.POCHIMAIL_E2E === "1";
 
+/** Where an E2E build goes, so a `pnpm build` or a package never ships or caches it (M4-19). */
+export const E2E_OUT_DIR = "out-e2e";
+
 export const galleryDefine = (enabled: boolean): Record<string, string> => ({
   __POCHIMAIL_GALLERY__: JSON.stringify(enabled),
 });

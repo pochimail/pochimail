@@ -128,6 +128,53 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # Electron end-to-end tests (M4-19, ADR 0017): the onboarding smoke runs on every OS, the light/dark picture tests on Linux only (baselines are Linux). Same OS policy as `package`: PRs get Linux; the merge queue and main run all three. Not a required check.
+  e2e:
+    name: e2e (${{ matrix.os }})
+    # The Linux runner is pinned: the baselines are rasterised there, and `ubuntu-latest` moves.
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && 'ubuntu-24.04' || matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["ubuntu-latest","macos-latest","windows-latest"]') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Linux display server
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends xvfb
+      - name: E2E
+        if: runner.os != 'Linux'
+        run: pnpm --filter @pochimail/desktop e2e
+      - name: E2E
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" pnpm --filter @pochimail/desktop e2e
+      # Missing baselines are written by the run itself: this is where new or deleted ones come from (ADR 0017).
+      - name: Upload baselines
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-screenshots
+          path: apps/desktop/e2e/__screenshots__
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Upload failures
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results-${{ runner.os }}
+          path: apps/desktop/e2e/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Eval regression gate (M1-11): runs the pipeline over the small seeded fixture, scores precision and
   # recall per category and per signal, and fails when any class drops more than the tolerance below
   # eval/baseline.small.json. Refresh the baseline on purpose with `pnpm --filter @pochimail/testing eval:update-baseline`.

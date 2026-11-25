@@ -19,6 +19,7 @@ import {
 } from "@pochimail/testing/fixture-mailbox/mailbox-reader";
 import { createInMemoryJobQueue } from "@pochimail/testing/in-memory-job-queue";
 import { createInMemoryUnitOfWork } from "@pochimail/testing/in-memory-store";
+import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
 import { DEMO_SEED, type DemoScale } from "../shared/demo.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { WorkerAdapters } from "./app.ts";
@@ -34,6 +35,8 @@ export interface FixtureAdapterOptions {
   readonly newJobId: () => string;
   /** Messages per provider page. Default 100. */
   readonly pageSize?: number;
+  /** Each page takes this long to arrive, so a scan stays in progress (E2E). Default none. */
+  readonly pageDelayMs?: number;
 }
 
 /** How many of the fixture's own clean-up candidates the demo history already carried out (#114). */
@@ -173,15 +176,24 @@ export async function createFixtureAdapters(
   if (!seeded.ok) throw seeded.error;
 
   const providers = new Map(
-    mailbox.accounts.map((account) => [
-      account.id,
-      createFixtureMailProvider({
+    mailbox.accounts.map((account) => {
+      const provider = createFixtureMailProvider({
         mbox: account.mbox,
         accountId: account.id,
         workspaceId: mailbox.workspaceId,
         pageSize: options.pageSize ?? 100,
-      }),
-    ]),
+      });
+      const delay = options.pageDelayMs;
+      if (delay === undefined) return [account.id, provider] as const;
+      const paced: MailProvider = {
+        ...provider,
+        sync: async (cursor, signal) => {
+          await new Promise<void>((resolve) => options.timer.set(resolve, delay));
+          return provider.sync(cursor, signal);
+        },
+      };
+      return [account.id, paced] as const;
+    }),
   );
   return {
     workspaceId,

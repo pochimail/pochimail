@@ -17,7 +17,7 @@ import {
   Tray,
   utilityProcess,
 } from "electron";
-import { demoScale } from "../shared/demo.ts";
+import { demoScale, demoSwitches } from "../shared/demo.ts";
 import { databasePathFor } from "./database-path.ts";
 import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
@@ -123,7 +123,7 @@ const demoEnv: Record<string, string> = {
       return value === undefined ? [] : [[name, value] as const];
     }),
   ),
-  POCHIMAIL_DEMO: demo ?? "",
+  ...demoSwitches(demo, process.env),
 };
 
 // The worker alone gets the sign-in configuration; the database path travels in its start message.
