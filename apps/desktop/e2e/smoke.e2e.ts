@@ -37,6 +37,8 @@ test("a new user gets from Welcome to the first summary, and can pause and resum
     await test.step("The summary sheet opens when the scan is done, and closes", async () => {
       const sheet = page.getByRole("dialog", { name: copy("summary.title") });
       await expect(sheet).toBeVisible({ timeout: 30_000 });
+      // Radix locks the page scroll with a runtime stylesheet that the strict CSP must still let through.
+      await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
       await sheet.getByRole("button", { name: copy("action.close") }).click();
       await expect(sheet).toBeHidden();
       await expect(page.getByRole("button", { name: copy("overview.viewSummary") })).toBeVisible();
@@ -60,6 +62,28 @@ test("pressing elsewhere on Setup does not move the Start button", async () => {
     await page.mouse.click(4, 4);
     await expect(heading).not.toBeFocused();
     expect(await start.boundingBox()).toEqual(before);
+    expect(running.problems).toEqual([]);
+  } finally {
+    await running.close();
+  }
+});
+
+// Guards: Sonner's runtime stylesheet blocked by the strict CSP (style-src 'self'), which leaves every toast unstyled.
+test("toast styles apply under the strict CSP", async () => {
+  const running = await launchApp();
+  const { page } = running;
+  try {
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const toastRules = await page.evaluate(
+      () =>
+        [...document.styleSheets, ...document.adoptedStyleSheets].filter((sheet) =>
+          [...sheet.cssRules].some(
+            (rule) =>
+              rule instanceof CSSStyleRule && rule.selectorText.includes("data-sonner-toast"),
+          ),
+        ).length,
+    );
+    expect(toastRules).toBeGreaterThan(0);
     expect(running.problems).toEqual([]);
   } finally {
     await running.close();

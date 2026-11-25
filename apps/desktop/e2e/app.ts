@@ -19,7 +19,7 @@ export interface AppOptions {
 export interface RunningApp {
   readonly app: ElectronApplication;
   readonly page: Page;
-  /** Uncaught errors and error-boundary reports of the renderer so far: a screen that throws shows up here. */
+  /** Uncaught errors, error-boundary reports and CSP violations of the renderer so far: a screen that throws shows up here. */
   readonly problems: readonly string[];
   /** Opens a route of the E2E build (the in-memory router starts at the URL hash): `/gallery`, `/settings`, … */
   open(route: string): Promise<void>;
@@ -70,9 +70,11 @@ export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
   page.on("console", (message) => {
+    if (message.type() !== "error") return;
     // AppErrorBoundary logs this event when a screen fails to render.
-    if (message.type() === "error" && message.text().includes('"renderer-error"'))
-      problems.push(`boundary: ${message.text()}`);
+    if (message.text().includes('"renderer-error"')) problems.push(`boundary: ${message.text()}`);
+    // The strict CSP blocks a library that styles itself with an inline <style>: the screen then looks unstyled.
+    if (message.text().includes("Content Security Policy")) problems.push(`csp: ${message.text()}`);
   });
   // The window shows on ready-to-show; its size and the colour scheme are then fixed before anything is read from it.
   await app.evaluate(
