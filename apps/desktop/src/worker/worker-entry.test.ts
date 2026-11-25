@@ -50,7 +50,10 @@ afterEach(() => {
 
 /** The real worker module over its real IPC layer, started exactly as main starts it. */
 const boot = async (databasePath: string, key: Buffer | undefined) => {
-  const parent = new EventEmitter();
+  const parent = Object.assign(new EventEmitter(), {
+    postMessage: (message: unknown) => void sent.push(message),
+  });
+  const sent: unknown[] = [];
   process.parentPort = parent as never;
   await import("./worker.ts");
 
@@ -71,6 +74,7 @@ const boot = async (databasePath: string, key: Buffer | undefined) => {
   parent.emit("message", { data: { type: "port" }, ports: [asWorkerPort(rpc.port2)] });
   return {
     client,
+    sent,
     close: () => {
       parent.emit("message", { data: { type: "shutdown" }, ports: [] });
       rpc.port1.close();
@@ -112,6 +116,23 @@ describe("worker entry", () => {
       storage.value.close();
     }
     close();
+  });
+
+  // Guards: main killing the worker while the database handle is still open (or never learning it was released).
+  it("tells main when a shutdown has released the database", async () => {
+    const { client, sent, close } = await boot(join(tempDir(), "pochimail.db"), randomBytes(32));
+    await client.call("accounts.connect", { provider: "google" });
+    expect(sent).toEqual([]);
+    close();
+    expect(sent).toEqual([{ type: "database-closed" }]);
+  });
+
+  // Guards: main waiting out the whole grace period on a worker that has no database open.
+  it("tells main at once when a shutdown finds no database open", async () => {
+    const { client, sent, close } = await boot(tempDir(), randomBytes(32));
+    await client.call("accounts.connect", { provider: "google" });
+    close();
+    expect(sent).toEqual([{ type: "database-closed" }]);
   });
 
   // Guards: a genuinely unusable database still gets a clear, closed failure.

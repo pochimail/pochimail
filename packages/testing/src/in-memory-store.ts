@@ -1,8 +1,8 @@
-import { type ActionLog, unresolvedPending } from "@pochimail/actions/model/action";
-import { CATEGORIES } from "@pochimail/classification/model/category";
+import { unresolvedPending } from "@pochimail/actions/model/action";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
-import type { WorkspaceId } from "@pochimail/kernel/ids";
+import type { MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok, type Result } from "@pochimail/kernel/result";
 import { createFaults, type Faults } from "@pochimail/kernel/testing/faults";
 import type { Message } from "@pochimail/mailbox/model/message";
@@ -19,29 +19,9 @@ import {
 } from "./in-memory-store-data.ts";
 import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
 import { derivedReads } from "./read-models/derived-reads.ts";
+import { inSequenceRange, oldestFirst } from "./read-models/in-memory-paging.ts";
 import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
-
-const oldestFirst = (
-  log: Map<string, ActionLog>,
-  ws: WorkspaceId,
-  match: (l: ActionLog) => boolean = () => true,
-) =>
-  [...log.values()]
-    .filter((l) => l.workspaceId === ws && match(l))
-    .sort((a, b) => byText(a.at, b.at))
-    .map(copy);
-function inSequenceRange(
-  data: Data,
-  m: Message,
-  q: { afterSequence?: number; throughSequence?: number },
-): boolean {
-  const seq = data.messageSequence.get(key(m.workspaceId, m.id)) ?? 0;
-  return (
-    (q.afterSequence === undefined || seq > q.afterSequence) &&
-    (q.throughSequence === undefined || seq <= q.throughSequence)
-  );
-}
 
 export interface InMemoryUnitOfWork {
   readonly uow: UnitOfWork;
@@ -102,7 +82,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
         countByCategory: (ws, accountIds) =>
           guarded(() => {
             const counts: Record<string, number> = Object.fromEntries(
-              CATEGORIES.map((c) => [c, 0]),
+              EMAIL_TYPES.map((c) => [c, 0]),
             );
             for (const m of data().messages.values())
               if (m.workspaceId === ws && accountIds.includes(m.accountId))
@@ -205,6 +185,14 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
       map().set(k, copy(value));
       return Promise.resolve(ok(undefined));
     };
+    const patchMessage = async (ws: WorkspaceId, id: MessageId, change: Partial<Message>) => {
+      const failure = fail();
+      if (failure) return err(failure);
+      const existing = data().messages.get(key(ws, id));
+      if (!existing) return err(new NotFound("Message"));
+      data().messages.set(key(ws, id), { ...existing, ...change });
+      return ok(undefined);
+    };
     return {
       accounts: {
         ...r.accounts,
@@ -233,14 +221,8 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           }
           return ok(undefined);
         },
-        setCategory: async (ws, id, category) => {
-          const failure = fail();
-          if (failure) return err(failure);
-          const existing = data().messages.get(key(ws, id));
-          if (!existing) return err(new NotFound("Message"));
-          data().messages.set(key(ws, id), { ...existing, category });
-          return ok(undefined);
-        },
+        setCategory: (ws, id, category) => patchMessage(ws, id, { category }),
+        setTopics: (ws, id, topicIds) => patchMessage(ws, id, { topicIds: [...topicIds] }),
       },
       derived: {
         ...r.derived,

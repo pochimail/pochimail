@@ -1,10 +1,9 @@
 import {
-  CATEGORIES,
-  type Category,
-  categoryOf,
-  SIGNAL_KINDS,
-  type SignalKind,
-} from "@pochimail/classification/model/category";
+  EMAIL_TYPES,
+  type EmailType,
+  emailTypeOf,
+} from "@pochimail/classification/model/email-type";
+import { SIGNAL_KINDS, type SignalKind } from "@pochimail/classification/model/signal";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { ClassifyBatch } from "@pochimail/classification/use-cases/classify-batch";
 import { DetectSignals } from "@pochimail/classification/use-cases/detect-signals";
@@ -44,7 +43,7 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
   const detect = new DetectSignals({ uow, clock });
 
   const expected = new Map(mailbox.labels.messages.map((l) => [l.messageId, l]));
-  const predictedCategory = new Map<string, Category>();
+  const predictedCategory = new Map<string, EmailType>();
   const predictedSignals = new Map<string, SignalKind[]>();
   const predictedSuspicious = new Set<string>();
   let unclassified = 0;
@@ -92,7 +91,7 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
       for (const id of ids.slice(i, i + BATCH)) {
         if (unanswered.has(id)) continue;
         const stored = unwrap(await uow.reads.messages.get(workspaceId, unwrap(MessageId(id))));
-        predictedCategory.set(id, categoryOf(stored));
+        predictedCategory.set(id, emailTypeOf(stored));
       }
     }
     const signals = unwrap(
@@ -116,7 +115,7 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
 
   const labelled = [...expected.values()];
   const categories = scoreSingleLabel(
-    CATEGORIES,
+    EMAIL_TYPES,
     labelled.map((l) => ({ expected: l.category, predicted: predictedCategory.get(l.messageId) })),
   );
   const signals = scoreMultiLabel(

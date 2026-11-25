@@ -14,19 +14,17 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-type Counts = OutputOf<"mailbox.categories">;
+type Counts = OutputOf<"mailbox.types">;
 const zero: Counts = {
-  people: 0,
-  records: 0,
-  "purchases-travel": 0,
-  "sign-ins-security": 0,
-  notifications: 0,
-  newsletters: 0,
-  promotions: 0,
+  personal: 0,
+  transactional: 0,
+  notification: 0,
+  newsletter: 0,
+  promotion: 0,
 };
 const mailboxes: Record<string, Counts> = {
-  a1: { ...zero, people: 10, newsletters: 5 },
-  a2: { ...zero, people: 2, records: 3 },
+  a1: { ...zero, personal: 10, newsletter: 5 },
+  a2: { ...zero, personal: 2, transactional: 3 },
 };
 
 const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "system") => {
@@ -49,7 +47,7 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
         { id: "a1", provider: "google" as const, displayName: "ann@example.test" },
         { id: "a2", provider: "microsoft" as const, displayName: "ann@work.example.test" },
       ],
-      "mailbox.categories": ({ accountIds }) => {
+      "mailbox.types": ({ accountIds }) => {
         const sum: Counts = { ...zero };
         for (const id of accountIds)
           for (const [key, n] of Object.entries(state.mailboxes[id] ?? zero))
@@ -191,14 +189,14 @@ describe("app frame", () => {
     },
   );
 
-  it("hides a category with no email and shows it once it gets mail (guards D5: empty categories listed)", async () => {
+  it("hides a type with no email and shows it once it gets mail (guards D5: empty types listed)", async () => {
     const state = setup();
     const nav = await sidebar();
-    await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
+    await waitFor(() => expect(nav.getByRole("link", { name: /Personal/ })).toBeTruthy());
     expect(nav.queryByRole("link", { name: /Promotions/ })).toBeNull();
-    expect(nav.queryByRole("link", { name: /Purchases/ })).toBeNull();
+    expect(nav.queryByRole("link", { name: /Alert emails/ })).toBeNull();
 
-    state.mailboxes.a1 = { ...zero, people: 10, newsletters: 5, promotions: 4 };
+    state.mailboxes.a1 = { ...zero, personal: 10, newsletter: 5, promotion: 4 };
     state.emit({ type: "ScanCompleted", accountId: "a1", processed: 4 });
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
   });
@@ -208,7 +206,7 @@ describe("app frame", () => {
     const nav = await sidebar();
     const main = await screen.findByRole("main");
     await waitFor(() =>
-      expect(nav.getByRole("link", { name: /People/ }).textContent).toContain("12"),
+      expect(nav.getByRole("link", { name: /Personal/ }).textContent).toContain("12"),
     );
 
     await userEvent.click(screen.getByRole("button", { name: /Account: All accounts/ }));
@@ -217,10 +215,10 @@ describe("app frame", () => {
     );
 
     await waitFor(() =>
-      expect(nav.getByRole("link", { name: /People/ }).textContent).toContain("2"),
+      expect(nav.getByRole("link", { name: /Personal/ }).textContent).toContain("2"),
     );
     expect(nav.queryByRole("link", { name: /Newsletters/ })).toBeNull();
-    expect(nav.getByRole("link", { name: /Records/ }).textContent).toContain("3");
+    expect(nav.getByRole("link", { name: /Transactional/ }).textContent).toContain("3");
     expect(screen.getByRole("main")).toBe(main);
   });
 
@@ -299,20 +297,20 @@ describe("app frame", () => {
     expect(screen.getByRole("button", { name: /Teams/ }).hasAttribute("disabled")).toBe(true);
   });
 
-  it("shows a category as soon as scan progress brings mail, before the scan completes (guards D5 waiting for ScanCompleted)", async () => {
+  it("shows a type as soon as scan progress brings mail, before the scan completes (guards D5 waiting for ScanCompleted)", async () => {
     const state = setup();
     const nav = await sidebar();
-    await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
+    await waitFor(() => expect(nav.getByRole("link", { name: /Personal/ })).toBeTruthy());
     await waitFor(() => expect(state.emitters.length).toBeGreaterThan(0));
-    state.mailboxes.a1 = { ...zero, people: 10, newsletters: 5, promotions: 4 };
+    state.mailboxes.a1 = { ...zero, personal: 10, newsletter: 5, promotion: 4 };
     state.progress({ accountId: "a1", phase: "classifying", processed: 4, total: 100 });
     expect(await nav.findByRole("link", { name: /Promotions/ })).toBeTruthy();
   });
 
-  it("tabs through the switcher, then Overview and the categories in order (guards a rail or tab bar that reorders focus)", async () => {
+  it("tabs through the switcher, then Overview and the types in order (guards a rail or tab bar that reorders focus)", async () => {
     setup();
     const nav = await sidebar();
-    await waitFor(() => expect(nav.getByRole("link", { name: /People/ })).toBeTruthy());
+    await waitFor(() => expect(nav.getByRole("link", { name: /Personal/ })).toBeTruthy());
     const focused: string[] = [];
     for (let i = 0; i < 4; i++) {
       await userEvent.tab();
@@ -324,8 +322,8 @@ describe("app frame", () => {
     }
     expect(focused[0]).toMatch(/^Account:/);
     expect(focused[1]).toBe("Overview");
-    expect(focused[2]).toMatch(/^People/);
-    expect(focused[3]).toMatch(/^Records/);
+    expect(focused[2]).toMatch(/^Personal/);
+    expect(focused[3]).toMatch(/^Transactional/);
   });
 
   it("keeps theme and language out of the sidebar, with the only controls on Settings (guards pickers in the frame)", async () => {

@@ -61,7 +61,7 @@ const contextWith =
 /** Contract for any `authorize` implementation: the safety matrix, table-driven. */
 export function authorizeContract(authorize: Authorize, labels: PolicyLabels): void {
   const { categories: CATEGORIES, protectedCategories } = labels;
-  const protectedLabel = protectedCategories[0] ?? "people";
+  const protectedLabel = protectedCategories[0] ?? "personal";
   const ctx = contextWith(protectedCategories);
   const allowed = (kind: string, c: AuthorizationContext) => authorize(cmd(kind), c).ok;
 
@@ -104,8 +104,8 @@ export function authorizeContract(authorize: Authorize, labels: PolicyLabels): v
 
     it("autopilot never auto-actions a batch that includes any People message", () => {
       const mixed = {
-        ...ctx("autopilot", "promotions", 1, false),
-        categories: ["promotions", protectedLabel],
+        ...ctx("autopilot", "promotion", 1, false),
+        categories: ["promotion", protectedLabel],
       };
       expect(allowed("archive", mixed)).toBe(false);
       expect(authorize(cmd("archive"), mixed).ok).toBe(false);
@@ -131,12 +131,12 @@ export function authorizeContract(authorize: Authorize, labels: PolicyLabels): v
     });
 
     it("autopilot treats a NaN confidence as below threshold", () => {
-      expect(allowed("archive", ctx("autopilot", "promotions", Number.NaN, false))).toBe(false);
+      expect(allowed("archive", ctx("autopilot", "promotion", Number.NaN, false))).toBe(false);
     });
 
     it("autopilot does not auto-apply undo or bookkeeping kinds", () => {
       for (const kind of ACTION_KINDS.filter((k) => !AUTOPILOT_KINDS.includes(k)))
-        expect(allowed(kind, ctx("autopilot", "promotions", 1, false))).toBe(false);
+        expect(allowed(kind, ctx("autopilot", "promotion", 1, false))).toBe(false);
     });
 
     it("an explicitly confirmed action in autopilot is allowed, People included", () => {

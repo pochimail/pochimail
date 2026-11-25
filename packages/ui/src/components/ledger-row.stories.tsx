@@ -6,7 +6,7 @@ const meta = {
   title: "Components/LedgerRow",
   component: LedgerRow,
   decorators: [lightDecorator],
-  args: { label: "Newsletters", count: 10410, size: "1.2 GB", share: 0.62, tone: "newsletters" },
+  args: { label: "Newsletters", count: 10410, size: "1.2 GB", share: 0.62, tone: "newsletter" },
   render: (args) => (
     <ul className="m-0 border-b border-border p-0">
       <LedgerRow {...args} className="border-t border-border" />

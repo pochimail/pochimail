@@ -14,9 +14,9 @@ const PAGE = 200;
 export const FIRST_DIGEST_SINCE = "1970-01-01T00:00:00.000Z";
 /** New mail's intended action, matching the Summary's figure-to-category routing. */
 const ACTION_CATEGORIES = {
-  archived: "notifications",
-  saved: "records",
-  unsubscribed: "newsletters",
+  archived: "notification",
+  saved: "transactional",
+  unsubscribed: "newsletter",
 } as const;
 
 export interface BuildDigestDeps {

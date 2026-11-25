@@ -1,8 +1,9 @@
 import type { CancelSignal } from "@pochimail/kernel/common";
 import type { AccountId, MessageId, ThreadId, WorkspaceId } from "@pochimail/kernel/ids";
-import type { Category, SuspiciousFlag } from "../model/category.ts";
 import type { DerivedMessage } from "../model/derived.ts";
+import type { EmailType } from "../model/email-type.ts";
 import type { ClassifiableMessage } from "../model/message-facts.ts";
+import type { SuspiciousFlag } from "../model/suspicious-flag.ts";
 
 // Fake data only: every address is on example.com and every text is invented.
 
@@ -34,7 +35,7 @@ export const makeDerived = (n: number, over: Partial<DerivedMessage> = {}): Deri
   workspaceId: WS_A,
   accountId: ACCOUNT_1,
   messageId: `msg-${n}` as MessageId,
-  category: "newsletters",
+  category: "newsletter",
   reason: "Weekly newsletter, never opened",
   confidence: 0.9,
   modelVersion: "rules-1",
@@ -46,7 +47,7 @@ export const makeDerived = (n: number, over: Partial<DerivedMessage> = {}): Deri
 /** One message to store with its stored label and derived data. */
 export interface SeedRow {
   readonly message?: Partial<ClassifiableMessage>;
-  readonly category?: Category;
+  readonly category?: EmailType;
   /** `null` stores no derived data, as for a message the classifier has not answered yet. */
   readonly derived?: Partial<DerivedMessage> | null;
   /** Attachments the provider reported; left out when it reported none. */

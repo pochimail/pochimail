@@ -2,31 +2,31 @@ import { EmptyState } from "@pochimail/ui/components/empty-state";
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { categoryLabelKey } from "../../lib/category-labels.ts";
 import { PAGE_MAIN_CLASS, PageHeading } from "../../lib/screen-heading.tsx";
+import { typeLabelKey } from "../../lib/type-labels.ts";
 
-/** Notifications needs its own explanation; other categories use the shared empty state. */
-const CATEGORY_COPY: Readonly<Record<string, MessageKey | undefined>> = {
-  notifications: "category.notifications.placeholder",
+/** Alert emails need their own explanation; other types use the shared empty state. */
+const TYPE_COPY: Readonly<Record<string, MessageKey | undefined>> = {
+  notification: "type.notification.placeholder",
 };
 
-export function CategoryPage() {
+export function TypePage() {
   const t = useT();
   const navigate = useNavigate();
-  const { categoryId } = useParams({ from: "/shell/category/$categoryId" });
-  const label = categoryLabelKey(categoryId);
+  const { typeId } = useParams({ from: "/shell/type/$typeId" });
+  const label = typeLabelKey(typeId);
   return (
     <main className={PAGE_MAIN_CLASS}>
-      <PageHeading title={label === undefined ? categoryId : t(label)} />
+      <PageHeading title={label === undefined ? typeId : t(label)} />
       <EmptyState
         className="mt-4"
         role="status"
         pose="happy"
         title={t("state.emptyCategory.title")}
         description={
-          CATEGORY_COPY[categoryId] === undefined
+          TYPE_COPY[typeId] === undefined
             ? t("state.emptyCategory.body")
-            : t(CATEGORY_COPY[categoryId] as "category.notifications.placeholder")
+            : t(TYPE_COPY[typeId] as "type.notification.placeholder")
         }
         action={{
           label: t("action.backToOverview"),

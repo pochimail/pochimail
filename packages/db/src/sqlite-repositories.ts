@@ -117,6 +117,7 @@ export function createSqliteRepositories(
       ...messages,
       upsertMany: lift(core.messages.upsertMany),
       setCategory: lift(core.messages.setCategory),
+      setTopics: lift(core.messages.setTopics),
     },
     threads: { ...threads, upsert: lift(core.threads.upsert) },
     derived: { ...derived, save: lift(core.derived.save) },

@@ -1,7 +1,7 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
-import { CountCategories } from "@pochimail/classification/use-cases/count-categories";
+import { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import { RecordDigestReady } from "@pochimail/cleanup/use-cases/record-digest-ready";
@@ -124,7 +124,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     workspaceId,
     listAccounts: new ListAccounts({ uow }),
     getOverview: new GetOverview({ uow, clock }),
-    categories: new CountCategories({ uow }),
+    categories: new CountTypes({ uow }),
     digestStatus: new GetDigestStatus({ tally }),
     settings: new ManageSettings({ store: adapters.settings }),
     scans,
