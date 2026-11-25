@@ -19,3 +19,6 @@ Names only, in the protected `release` environment of the repository. Never put 
 - Linux is never signed.
 
 The signed path is not proven until the first run with real secrets: the hardened-runtime entitlements (`apps/desktop/build/entitlements.mac.plist`) only bite on a signed build. The package smoke and the install check then run on the signed build.
+
+## Site
+`site/` (home and privacy policy, no framework) is built by `pnpm --filter @pochimail/site build`, which copies the app's tokens, fonts and mascot from `packages/ui`, and checked by `check`. `pages.yml` deploys it to GitHub Pages on a push to `main` that touches it; a pull request only builds and checks.

@@ -1,0 +1,72 @@
+name: Pages
+
+# Builds site/ and deploys it to https://pochimail.github.io/pochimail/ (Pages source: GitHub Actions). A pull request only builds and checks, never deploys.
+# The site copies the app's tokens, fonts and mascot from packages/ui, so changes there rebuild it too.
+on:
+  pull_request:
+    paths:
+      - site/**
+      - packages/ui/src/styles/tokens.css
+      - packages/ui/src/fonts/**
+      - packages/ui/src/assets/mascot/**
+      - .github/workflows/pages.yml
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - packages/ui/src/styles/tokens.css
+      - packages/ui/src/fonts/**
+      - packages/ui/src/assets/mascot/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm --filter @pochimail/site build
+      # Fails on an external script, stylesheet, font or image, a link that breaks under /pochimail/, or a policy that lost its Limited Use statement.
+      - name: Check
+        run: pnpm --filter @pochimail/site check
+      - name: Test
+        run: pnpm --filter @pochimail/site test
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/dist
+
+  deploy:
+    name: deploy
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

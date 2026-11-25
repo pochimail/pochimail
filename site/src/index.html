@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Pochimail: a private assistant for your email</title>
+    <meta name="description" content="Pochimail is a free, open-source assistant that shows the big picture of your mailboxes and proposes cleanups. Your email never leaves your computer.">
+    <link rel="icon" href="assets/mascot/pochi-default.png" type="image/png">
+    <link rel="stylesheet" href="assets/tokens.css">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to the content</a>
+    <div class="wrap">
+      <header class="site-header">
+        <a class="brand" href="./">Pochimail</a>
+        <nav aria-label="Main">
+          <ul>
+            <li><a href="{{repositoryUrl}}/releases">Releases</a></li>
+            <li><a href="{{repositoryUrl}}">Source</a></li>
+            <li><a href="privacy/">Privacy policy</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <main id="main">
+        <div class="hero">
+          <div>
+            <h1>Pochimail</h1>
+            <p class="lead">A private assistant for the email accounts you already have. It shows the big picture of your mailboxes, flags what matters, proposes cleanups and saves your important documents.</p>
+            <p><strong>Your email never leaves your computer.</strong></p>
+          </div>
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="assets/mascot/pochi-night.png 1x, assets/mascot/pochi-night@2x.png 2x">
+            <img src="assets/mascot/pochi-default.png" srcset="assets/mascot/pochi-default.png 1x, assets/mascot/pochi-default@2x.png 2x" width="512" height="435" alt="Pochi, the Pochimail assistant: a small plush envelope">
+          </picture>
+        </div>
+
+        <section class="card" aria-labelledby="promise">
+          <h2 id="promise">The privacy promise</h2>
+          <ul>
+            <li><strong>Your email stays on this computer.</strong> There is no Pochimail server.</li>
+            <li><strong>Local AI only.</strong> The models run on your device and are downloaded once, checked against a checksum.</li>
+            <li><strong>No telemetry</strong> and no crash reporting.</li>
+            <li><strong>You decide.</strong> Nothing changes without your approval unless you turn on Autopilot, which only does high-confidence, low-risk actions and tells you afterwards.</li>
+            <li><strong>No email content is stored</strong>: only ids, dates, counts and what Pochimail did.</li>
+          </ul>
+          <p>The details, including exactly which Google data the app uses, are in the <a href="privacy/">privacy policy</a>.</p>
+        </section>
+
+        <section class="card" aria-labelledby="about">
+          <h2 id="about">About</h2>
+          <p>Pochimail is not a mail client: any single email opens in your usual mail app. Version 1 supports Gmail. It is free and open source (AGPL-3.0), and it is in early development.</p>
+          <ul class="actions">
+            <li><a class="button" href="{{repositoryUrl}}/releases">Releases</a></li>
+            <li><a class="button secondary" href="{{repositoryUrl}}">Source code</a></li>
+            <li><a class="button secondary" href="privacy/">Privacy policy</a></li>
+          </ul>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>This website sets no cookies and loads no third-party scripts, fonts or trackers.</p>
+      </footer>
+    </div>
+  </body>
+</html>
