@@ -20,6 +20,11 @@ export interface MailboxSummary {
   readonly accounts: number;
   readonly emails: number;
   readonly categories: Readonly<Record<string, number>>;
+  /**
+   * Emails per label that carry a sure decision: the mail ProposeSuggestions may propose from. An
+   * unsure or undecided email is protected (ADR 0012), so it is left out, whatever its label.
+   */
+  readonly proposable: Readonly<Record<string, number>>;
   /** Emails per signal kind (a message may carry several); only signals the detector is sure of. */
   readonly signals: Readonly<Record<string, number>>;
   /** Emails waiting for a reply that are not also from an important sender, so none counts twice. */
@@ -39,6 +44,7 @@ export class SummarizeMailbox {
   ): AsyncResult<MailboxSummary, StorageError | NotFound> {
     const { uow, clock } = this.deps;
     const categories: Record<string, number> = {};
+    const proposable: Record<string, number> = {};
     const signals: Record<string, number> = {};
     let emails = 0;
     let waiting = 0;
@@ -55,10 +61,19 @@ export class SummarizeMailbox {
           ...(cursor === undefined ? {} : { cursor }),
         });
         if (!page.ok) return page;
+        const decisions = await uow.reads.mailboxFacts.decisions(
+          request.workspaceId,
+          page.value.items.map((m) => m.id),
+        );
+        if (!decisions.ok) return decisions;
+        const confident = new Set(
+          decisions.value.filter((d) => d.confidence >= UNSURE_BELOW).map((d) => d.messageId),
+        );
         for (const m of page.value.items) {
           ids.push(m.id);
           received.set(m.id, m.receivedAt);
           categories[m.category] = (categories[m.category] ?? 0) + 1;
+          if (confident.has(m.id)) proposable[m.category] = (proposable[m.category] ?? 0) + 1;
         }
         cursor = page.value.nextCursor ?? undefined;
       } while (cursor !== undefined);
@@ -93,6 +108,7 @@ export class SummarizeMailbox {
       accounts: request.accountIds.length,
       emails,
       categories,
+      proposable,
       signals,
       waiting,
       toReview,

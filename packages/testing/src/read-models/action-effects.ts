@@ -1,5 +1,6 @@
 import type { ActionLog } from "@pochimail/actions/model/action";
 import { DEFAULT_CATEGORY } from "@pochimail/classification/model/category";
+import { fakeSenderHash } from "@pochimail/kernel/testing/fake-sender-hash";
 import type { IncomingMessage, Message } from "@pochimail/mailbox/model/message";
 import { copy, type Data, key } from "../in-memory-store-data.ts";
 
@@ -33,6 +34,7 @@ export function storeMessage(m: IncomingMessage, existing: Message | undefined):
   return copy({
     ...m,
     category: existing?.category ?? DEFAULT_CATEGORY,
+    senderHash: fakeSenderHash(m.accountId, m.from),
     ...(existing?.archived === undefined ? {} : { archived: existing.archived }),
   });
 }
