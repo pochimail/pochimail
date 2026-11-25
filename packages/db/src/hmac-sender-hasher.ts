@@ -7,7 +7,9 @@ const KEY_DOMAIN = "pochimail:db:sender-hash:v1";
 /**
  * A keyed sender digest for the account, derived from the database key. The key is held only by the
  * returned closure: it is not stored on `Storage`, in a row or in a log. The same pair always gives
- * the same 64-character hex digest; a different key or account gives a different one.
+ * the same 64-character hex digest, whatever the case of the address (the one place addresses are
+ * normalised, so ingest, upsert, lookups and owner detection agree); a different key or account
+ * gives a different one.
  */
 export function createSenderHasher(key: Uint8Array): SenderHasher {
   if (key.length !== 32) throw new Error("The sender hash key must be 32 bytes");
@@ -17,7 +19,7 @@ export function createSenderHasher(key: Uint8Array): SenderHasher {
       return createHmac("sha256", derived)
         .update(accountId)
         .update("\u0000")
-        .update(address)
+        .update(address.toLowerCase())
         .digest("hex");
     },
   };

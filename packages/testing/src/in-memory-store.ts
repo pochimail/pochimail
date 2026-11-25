@@ -1,6 +1,6 @@
 import { type ActionLog, unresolvedPending } from "@pochimail/actions/model/action";
 import { CATEGORIES } from "@pochimail/classification/model/category";
-import type { AsyncResult, CancelSignal, Page, PageRequest } from "@pochimail/kernel/common";
+import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok, type Result } from "@pochimail/kernel/result";
@@ -8,17 +8,20 @@ import { createFaults, type Faults } from "@pochimail/kernel/testing/faults";
 import type { Message } from "@pochimail/mailbox/model/message";
 import type { OutboxEntry, OutboxRecord, OutboxStore } from "@pochimail/pipeline/outbox";
 import { eventSinkOver } from "@pochimail/pipeline/outbox-event-sink";
-import { copy, type Data, emptyData, key, removeAccount } from "./in-memory-store-data.ts";
+import {
+  byText,
+  copy,
+  type Data,
+  emptyData,
+  key,
+  paginate,
+  removeAccount,
+} from "./in-memory-store-data.ts";
 import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
+import { derivedReads } from "./read-models/derived-reads.ts";
 import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
 
-function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
-  const start = page.cursor === undefined ? 0 : Number(page.cursor);
-  const items = sorted.slice(start, start + page.limit).map(copy);
-  const end = start + items.length;
-  return { items, nextCursor: end < sorted.length ? String(end) : null };
-}
 const oldestFirst = (
   log: Map<string, ActionLog>,
   ws: WorkspaceId,
@@ -40,7 +43,6 @@ function inSequenceRange(
   );
 }
 
-const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 export interface InMemoryUnitOfWork {
   readonly uow: UnitOfWork;
   /** Everything committed to the outbox so far, in order. */
@@ -118,16 +120,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           }) as never,
       },
       threads: { get: (ws, id) => found(data().threads, key(ws, id), "Thread") },
-      derived: {
-        get: (ws, id) => found(data().derived, key(ws, id), "Derived data"),
-        list: (ws, acc, page) =>
-          guarded(() => {
-            const rows = [...data().derived.values()]
-              .filter((d) => d.workspaceId === ws && d.accountId === acc)
-              .sort((a, b) => byText(a.messageId, b.messageId));
-            return ok(paginate(rows, page));
-          }) as never,
-      },
+      derived: derivedReads(data, guarded),
       senders: {
         get: (ws, acc, address) => found(data().senders, key(ws, acc, address), "Sender"),
         ofMessage: (ws, id, o) => guarded(() => senderOfMessage(data(), ws, id, o)),
