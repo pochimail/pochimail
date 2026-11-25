@@ -34,7 +34,7 @@ export const startWorker = (
     {
       type: "start",
       databasePath,
-      ...(databaseKey === undefined ? {} : { databaseKeyHex: databaseKey.toString("hex") }),
+      ...(databaseKey === undefined ? {} : { databaseKey }),
     },
     [port2],
   );
@@ -42,7 +42,8 @@ export const startWorker = (
 
 /**
  * Loads the database key, then starts the worker. If the key cannot be produced the worker is NOT started (it is
- * killed): failing loudly beats running keyless or on a fresh key. The failure is logged by reason only.
+ * killed): failing loudly beats running keyless or on a fresh key. The failure is logged by reason only. The key buffer
+ * is zeroed once handed over, so `loadKey` must return a buffer nobody else reads afterwards.
  */
 export const bootWorker = async (options: {
   worker: {
@@ -78,5 +79,6 @@ export const bootWorker = async (options: {
     createChannel,
     options.openExternal,
   );
+  key.value?.fill(0);
   return true;
 };

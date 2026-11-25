@@ -5,6 +5,8 @@ import { RouterProvider } from "@tanstack/react-router";
 import { type ReactNode, useMemo } from "react";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { AppearanceProvider, useAppearance } from "../features/settings/appearance.tsx";
+import type { StorageApi } from "../features/storage/storage-api.ts";
+import { StoragePrompt } from "../features/storage/storage-prompt.tsx";
 import { AppEventsBridge } from "../lib/app-events-bridge.tsx";
 import { AppErrorBoundary } from "../lib/error-boundary.tsx";
 import { useAppLocale } from "../lib/locale.ts";
@@ -35,6 +37,8 @@ export type AppProps = {
   router?: AppRouter;
   /** Worker client injected via context (useful for tests and stories with a fake IPC). */
   workerClient?: RpcClient | Promise<RpcClient>;
+  /** The preload's storage calls: when given, the app asks how local data is protected before anything else (ADR 0005). */
+  storage?: StorageApi;
 };
 
 /**
@@ -67,6 +71,7 @@ export function App(props: AppProps = {}) {
                 <AppearanceProvider>
                   <AppearanceI18n>
                     <AppShell router={router} />
+                    {props.storage === undefined ? null : <StoragePrompt storage={props.storage} />}
                     <Toaster />
                   </AppearanceI18n>
                 </AppearanceProvider>

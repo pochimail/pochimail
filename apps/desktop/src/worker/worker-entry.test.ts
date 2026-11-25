@@ -60,7 +60,7 @@ const boot = async (databasePath: string, key: Buffer | undefined) => {
     data: {
       type: "start",
       databasePath,
-      ...(key === undefined ? {} : { databaseKeyHex: key.toString("hex") }),
+      ...(key === undefined ? {} : { databaseKey: new Uint8Array(key) }),
     },
     ports: [asWorkerPort(secrets.port1)],
   });

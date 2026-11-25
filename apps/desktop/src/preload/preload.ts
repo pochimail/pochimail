@@ -5,11 +5,18 @@ import {
   mailAppLinkSchema,
   osChannels,
 } from "../shared/os-calls.ts";
+import {
+  passphraseSchema,
+  storageChannels,
+  storageOutcomeSchema,
+  storageStatusSchema,
+  unlockPassphraseSchema,
+} from "../shared/storage-calls.ts";
 
 /**
  * Narrow bridge (ADR 0002). Main sends one MessagePort connected to the worker; the page asks for it and the preload
  * forwards it with `window.postMessage`, so the page then talks to the worker directly. The page never gets
- * `ipcRenderer`, `electron` or Node: only these four methods, each validated before it leaves the page.
+ * `ipcRenderer`, `electron` or Node: only these methods, each validated before it leaves the page.
  */
 let port: MessagePort | undefined;
 let requested = false;
@@ -36,6 +43,19 @@ const api = {
     ipcRenderer.invoke(osChannels.showInFinder, folderPathSchema.parse(path)),
   chooseFolder: async (): Promise<string | null> =>
     chosenFolderSchema.parse(await ipcRenderer.invoke(osChannels.chooseFolder)),
+  storage: {
+    status: async () => storageStatusSchema.parse(await ipcRenderer.invoke(storageChannels.status)),
+    setPassphrase: async (passphrase: string) =>
+      storageOutcomeSchema.parse(
+        await ipcRenderer.invoke(storageChannels.setPassphrase, passphraseSchema.parse(passphrase)),
+      ),
+    storeUnprotected: async () =>
+      storageOutcomeSchema.parse(await ipcRenderer.invoke(storageChannels.storeUnprotected)),
+    unlock: async (passphrase: string) =>
+      storageOutcomeSchema.parse(
+        await ipcRenderer.invoke(storageChannels.unlock, unlockPassphraseSchema.parse(passphrase)),
+      ),
+  },
 };
 
 contextBridge.exposeInMainWorld("pochimail", api);

@@ -58,6 +58,7 @@ export const createAccountsRuntime = (
 ): (WorkerApp & { readonly close: () => void }) | undefined => {
   if (start.databaseKey === undefined) return undefined;
   const storage = openStorage(start.databasePath, start.databaseKey);
+  start.databaseKey.fill(0);
   if (!storage.ok) return undefined;
   const clock = { now: () => new Date() };
   const { uow, outboxStore } = createSqliteUnitOfWork(storage.value, clock);

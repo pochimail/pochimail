@@ -33,7 +33,7 @@ export const keyProtection = async (
 
 /** Why the database key cannot be produced. Never carries key material. */
 export class DatabaseKeyError extends Error {
-  readonly reason: "key-file-invalid" | "key-missing-database-exists";
+  readonly reason: "key-file-invalid" | "key-missing-database-exists" | "choice-file-invalid";
   constructor(reason: DatabaseKeyError["reason"]) {
     super(`Database key: ${reason}`);
     this.name = "DatabaseKeyError";
