@@ -3,6 +3,7 @@ import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -18,11 +19,10 @@ export const ja = {
   "overview.email.count": entry("{count, plural, =0 {メールはありません} other {#件のメール}}", [
     "count",
   ]),
-  "overview.size.free": entry("合計{total, number} GBのうち、{size, number} GBを空けられます。", [
-    "size",
-    "total",
-  ]),
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
+  ...sizeMessages.ja,
+  "overview.figure.archived": entry("アーカイブしたメール", []),
+  "overview.figure.saved": entry("保存した添付ファイル", []),
+  "overview.figure.unsubscribed": entry("登録解除したニュースレター", []),
   "scan.failed": entry(
     "仕分けを最後まで終えられませんでした。何も変更していません。もう一度始めると、止まったところから続けます。",
     [],
@@ -59,7 +59,7 @@ export const ja = {
     "count",
   ]),
   "overview.important.detail": entry("よく返信する相手です", []),
-  "overview.clean.headline": entry("件を削除できます（全体で{total, number}）", ["total"]),
+  "overview.clean.headline": entry("件を削除できます（全体で{total, number}件）", ["total"]),
   "overview.clean.summary": entry("{total, number}件を整理済み", ["total"]),
   "overview.clean.keep": entry("残すもの", []),
   "overview.clean.free": entry("削除できるもの", []),

@@ -79,7 +79,18 @@ describe("worker app over the real IPC layer", () => {
       phase: "done",
       processed: accountSize(FIRST_ACCOUNT),
     });
-    expect(await client.call("digest.get")).toMatchObject({ ready: true });
+    const scoped = await client.call("digest.get", { accountId: FIRST_ACCOUNT });
+    expect(scoped).toMatchObject({ ready: true });
+    expect(await client.call("digest.get", {})).toMatchObject({
+      ready: true,
+      itemCount: scoped.itemCount,
+    });
+    const otherAccount = mailbox.accounts.find((a) => a.id !== FIRST_ACCOUNT)?.id;
+    if (otherAccount !== undefined)
+      expect(await client.call("digest.get", { accountId: otherAccount })).toMatchObject({
+        ready: false,
+        itemCount: 0,
+      });
     close();
   });
 

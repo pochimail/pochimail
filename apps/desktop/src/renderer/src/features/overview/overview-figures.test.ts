@@ -1,6 +1,7 @@
+import { t } from "@pochimail/ui/i18n/format.ts";
 import { describe, expect, it } from "vitest";
 import type { OverviewData } from "./overview-figures.ts";
-import { cleanSplit } from "./overview-figures.ts";
+import { cleanSplit, freeSizeLabel, sizeLabel } from "./overview-figures.ts";
 
 const data: OverviewData = {
   scanned: 1000,
@@ -48,5 +49,21 @@ describe("overview figures", () => {
     expect(
       cleanSplit({ ...data, scanned: 100, cleanable: [{ category: "promotions", count: 400 }] }),
     ).toEqual({ deletable: 400, keep: 0 });
+  });
+
+  // Guards: a tiny size being shown as 0 MB (review boundaries 1023 and 1024 bytes).
+  it("names a sub-tenth-MB size instead of claiming zero", () => {
+    expect(sizeLabel(1023, t)).toBe("< 0.1 MB");
+    expect(sizeLabel(1024, t)).toBe("< 0.1 MB");
+    expect(freeSizeLabel(1024, 40_000_000, t)).toBe("< 0.1 MB you can free, out of 40 MB");
+  });
+
+  // Guards: raw-byte thresholds disagreeing with the rounded value (999.96e6 and 1e9).
+  it("picks each figure's unit from its rounded value, even when the units differ", () => {
+    expect(sizeLabel(999.96e6, t)).toBe("1 GB");
+    expect(sizeLabel(1e9, t)).toBe("1 GB");
+    expect(freeSizeLabel(999.96e6, 1e9, t)).toBe("1 GB you can free, out of 1 GB");
+    expect(freeSizeLabel(12e6, 999.96e6, t)).toBe("12 MB you can free, out of 1 GB");
+    expect(freeSizeLabel(1024, 1e9, t)).toBe("< 0.1 MB you can free, out of 1 GB");
   });
 });

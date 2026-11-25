@@ -69,6 +69,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
 
   const select = useCallback(
     async (patch: SettingsPatch) => {
+      // A choice made while the first settings read is in flight must win: drop that stale read's
+      // result so it cannot repaint over the optimistic choice a moment later.
+      void queryClient.cancelQueries({ queryKey: queryKeys.settings() }, { revert: false });
       // The click frame owns the repaint; the write can be slow without making the choice feel slow.
       if ("theme" in patch) applyTheme(patch.theme);
       setPending((current) => ({ ...current, ...patch }));

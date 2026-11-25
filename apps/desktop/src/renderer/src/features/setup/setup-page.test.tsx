@@ -88,7 +88,7 @@ const harness = (opts: Options = {}) => {
         newsletters: 0,
         promotions: 0,
       }),
-      "digest.get": () => ({ ready: false, itemCount: 0 }),
+      "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
       "settings.get": () => {
         if (settingsFailures > 0) {
           settingsFailures -= 1;

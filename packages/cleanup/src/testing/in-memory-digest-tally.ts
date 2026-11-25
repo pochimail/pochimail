@@ -1,15 +1,39 @@
-import type { DigestTally } from "../ports/digest-tally.ts";
+import type { AccountId } from "@pochimail/kernel/ids";
+import type { DigestStatus, DigestTally } from "../ports/digest-tally.ts";
 
-/** Counts in memory; counts accumulate across events and survive nothing but the process. */
+const empty = (): DigestStatus => ({
+  ready: false,
+  itemCount: 0,
+  archived: 0,
+  saved: 0,
+  unsubscribed: 0,
+});
+
+/** Counts in memory: each account's newest digest only; nothing survives the process. */
 export function createInMemoryDigestTally(): DigestTally {
   const seen = new Set<string>();
-  let itemCount = 0;
+  const byAccount = new Map<AccountId, DigestStatus>();
   return {
-    record(eventId, count) {
+    record(eventId, digest) {
       if (seen.has(eventId)) return;
       seen.add(eventId);
-      itemCount += count;
+      const current = byAccount.get(digest.accountId) ?? empty();
+      if (
+        current.generatedAt !== undefined &&
+        digest.generatedAt !== undefined &&
+        digest.generatedAt < current.generatedAt
+      )
+        return;
+      byAccount.set(digest.accountId, {
+        ready: digest.itemCount > 0,
+        itemCount: digest.itemCount,
+        archived: digest.archived ?? 0,
+        saved: digest.saved ?? 0,
+        unsubscribed: digest.unsubscribed ?? 0,
+        ...(digest.generatedAt === undefined ? {} : { generatedAt: digest.generatedAt }),
+      });
     },
-    status: () => ({ ready: itemCount > 0, itemCount }),
+    status: (accountId) => byAccount.get(accountId) ?? empty(),
+    statuses: () => [...byAccount.values()],
   };
 }

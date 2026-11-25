@@ -36,6 +36,10 @@ const scanStatusLine = (scan: ScanStatus, t: T): string => {
   return t("overview.scan.progress", { processed: scan.processed, total: scan.total });
 };
 
+/** The route's account scopes both reads; no account means All accounts (#110). */
+const scopeInput = (accountId: string | undefined): { accountId?: string } =>
+  accountId === undefined ? {} : { accountId };
+
 type SectionProps = {
   t: T;
   locale: UserLocale;
@@ -165,20 +169,20 @@ export function OverviewPage() {
   const t = useT();
   const client = useWorkerClient();
   const queryClient = useQueryClient();
-  const summary = useSummarySheet(client, queryClient);
   const navigate = useNavigate();
   const { account } = useSearch({ strict: false });
   const accounts = useQuery({
     queryKey: queryKeys.accounts(),
     queryFn: () => client.call("accounts.list"),
   });
+  const summary = useSummarySheet(client, queryClient, scopeInput(account));
   const deviceName = useQuery({
     queryKey: queryKeys.deviceName(),
     queryFn: () => client.call("device.name"),
   });
   const overview = useQuery({
     queryKey: queryKeys.overview(account),
-    queryFn: () => client.call("overview.get", account === undefined ? {} : { accountId: account }),
+    queryFn: () => client.call("overview.get", scopeInput(account)),
   });
   const scopedAccounts = (accounts.data ?? []).filter(
     (a) => account === undefined || a.id === account,

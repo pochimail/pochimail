@@ -33,7 +33,14 @@ const emptyOverview: OutputOf<"overview.get"> = {
   },
 };
 
-const digest = (values: Partial<Digest> = {}): Digest => ({ ready: true, itemCount: 0, ...values });
+const digest = (values: Partial<Digest> = {}): Digest => ({
+  ready: true,
+  itemCount: 0,
+  archived: 0,
+  saved: 0,
+  unsubscribed: 0,
+  ...values,
+});
 
 const settings = (values: Partial<Settings> = {}): Settings => ({
   autonomy: "suggest",
@@ -51,12 +58,22 @@ const settings = (values: Partial<Settings> = {}): Settings => ({
   ...values,
 });
 
-const setup = (current: { digest?: Digest; settings?: Settings } = {}) => {
+const setup = (
+  current: {
+    digest?: Digest;
+    settings?: Settings;
+    byAccount?: Readonly<Record<string, Digest>>;
+    accounts?: readonly string[];
+    path?: string;
+  } = {},
+) => {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
   const state = {
     digest: current.digest ?? digest({ ready: false }),
+    byAccount: current.byAccount ?? {},
+    digestInputs: [] as InputOf<"digest.get">[],
     settings: current.settings ?? settings(),
     patches: [] as InputOf<"settings.update">[],
     subscribers: [] as ((event: EventOf<"app.events">) => void)[],
@@ -72,9 +89,12 @@ const setup = (current: { digest?: Digest; settings?: Settings } = {}) => {
     procedures: {
       "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
       "device.name": () => "device" as const,
-      "accounts.list": () => [
-        { id: "a1", provider: "google" as const, displayName: "a@example.test" },
-      ],
+      "accounts.list": () =>
+        (current.accounts ?? ["a1"]).map((id) => ({
+          id,
+          provider: "google" as const,
+          displayName: `${id}@example.test`,
+        })),
       "mailbox.categories": () => ({
         people: 0,
         records: 0,
@@ -86,7 +106,10 @@ const setup = (current: { digest?: Digest; settings?: Settings } = {}) => {
       }),
       "scan.status": () => [],
       "overview.get": () => emptyOverview,
-      "digest.get": () => state.digest,
+      "digest.get": (input) => {
+        state.digestInputs.push(input);
+        return state.byAccount[input.accountId ?? "all"] ?? state.digest;
+      },
       "settings.get": () => state.settings,
       "settings.update": (patch) => {
         state.patches.push(patch);
@@ -110,7 +133,7 @@ const setup = (current: { digest?: Digest; settings?: Settings } = {}) => {
   const client = createRpcClient(fromDomPort(port1));
   const router = createAppRouter(
     { getWorkerClient: () => Promise.resolve(client) },
-    { initialEntries: ["/overview"] },
+    { initialEntries: [current.path ?? "/overview"] },
   );
   render(<App workerClient={client} router={router} />);
   return state;
@@ -147,6 +170,34 @@ it("opens once on the first digest, returns focus to the Overview, and reopens f
   expect(await openSheet(user)).toBeTruthy();
 });
 
+// Guards: an All-accounts Summary missing a later account's first digest, or opening twice.
+it("sums all accounts and opens once even when only a later account has a first digest", async () => {
+  const user = userEvent.setup();
+  const state = setup({
+    accounts: ["a1", "a2"],
+    byAccount: { all: digest({ itemCount: 2, saved: 2 }) },
+  });
+  const sheet = await screen.findByRole("dialog");
+  expect(within(sheet).getByText("records to review")).toBeTruthy();
+  await waitFor(() => expect(state.digestInputs.some((i) => i.accountId === undefined)).toBe(true));
+  await user.click(within(sheet).getByRole("button", { name: "Later" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await state.digestReady(2);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+// Guards: the first connected account feeding a routed account's Summary.
+it("reads only the routed account's digest", async () => {
+  const state = setup({
+    path: "/overview?account=a1",
+    accounts: ["a1", "a2"],
+    byAccount: { a1: digest({ ready: false }) },
+  });
+  await screen.findByRole("heading", { level: 1, name: "Overview" });
+  await waitFor(() => expect(state.digestInputs.some((i) => i.accountId === "a1")).toBe(true));
+  expect(state.digestInputs.some((i) => i.accountId === undefined)).toBe(false);
+});
+
 // Guards: a second sync adding its figures to the first tally instead of replacing it.
 it("shows only the newest digest figures after a second sync", async () => {
   const user = userEvent.setup();
@@ -155,22 +206,21 @@ it("shows only the newest digest figures after a second sync", async () => {
     settings: settings({ summaryShown: true }),
   });
   const first = await openSheet(user);
-  expect(within(first).getByText("emails archived")).toBeTruthy();
-  expect(within(first).getByText("newsletters unsubscribed")).toBeTruthy();
+  expect(within(first).getByText("notifications to archive")).toBeTruthy();
+  expect(within(first).getByText("newsletters")).toBeTruthy();
   await user.click(within(first).getByRole("button", { name: "Later" }));
 
   state.digest = digest({ itemCount: 4, saved: 4 });
   await state.digestReady(4);
   const second = await openSheet(user);
-  await waitFor(() => expect(within(second).queryByText("emails archived")).toBeNull());
+  await waitFor(() => expect(within(second).queryByText("notifications to archive")).toBeNull());
   expect(
     within(second)
       .getAllByRole("definition")
       .map((node) => node.textContent),
   ).toEqual(["4"]);
-  expect(within(second).getByText("attachments saved")).toBeTruthy();
-  expect(within(second).queryByText("emails archived")).toBeNull();
-  expect(within(second).queryByText("newsletters unsubscribed")).toBeNull();
+  expect(within(second).getByText("records to review")).toBeTruthy();
+  expect(within(second).queryByText("newsletters")).toBeNull();
 });
 
 // Guards: a cadence choice that is lost on close or reopens with a different label.
@@ -231,4 +281,24 @@ it.each([
   expect(within(sheet).getByText(new RegExp(`\\b${heading}\\b`))).toBeTruthy();
   await user.click(within(sheet).getByRole("button", { name: `Review ${count} emails` }));
   expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeTruthy();
+});
+
+// Guards: the figure grid emitting its number before its label in the DOM.
+it("renders each figure as a term before its number", async () => {
+  const user = userEvent.setup();
+  setup({
+    digest: digest({ itemCount: 3, archived: 2, saved: 1 }),
+    settings: settings({ summaryShown: true }),
+  });
+  const sheet = await openSheet(user);
+  const cells = within(sheet)
+    .getAllByRole("definition")
+    .map((node) => node.parentElement)
+    .filter((node) => node !== null);
+  expect(cells).toHaveLength(2);
+  for (const cell of cells) {
+    expect(cell.firstElementChild?.tagName).toBe("DT");
+    expect(cell.lastElementChild?.tagName).toBe("DD");
+    expect(cell.className).toContain("flex-col-reverse");
+  }
 });

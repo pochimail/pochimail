@@ -127,29 +127,62 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
   return rows;
 };
 
-/** Bytes to whole-or-one-decimal GB for the locale-formatted size keys (#114). */
-export const toGb = (bytes: number): number => Math.round((bytes / 1e9) * 10) / 10;
+const GB = 1e9;
+const MB = 1e6;
+
+/** Bytes to whole-or-one-decimal units for the locale-formatted size keys (#114). */
+const toGb = (bytes: number): number => Math.round((bytes / GB) * 10) / 10;
+const toMb = (bytes: number): number => Math.round((bytes / MB) * 10) / 10;
+/** A nonzero size that rounds to 0.0 MB must not claim to be zero. */
+const isUnderTenthMb = (bytes: number, mb: number): boolean => bytes > 0 && mb < 0.1;
+
+/** One locale-formatted size: the unit follows the rounded value, not the raw byte count. */
+export const sizeLabel = (bytes: number, t: T): string => {
+  const gb = toGb(bytes);
+  if (gb >= 1) return t("overview.size.gb", { size: gb });
+  const mb = toMb(bytes);
+  return isUnderTenthMb(bytes, mb)
+    ? t("overview.size.underTenthMb")
+    : t("overview.size.mb", { size: mb });
+};
+
+/** Each figure picks its own rounded unit: a 12 MB freed size beside a 1 GB total stays readable. */
+export const freeSizeLabel = (sizeBytes: number, totalBytes: number, t: T): string => {
+  const gb = toGb(sizeBytes);
+  const totalGb = toGb(totalBytes);
+  if (gb >= 1) return t("overview.size.free", { size: gb, total: totalGb });
+  const mb = toMb(sizeBytes);
+  const underTenth = isUnderTenthMb(sizeBytes, mb);
+  if (totalGb >= 1)
+    return underTenth
+      ? t("overview.size.freeUnderTenthMixed", { total: totalGb })
+      : t("overview.size.freeMixed", { size: mb, total: totalGb });
+  const totalMb = toMb(totalBytes);
+  return underTenth
+    ? t("overview.size.freeUnderTenthMb", { total: totalMb })
+    : t("overview.size.freeMb", { size: mb, total: totalMb });
+};
 
 /** One cumulative action figure for the Overview; only positive figures are shown, never a zero. */
 export type OverviewFigure = {
   readonly count: number;
   readonly labelKey: MessageKey;
-  /** GB size appended to the label via storageBar.legendItem, when the figure carries one. */
-  readonly sizeGb?: number;
+  /** Byte size appended to the label via storageBar.legendItem, when the figure carries one. */
+  readonly sizeBytes?: number;
 };
 
 /** The archived / saved / unsubscribed figures (#114), largest presentation order kept stable. */
 export const overviewFigures = (data: OverviewData): OverviewFigure[] => {
   const { archived, savedCount, savedSize, unsubscribed } = data.figures;
   const figures: OverviewFigure[] = [];
-  if (archived > 0) figures.push({ count: archived, labelKey: "summary.figure.archived" });
+  if (archived > 0) figures.push({ count: archived, labelKey: "overview.figure.archived" });
   if (savedCount > 0)
     figures.push({
       count: savedCount,
-      labelKey: "summary.figure.saved",
-      sizeGb: toGb(savedSize),
+      labelKey: "overview.figure.saved",
+      sizeBytes: savedSize,
     });
   if (unsubscribed > 0)
-    figures.push({ count: unsubscribed, labelKey: "summary.figure.unsubscribed" });
+    figures.push({ count: unsubscribed, labelKey: "overview.figure.unsubscribed" });
   return figures;
 };

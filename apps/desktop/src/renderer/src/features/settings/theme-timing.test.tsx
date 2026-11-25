@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
 import { serveRpc } from "#shared/ipc/server.ts";
@@ -25,7 +26,11 @@ const isSettingsUpdate = (message: unknown): boolean =>
   message.procedure === "settings.update";
 
 /** Public App + RPC entry point; the transport records the root class at the moment a write is sent. */
-function fakeApp(initial: Stored, write: () => Promise<undefined> = async () => undefined) {
+function fakeApp(
+  initial: Stored,
+  write: () => Promise<undefined> = async () => undefined,
+  holdRead: () => Promise<void> = async () => undefined,
+) {
   const { port1, port2 } = new MessageChannel();
   port1.start();
   port2.start();
@@ -42,9 +47,9 @@ function fakeApp(initial: Stored, write: () => Promise<undefined> = async () => 
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "settings.get": () => {
+      "settings.get": async () => {
         read = true;
-        return {
+        const snapshot = {
           autonomy: "suggest" as const,
           capabilities: {
             "catch-what-matters": true,
@@ -55,6 +60,8 @@ function fakeApp(initial: Stored, write: () => Promise<undefined> = async () => 
           notifications: true,
           ...stored,
         };
+        await holdRead();
+        return snapshot;
       },
       "settings.update": () => write(),
     },
@@ -120,6 +127,32 @@ describe("theme timing", () => {
 
     await act(async () => {
       settle?.(false);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(darkRadio().getAttribute("aria-checked")).toBe("true");
+  });
+
+  // Guards: an in-flight first settings read repainting over a keyboard choice made before it lands.
+  it("keeps a keyboard theme choice when the first settings read arrives late", async () => {
+    lightOS();
+    let releaseRead: (() => void) | undefined;
+    const holdRead = () =>
+      new Promise<void>((resolve) => {
+        releaseRead = resolve;
+      });
+    const fake = fakeApp({ theme: "system", locale: "en" }, undefined, holdRead);
+    openSettings(fake);
+    await screen.findByRole("heading", { level: 1, name: "Settings" });
+    await waitFor(() => expect(fake.read()).toBe(true));
+
+    darkRadio().focus();
+    await userEvent.keyboard(" ");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    expect(releaseRead).toBeDefined();
+    await act(async () => {
+      releaseRead?.();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(document.documentElement.classList.contains("dark")).toBe(true);

@@ -87,7 +87,7 @@ const harness = (
         },
       }),
       "scan.status": () => [],
-      "digest.get": () => ({ ready: false, itemCount: 0 }),
+      "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
     },
     subscriptions: { "app.events": () => undefined, "scan.progress": () => undefined },
   });

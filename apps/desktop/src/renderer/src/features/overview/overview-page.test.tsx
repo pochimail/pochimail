@@ -50,6 +50,20 @@ const sorted: Overview = {
   },
 };
 
+const smallSizes: Overview = {
+  ...sorted,
+  scanned: 24,
+  cleanable: [{ category: "promotions", count: 6 }],
+  figures: {
+    archived: 3,
+    savedCount: 4,
+    savedSize: 2_400_000,
+    deletableSize: 12_000_000,
+    unsubscribed: 2,
+    totalSize: 40_000_000,
+  },
+};
+
 const setup = (
   initial: Record<string, Overview>,
   path = "/overview",
@@ -96,7 +110,7 @@ const setup = (
         if (state.failOverview) throw new Error("down");
         return state.overviews[accountId ?? "all"] ?? empty;
       },
-      "digest.get": () => ({ ready: false, itemCount: 0 }),
+      "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
       "settings.get": () => ({
         autonomy: "suggest" as const,
         capabilities: {
@@ -168,6 +182,40 @@ describe("overview", () => {
     expect(screen.getByText("newsletters unsubscribed")).toBeTruthy();
     expect(screen.getByText("3.1 GB you can free, out of 6.4 GB")).toBeTruthy();
     expect(screen.getByText("412")).toBeTruthy();
+  });
+
+  // Guards: small fixture sizes rendering as "0 GB you can free" and "attachments saved · 0 GB".
+  it("shows MB below 1 GB in every locale", async () => {
+    setup({ all: smallSizes });
+    expect(await screen.findByText("12 MB you can free, out of 40 MB")).toBeTruthy();
+    expect(screen.getByText("attachments saved · 2.4 MB")).toBeTruthy();
+    expect(screen.queryByText(/0 GB/)).toBeNull();
+    cleanup();
+
+    setup({ all: smallSizes }, "/overview", "fr");
+    expect(await screen.findByText("12 Mo à libérer, sur 40 Mo")).toBeTruthy();
+    expect(screen.getByText("pièces jointes enregistrées · 2,4 Mo")).toBeTruthy();
+    cleanup();
+
+    setup({ all: smallSizes }, "/overview", "ja");
+    expect(await screen.findByText("合計40 MBのうち、12 MBを空けられます。")).toBeTruthy();
+    expect(screen.getByText("保存した添付ファイル · 2.4 MB")).toBeTruthy();
+  });
+
+  // Guards: the definition term following its value in the figure grid's DOM.
+  it("renders each figure as a term before its number", async () => {
+    setup({ all: sorted });
+    await screen.findByText("emails archived");
+    const cells = screen
+      .getAllByRole("definition")
+      .map((node) => node.parentElement)
+      .filter((node) => node !== null);
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) {
+      expect(cell.firstElementChild?.tagName).toBe("DT");
+      expect(cell.lastElementChild?.tagName).toBe("DD");
+      expect(cell.className).toContain("flex-col-reverse");
+    }
   });
 
   it("formats the figures and the deletable size in French and Japanese (guards English-only sizes)", async () => {

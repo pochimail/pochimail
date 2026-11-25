@@ -24,10 +24,66 @@ describe("t() (design › Writing, P13)", () => {
     expect(t("overview.size.gb", { size: 1.2 }, { locale: "ja" })).toBe("1.2 GB");
     expect(
       t("storageBar.legendItem", {
-        label: t("summary.figure.saved"),
+        label: t("overview.figure.saved"),
         size: t("overview.size.gb", { size: 1.2 }),
       }),
     ).toBe("attachments saved · 1.2 GB");
+  });
+
+  // Guards: a 12 MB figure rounding to 0 GB in any locale (#114).
+  it("formats small sizes in MB per locale and composes the figure label", () => {
+    expect(t("overview.size.mb", { size: 12 })).toBe("12 MB");
+    expect(t("overview.size.mb", { size: 12 }, { locale: "fr" })).toBe("12 Mo");
+    expect(t("overview.size.mb", { size: 12 }, { locale: "ja" })).toBe("12 MB");
+    expect(t("overview.size.freeMb", { size: 12, total: 40 })).toBe(
+      "12 MB you can free, out of 40 MB",
+    );
+    expect(t("overview.size.freeMb", { size: 12, total: 40 }, { locale: "fr" })).toBe(
+      "12 Mo à libérer, sur 40 Mo",
+    );
+    expect(t("overview.size.freeMb", { size: 12, total: 40 }, { locale: "ja" })).toBe(
+      "合計40 MBのうち、12 MBを空けられます。",
+    );
+    expect(
+      t("storageBar.legendItem", {
+        label: t("overview.figure.saved"),
+        size: t("overview.size.mb", { size: 2.4 }),
+      }),
+    ).toBe("attachments saved · 2.4 MB");
+  });
+
+  // Guards: a small freed size beside a rounded GB total losing its unit in any locale.
+  it("formats mixed MB/GB free-space copy per locale", () => {
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 })).toBe(
+      "12 MB you can free, out of 1 GB",
+    );
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 }, { locale: "fr" })).toBe(
+      "12 Mo à libérer, sur 1 Go",
+    );
+    expect(t("overview.size.freeMixed", { size: 12, total: 1 }, { locale: "ja" })).toBe(
+      "合計1 GBのうち、12 MBを空けられます。",
+    );
+    expect(t("overview.size.freeUnderTenthMixed", { total: 1 })).toBe(
+      "< 0.1 MB you can free, out of 1 GB",
+    );
+  });
+
+  // Guards: locale keys for the rounded boundaries (1023/1024 bytes and 999.96e6/1e9 bytes).
+  it("formats the rounded unit boundaries per locale", () => {
+    expect(t("overview.size.underTenthMb")).toBe("< 0.1 MB");
+    expect(t("overview.size.underTenthMb", {}, { locale: "fr" })).toBe("< 0,1 Mo");
+    expect(t("overview.size.underTenthMb", {}, { locale: "ja" })).toBe("0.1 MB未満");
+    expect(t("overview.size.freeUnderTenthMb", { total: 40 })).toBe(
+      "< 0.1 MB you can free, out of 40 MB",
+    );
+    expect(t("overview.size.freeUnderTenthMb", { total: 40 }, { locale: "fr" })).toBe(
+      "< 0,1 Mo à libérer, sur 40 Mo",
+    );
+    expect(t("overview.size.freeUnderTenthMb", { total: 40 }, { locale: "ja" })).toBe(
+      "合計40 MBのうち、0.1 MB未満を空けられます。",
+    );
+    expect(t("overview.size.mb", { size: 0 })).toBe("0 MB");
+    expect(t("overview.size.gb", { size: 1 })).toBe("1 GB");
   });
 
   it("substitutes the device name from the port, never a hard-coded Mac (guards Windows copy)", () => {

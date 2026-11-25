@@ -3,6 +3,7 @@ import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -19,11 +20,10 @@ export const fr = {
     "{count, plural, =0 {Aucun email} one {# email} other {# emails}}",
     ["count"],
   ),
-  "overview.size.free": entry("{size, number} Go à libérer, sur {total, number} Go", [
-    "size",
-    "total",
-  ]),
-  "overview.size.gb": entry("{size, number} Go", ["size"]),
+  ...sizeMessages.fr,
+  "overview.figure.archived": entry("emails archivés", []),
+  "overview.figure.saved": entry("pièces jointes enregistrées", []),
+  "overview.figure.unsubscribed": entry("newsletters désabonnées", []),
   "scan.failed": entry(
     "Je n'ai pas pu finir le tri. Rien n'a été modifié. Relancez-le et je reprendrai là où je me suis arrêté.",
     [],

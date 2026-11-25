@@ -1,5 +1,6 @@
 import { AUTONOMY_LEVELS } from "@pochimail/actions/policies/autonomy";
 import { categorySchema } from "@pochimail/classification/model/category";
+import { digestFiguresSchema } from "@pochimail/cleanup/model/digest";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
 import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
@@ -100,20 +101,10 @@ const queries = {
       )
       .max(100),
   },
-  /**
-   * The latest digest's new items only. Figures are optional until the worker has the per-action
-   * read model (#114); a missing figure means "none new", never a cumulative tally.
-   */
+  /** One account's newest digest items, or every account's summed latest for All accounts (#110); never cumulative Overview totals (#227). */
   "digest.get": {
-    input: z.undefined(),
-    output: z.object({
-      ready: z.boolean(),
-      itemCount: count,
-      archived: count.optional(),
-      saved: count.optional(),
-      unsubscribed: count.optional(),
-      generatedAt: z.string().optional(),
-    }),
+    input: z.object({ accountId: accountId.optional() }),
+    output: z.object({ ready: z.boolean(), itemCount: count }).extend(digestFiguresSchema.shape),
   },
   "settings.get": {
     input: z.undefined(),

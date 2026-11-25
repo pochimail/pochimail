@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -36,12 +37,12 @@ export const messages = {
   "overview.email.count": entry("{count, plural, =0 {No emails} one {# email} other {# emails}}", [
     "count",
   ]),
-  "overview.size.free": entry("{size, number} GB you can free, out of {total, number} GB", [
-    "size",
-    "total",
-  ]),
-  /** One size in GB for the saved-attachments figure (#114); the unit alone, locale-formatted. */
-  "overview.size.gb": entry("{size, number} GB", ["size"]),
+  /** One size per figure (#114): each rounded value picks its own unit, never a raw byte count. */
+  ...sizeMessages.en,
+  /** Cumulative Overview actions (#114); the Summary's figures are proposals, not these. */
+  "overview.figure.archived": entry("emails archived", []),
+  "overview.figure.saved": entry("attachments saved", []),
+  "overview.figure.unsubscribed": entry("newsletters unsubscribed", []),
   "scan.failed": entry(
     "I could not finish sorting. Nothing was changed. Start again and I will continue where I stopped.",
     [],

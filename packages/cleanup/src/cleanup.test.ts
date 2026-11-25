@@ -1,17 +1,14 @@
-// Guards: a protected sender proposed for cleanup, a digest that re-reports old mail, an Overview figure that drifts, and a lost or phantom event.
+// Guards: a protected sender proposed for cleanup, an Overview figure that drifts, and a lost or phantom event.
 import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
 import { createSuggestion } from "./model/suggestion.ts";
 import { digestContract } from "./testing/digest-contract.ts";
 import { digestStateContract } from "./testing/digest-state-contract.ts";
 import { createInMemoryCleanup } from "./testing/in-memory-cleanup.ts";
-import { createInMemoryDigestTally } from "./testing/in-memory-digest-tally.ts";
 import { ACCOUNT_1, makeSuggestion, WS_A } from "./testing/samples.ts";
 import { suggestionRepositoryContract } from "./testing/suggestion-repository-contract.ts";
 import { suggestionsContract } from "./testing/suggestions-contract.ts";
-import { GetDigestStatus } from "./use-cases/get-digest-status.ts";
 import { GetOverview } from "./use-cases/get-overview.ts";
-import { RecordDigestReady } from "./use-cases/record-digest-ready.ts";
 
 const fakeClock = () => {
   let at = Date.parse("2026-01-01T00:00:00.000Z");
@@ -104,23 +101,5 @@ describe("GetOverview", () => {
       unsubscribed: 0,
       totalSize: 3_000_000_000,
     });
-  });
-});
-
-describe("digest status", () => {
-  it("counts a delivered event once (guards double counting on at-least-once delivery)", () => {
-    const tally = createInMemoryDigestTally();
-    const record = new RecordDigestReady({ tally });
-    const event = {
-      id: "digest:acc-1:since",
-      type: "DigestReady" as const,
-      version: 1 as const,
-      workspaceId: WS_A,
-      occurredAt: "2026-01-01T00:00:00.000Z",
-      payload: { itemCount: 3 },
-    };
-    record.execute(event);
-    record.execute(event);
-    expect(new GetDigestStatus({ tally }).execute()).toEqual({ ready: true, itemCount: 3 });
   });
 });

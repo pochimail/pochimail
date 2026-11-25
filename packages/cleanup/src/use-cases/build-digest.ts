@@ -12,6 +12,12 @@ import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 const PAGE = 200;
 /** Before any digest exists, all stored mail counts as new. */
 export const FIRST_DIGEST_SINCE = "1970-01-01T00:00:00.000Z";
+/** New mail's intended action, matching the Summary's figure-to-category routing. */
+const ACTION_CATEGORIES = {
+  archived: "notifications",
+  saved: "records",
+  unsubscribed: "newsletters",
+} as const;
 
 export interface BuildDigestDeps {
   readonly uow: CleanupUnitOfWork;
@@ -33,7 +39,8 @@ export type BuildDigestError = StorageError | NotFound | Cancelled;
 /**
  * Builds the "what's new" summary: only mail received after `since`, never totals of old mail
  * (brief §7). Counts by category plus the new messages that need attention. A digest with
- * nothing new is returned but announces nothing (`DigestReady` only when there are items).
+ * nothing new is returned but its `DigestReady` still announces zero items, so a previous
+ * Summary cannot keep showing old mail as new.
  */
 export class BuildDigest {
   constructor(private readonly deps: BuildDigestDeps) {}
@@ -92,6 +99,11 @@ export class BuildDigest {
       .map((s) => ({ messageId: s.messageId, kind: s.kind }))
       .sort((a, b) => (a.messageId + a.kind < b.messageId + b.kind ? -1 : 1));
 
+    const figures = {
+      archived: byCategory[ACTION_CATEGORIES.archived] ?? 0,
+      saved: byCategory[ACTION_CATEGORIES.saved] ?? 0,
+      unsubscribed: byCategory[ACTION_CATEGORIES.unsubscribed] ?? 0,
+    };
     const generatedAt = clock.now().toISOString();
     const digest: Digest = {
       schemaVersion: 1,
@@ -113,14 +125,18 @@ export class BuildDigest {
         newest.value,
       );
       if (!advanced.ok) return advanced;
-      if (fresh.length === 0) return ok(undefined);
       const event = {
         id: `digest:${request.accountId}:${since}`,
         type: "DigestReady",
         version: 1,
         workspaceId: request.workspaceId,
         occurredAt: generatedAt,
-        payload: { itemCount: fresh.length },
+        payload: {
+          itemCount: fresh.length,
+          accountId: request.accountId,
+          ...figures,
+          generatedAt,
+        },
       } satisfies DigestReady;
       return tx.events.append([event]);
     }, signal);
