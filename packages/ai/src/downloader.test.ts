@@ -1,0 +1,154 @@
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  downloadFile,
+  type FileDownloadPorts,
+  type FileState,
+  type ModelTransport,
+  type ModelTransportResponse,
+  sleep,
+} from "./downloader.ts";
+
+const failing = vi.hoisted(() => ({ code: undefined as string | undefined }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    open: async (...args: Parameters<typeof actual.open>) => {
+      const handle = await actual.open(...args);
+      if (failing.code === undefined) return handle;
+      const code = failing.code;
+      return new Proxy(handle, {
+        get: (target, key) => {
+          if (key === "writeFile")
+            return async () => {
+              throw Object.assign(new Error("write failed"), { code });
+            };
+          const value = Reflect.get(target, key);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    },
+  };
+});
+
+const bytes = Uint8Array.from({ length: 1_000 }, (_unused, at) => (at * 13) % 251);
+const file = {
+  name: "m.bin",
+  url: "https://huggingface.co/o/r/resolve/x/m.bin",
+  bytes: bytes.length,
+  sha256: createHash("sha256").update(bytes).digest("hex"),
+};
+
+let dir: string;
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), "pochimail-downloader-"));
+});
+afterEach(async () => {
+  failing.code = undefined;
+  await rm(dir, { recursive: true, force: true });
+});
+
+const bodyOf = (chunk: Uint8Array, onClose?: () => void): AsyncIterable<Uint8Array> => ({
+  [Symbol.asyncIterator]: () => {
+    let sent = false;
+    return {
+      next: async () => {
+        if (sent) return { done: true as const, value: undefined };
+        sent = true;
+        return { done: false as const, value: chunk };
+      },
+      return: async () => {
+        onClose?.();
+        return { done: true as const, value: undefined };
+      },
+    };
+  },
+});
+
+const run = (answers: ModelTransportResponse[]) => {
+  const waits: number[] = [];
+  const states: FileState[] = [];
+  const transport: ModelTransport = async () => {
+    const next = answers.shift();
+    return next === undefined ? { ok: false, error: "unreachable" } : { ok: true, value: next };
+  };
+  const ports: FileDownloadPorts = {
+    transport,
+    partialDir: join(dir, ".partial"),
+    wait: async (ms) => void waits.push(ms),
+    report: (state) => void states.push(state),
+  };
+  const final = join(dir, "final.bin");
+  return {
+    waits,
+    states,
+    final,
+    result: downloadFile(file, final, ports, new AbortController().signal),
+  };
+};
+
+describe("downloadFile", () => {
+  // Guards: a failing disk (EIO, EPERM, EDQUOT) being retried as if the network had dropped.
+  it.each([
+    ["EIO", "failed"],
+    ["EPERM", "failed"],
+    ["EBUSY", "failed"],
+    ["ENOSPC", "disk-full"],
+    ["EDQUOT", "disk-full"],
+  ])("fails on a write error %s instead of pausing as offline", async (code, error) => {
+    failing.code = code;
+    const { result, waits, states } = run([{ status: 200, body: bodyOf(bytes) }]);
+    expect(await result).toEqual({ ok: false, error });
+    expect(waits).toEqual([]);
+    expect(states).not.toContain("paused-offline");
+  });
+
+  // Guards: a busy or rate-limited server ending the download for good instead of backing off.
+  it.each([429, 502, 503, 504])("backs off on HTTP %i and then finishes", async (status) => {
+    const closed = vi.fn();
+    const { result, waits, final } = run([
+      { status, body: bodyOf(new Uint8Array(), closed) },
+      { status: 200, body: bodyOf(bytes) },
+    ]);
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(waits).toEqual([2_000]);
+    expect(closed).toHaveBeenCalledTimes(1);
+    expect(new Uint8Array(await readFile(final))).toEqual(bytes);
+  });
+
+  // Guards: an HTTP error leaving its response body open.
+  it("closes the body of a response it will not read", async () => {
+    const closed = vi.fn();
+    const { result } = run([{ status: 404, body: bodyOf(new Uint8Array(), closed) }]);
+    expect(await result).toEqual({ ok: false, error: "failed" });
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  // Guards: a restart that re-fetches less than the partial held counting as progress and resetting the backoff.
+  it("backs off when a restarted body is shorter than the partial it replaced", async () => {
+    await mkdir(join(dir, ".partial"));
+    await writeFile(join(dir, ".partial", `${file.sha256}.part`), bytes.subarray(0, 600));
+    const { result, waits, states } = run([
+      { status: 200, body: bodyOf(bytes.subarray(0, 300)) },
+      { status: 200, body: bodyOf(bytes) },
+    ]);
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(states).toContain("paused-offline");
+    expect(waits).toEqual([2_000]);
+  });
+});
+
+describe("sleep", () => {
+  // Guards: a cancelled download waiting out a backoff of up to a minute.
+  it("returns at once on an aborted signal", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const started = Date.now();
+    await sleep(60_000, controller.signal);
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+});

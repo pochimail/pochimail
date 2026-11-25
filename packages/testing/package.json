@@ -24,6 +24,7 @@
     "./fake-exporter": "./src/fake-exporter.ts",
     "./fake-gmail-server": "./src/fake-gmail-server.ts",
     "./fake-mail-provider": "./src/fake-mail-provider.ts",
+    "./fake-model-server": "./src/fake-model-server.ts",
     "./fake-oauth-server": "./src/fake-oauth-server.ts",
     "./fake-platform": "./src/fake-platform.ts",
     "./fake-power-monitor": "./src/fake-power-monitor.ts",
