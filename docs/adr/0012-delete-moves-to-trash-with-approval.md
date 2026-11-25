@@ -3,7 +3,7 @@
 Status: Accepted (2026-11-19) · Changes "never delete" · Related: [ADR 0007](0007-oauth-credentials-scopes.md)
 
 ## Context
-Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that impossible.
+Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that impossible.
 
 ## Decision
 - Pochimail can delete email. **Delete always means moving to the provider's Trash**: Gmail `users.messages.trash` (`gmail.modify`), Microsoft Graph (v1.1) move to Deleted Items (`Mail.ReadWrite`). No new scope.
@@ -16,18 +16,18 @@ Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing i
   - has an attachment the user has not saved;
   - the sender is marked Keep.
   Signals are computed per email by the local classifier ([ADR 0016](0016-fixed-types-and-automatic-topics.md)); when it is unsure, the email is protected.
-- Every deletion is logged with its inverse; **Undo restores from the Trash** while the provider holds it.
+- Every deletion is logged with its inverse; **Undo restores from the Trash**.
 - Clean up reports freeable space apart from archivable email, using provider sizes (Gmail `sizeEstimate`; verify Graph before showing Microsoft figures).
 - Promise: "You keep the control. Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo."
 
 ## Addendum (#128): unsure
-- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects unconditionally: never pre-selected, proposed or auto-applied. Its signal has confidence `UNSURE_CONFIDENCE` (0.5), reason "Not sure, kept safe", and is never counted.
+- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects: never pre-selected, proposed or auto-applied. Its signal has confidence `UNSURE_CONFIDENCE` (0.5), reason "Not sure, kept safe", and is never counted.
+- Only unsure is enforced at the action boundary (`authorize` denies Autopilot). The other protections are not: a Review list must read every signal hit.
 - "Time-sensitive" is a proxy: a recent unopened `records` email. Stored text is off limits (ADR 0014), so deadlines are unread: it misses dated mail of other types and flags undated records.
 
 ## Consequences
 - "GB you can free" is real again, tied to deletion only.
-- Copy, invariants, tests and designs saying "never deleted" change.
-- Undo is limited by the provider's Trash retention; the UI says so.
+- The UI states that Undo ends with the provider's Trash retention.
 
 ## Alternatives considered
 - Archive only: rejected; frees no space.

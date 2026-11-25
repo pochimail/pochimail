@@ -11,6 +11,8 @@ const raw = (over: Partial<GmailMetadata> = {}): GmailMetadata => ({
   sizeEstimate: 900,
   internalDate: String(Date.UTC(2026, 0, 2)),
   payload: {
+    mimeType: "multipart/alternative",
+    parts: [],
     headers: [
       { name: "From", value: "Ada <Ada@Example.com>" },
       { name: "To", value: 'a@example.com, "B" <b@example.com>' },
@@ -37,7 +39,7 @@ it("maps metadata to the minimal record with empty subject and snippet", () => {
     toIncoming(
       raw({
         labelIds: ["INBOX"],
-        payload: { headers: [{ name: "From", value: "a@example.com" }] },
+        payload: { ...raw().payload, headers: [{ name: "From", value: "a@example.com" }] },
       }),
       identity,
     ),
@@ -49,6 +51,24 @@ it("maps metadata to the minimal record with empty subject and snippet", () => {
 
 // Guards: a half-stored message when Gmail returns something we cannot use.
 it("skips a message without a usable sender or date", () => {
-  expect(toIncoming(raw({ payload: { headers: [] } }), identity)).toBeNull();
+  expect(toIncoming(raw({ payload: { ...raw().payload, headers: [] } }), identity)).toBeNull();
   expect(toIncoming(raw({ internalDate: "soon" }), identity)).toBeNull();
+});
+
+// Guards: every real message carrying "kept safe" because Gmail's attachment count was never filled in.
+it("counts named attachments and leaves inline images out", () => {
+  const payload = (mimeType: string, parts: GmailMetadata["payload"]["parts"]) => ({
+    ...raw().payload,
+    mimeType,
+    parts,
+  });
+  const part = (filename: string) => ({ filename });
+  const count = (p: GmailMetadata["payload"]) =>
+    toIncoming(raw({ payload: p }), identity)?.savedCount;
+  expect(count(payload("multipart/alternative", []))).toBe(0);
+  expect(count(payload("multipart/mixed", [part(""), part("a.pdf")]))).toBe(1);
+  expect(count(payload("multipart/related", [part("logo.png"), part("")]))).toBe(1);
+  expect(count(payload("multipart/related", [part("")]))).toBe(0);
+  // The metadata format omits parts: a mixed body is the only sign of a file.
+  expect(count(payload("multipart/mixed", []))).toBe(1);
 });

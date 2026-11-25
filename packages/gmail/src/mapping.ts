@@ -23,6 +23,18 @@ function header(message: GmailMetadata, name: string): string | undefined {
 }
 
 /**
+ * Attachments the payload shows: top-level parts with a filename, else 1 for a `multipart/mixed` body
+ * whose parts the metadata format leaves out (a lower bound; classification only asks "any?").
+ * Inline images carry no filename and are not counted.
+ */
+function attachmentCount(payload: GmailMetadata["payload"]): number {
+  const files = payload.parts.filter((p) => p.filename !== "");
+  if (files.length > 0) return files.length;
+  if (payload.parts.length > 0) return 0;
+  return payload.mimeType.toLowerCase() === "multipart/mixed" ? 1 : 0;
+}
+
+/**
  * Gmail metadata to the minimal mailbox record: ids, date, flags and the sender and recipients
  * (kept for grouping by sender). Subject and snippet stay empty until the record drops them
  * (Q-10). A message that does not fit the record is skipped, never half-stored.
@@ -47,6 +59,7 @@ export function toIncoming(message: GmailMetadata, identity: Identity): Incoming
     hasListUnsubscribe: header(message, "List-Unsubscribe") !== undefined,
     opened: !message.labelIds.includes("UNREAD"),
     ...(message.sizeEstimate === undefined ? {} : { size: message.sizeEstimate }),
+    savedCount: attachmentCount(message.payload),
     topicIds: [],
   });
   return parsed.success ? parsed.data : null;
