@@ -49,6 +49,7 @@ describe("DiscoverTopics", () => {
   it("names are matched without case or extra spaces, and invalid names or foreign ids are dropped (guards unchecked model output)", async () => {
     const { c, discover } = await mailbox();
     unwrap(await discover());
+    const filed = c.topicAssignments();
     const sloppy: TopicDiscoverer = {
       discover: async () =>
         ok([
@@ -58,7 +59,39 @@ describe("DiscoverTopics", () => {
     };
     const report = unwrap(await discover(sloppy));
     expect(report.topics.map((t) => t.name)).toEqual(["Club", "Shop"]);
-    expect(Object.keys(c.topicAssignments())).toEqual(["msg-1"]);
+    expect(c.topicAssignments()).toEqual(filed);
+  });
+
+  it("a message the model did not mention keeps its topics, and one it mentions is re-filed (guards a partial answer wiping the mailbox)", async () => {
+    const { c, discover } = await mailbox();
+    unwrap(await discover());
+    const filed = c.topicAssignments();
+    const partial: TopicDiscoverer = {
+      discover: async () => ok([{ name: "Club", messageIds: ids(1) }]),
+    };
+    const report = unwrap(await discover(partial));
+    const after = c.topicAssignments();
+    expect(after["msg-1"]).toEqual(after["msg-3"]);
+    expect(after["msg-1"]).not.toEqual(filed["msg-1"]);
+    expect(after["msg-2"]).toEqual(filed["msg-2"]);
+    expect(report.assigned).toBe(1);
+  });
+
+  it("names over 60 characters are dropped and topics stop at 50 (guards a model flooding the sidebar)", async () => {
+    const { c, discover } = await mailbox();
+    const flood: TopicDiscoverer = {
+      discover: async () =>
+        ok([
+          { name: "x".repeat(61), messageIds: ids(1) },
+          { name: "y".repeat(60), messageIds: ids(2) },
+          ...Array.from({ length: 80 }, (_, i) => ({ name: `Topic ${i}`, messageIds: ids(3) })),
+        ]),
+    };
+    const report = unwrap(await discover(flood));
+    expect(report.topics).toHaveLength(50);
+    expect(report.topics.some((t) => t.name.length > 60)).toBe(false);
+    expect(report.topics.some((t) => t.name === "y".repeat(60))).toBe(true);
+    expect(c.topicAssignments()["msg-1"]).toBeUndefined();
   });
 
   it("an unavailable model fails with AiUnavailable and files nothing (guards a half-written scan)", async () => {

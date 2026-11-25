@@ -194,7 +194,7 @@ function planAll(rng: Rng, total: number): Plan[] {
         dormant = BULK_TYPES.includes(category) && peer === SENDERS[category].at(-1);
         language = pickLanguage(rng);
       }
-      const suspicious = category === "transactional" && rng.chance(0.04);
+      const suspicious = category === "transactional" && rng.chance(0.01);
       if (suspicious) peer = SPOOFED_SENDER;
 
       const age = ageOf({ waiting, important, awaiting, t }, rng);

@@ -5,7 +5,7 @@ import type { MessageId, TopicId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
 import { topicIdSchema } from "@pochimail/kernel/schemas";
 import type { ClassifiableMessage } from "../model/message-facts.ts";
-import { type Topic, topicSchema } from "../model/topic.ts";
+import { TOPICS_MAX, type Topic, topicSchema } from "../model/topic.ts";
 import type { AiError } from "../ports/classifier.ts";
 import type { TopicDiscoverer, TopicProposal } from "../ports/topic-discoverer.ts";
 import type { ClassificationUnitOfWork } from "../ports/unit-of-work.ts";
@@ -36,8 +36,9 @@ const keyOf = (name: string) => name.normalize("NFKC").trim().replace(/\s+/g, " 
 /**
  * Finds the topics of stored messages and files each message under them. A topic is stable once
  * created: a name that matches an existing topic reuses its id and its name, so running twice on
- * the same mail creates nothing new. Output of the model is untrusted:
- * names are validated and ids outside the batch are ignored. Reads only headers and metadata (ADR 0014).
+ * the same mail creates nothing new. Output of the model is untrusted: names are validated
+ * (at most `TOPIC_NAME_MAX` characters), at most `TOPICS_MAX` topics exist per workspace,
+ * ids outside the batch are ignored, and only messages named in a valid proposal are re-filed. Reads only headers and metadata (ADR 0014).
  */
 export class DiscoverTopics {
   constructor(private readonly deps: DiscoverTopicsDeps) {}
@@ -71,13 +72,13 @@ export class DiscoverTopics {
         const saved = await tx.repositories.topics.save(topic);
         if (!saved.ok) return saved;
       }
-      for (const message of messages) {
-        const set = await tx.repositories.messages.setTopics(
+      for (const [messageId, set] of topicsOf) {
+        const saved = await tx.repositories.messages.setTopics(
           workspaceId,
-          message.id,
-          [...(topicsOf.get(message.id) ?? [])].sort(),
+          messageId,
+          [...set].sort(),
         );
-        if (!set.ok) return set;
+        if (!saved.ok) return saved;
       }
       return ok(undefined);
     }, signal);
@@ -100,17 +101,27 @@ function resolve(
   const byKey = new Map(known.map((t) => [keyOf(t.name), t]));
   const created: Topic[] = [];
   const topicsOf = new Map<MessageId, Set<TopicId>>();
+  const topicFor = (raw: string): Topic | undefined => {
+    const name = topicSchema.shape.name.safeParse(raw);
+    if (!name.success) return undefined;
+    const key = keyOf(name.data);
+    const existing = byKey.get(key);
+    if (existing !== undefined || byKey.size >= TOPICS_MAX) return existing;
+    const id = topicIdSchema.safeParse(scope.ids.next("top"));
+    if (!id.success) return undefined;
+    const topic = {
+      schemaVersion: 1 as const,
+      id: id.data,
+      workspaceId: scope.workspaceId,
+      name: name.data,
+    };
+    byKey.set(key, topic);
+    created.push(topic);
+    return topic;
+  };
   for (const p of proposals) {
-    const name = topicSchema.shape.name.safeParse(p.name);
-    if (!name.success) continue;
-    let topic = byKey.get(keyOf(name.data));
-    if (topic === undefined) {
-      const id = topicIdSchema.safeParse(scope.ids.next("top"));
-      if (!id.success) continue;
-      topic = { schemaVersion: 1, id: id.data, workspaceId: scope.workspaceId, name: name.data };
-      byKey.set(keyOf(name.data), topic);
-      created.push(topic);
-    }
+    const topic = topicFor(p.name);
+    if (topic === undefined) continue;
     for (const messageId of p.messageIds)
       if (inBatch.has(messageId))
         topicsOf.set(messageId, (topicsOf.get(messageId) ?? new Set()).add(topic.id));

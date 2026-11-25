@@ -231,7 +231,8 @@ export async function runScenario(options: ScenarioOptions): Promise<ScenarioRes
           authorization: {
             autonomy: "suggest" as const,
             categories,
-            // Protection is decided from signals when suggestions are proposed (ADR 0012).
+            // Protection is decided from signals when suggestions are proposed (ADR 0012), not here.
+            // Autopilot does not do that yet (#270): it must not be enabled before #270 lands.
             protectedCategories: [],
             confidence,
             userConfirmed: true,
