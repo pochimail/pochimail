@@ -57,8 +57,6 @@ async function factsOf(
   return ok({
     messageId: message.id,
     from: message.from,
-    subject: message.subject,
-    snippet: message.snippet,
     storedCategory: message.category,
     receivedAt: message.receivedAt,
     opened: message.opened,
@@ -66,6 +64,8 @@ async function factsOf(
     lastInThread: last.value,
     senderVip: sender.value.vip,
     senderRepliedCount: sender.value.repliedCount,
+    hasListUnsubscribe: message.hasListUnsubscribe,
+    ...(message.savedCount === undefined ? {} : { attachmentCount: message.savedCount }),
   });
 }
 

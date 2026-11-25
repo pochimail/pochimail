@@ -3,7 +3,7 @@ import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
 import { CATEGORIES } from "../model/category.ts";
 import type { DerivedMessage } from "../model/derived.ts";
-import type { ClassifiableMessage } from "../model/message-facts.ts";
+import type { ClassifiableMessage, SignalFacts } from "../model/message-facts.ts";
 import type { StoredSignal } from "../model/signal.ts";
 import type { Topic } from "../model/topic.ts";
 import type { ClassificationUnitOfWork } from "../ports/unit-of-work.ts";
@@ -15,8 +15,34 @@ const byText = (a: string, b: string) => {
   return a < b ? -1 : 1;
 };
 
+/** A message as the in-memory mailbox keeps it, with the facts only signals read. */
+type StoredMessage = ClassifiableMessage & {
+  category: string;
+  attachmentCount?: number;
+};
+
+/** The facts the signal rules read of one stored message and its sender's statistics. */
+function factsOf(
+  m: StoredMessage,
+  sender: { vip: boolean; repliedCount: number } | undefined,
+): SignalFacts {
+  return {
+    messageId: m.id,
+    from: m.from,
+    storedCategory: m.category,
+    receivedAt: m.receivedAt,
+    opened: m.opened,
+    ownerAddress: OWNER_ADDRESS,
+    lastInThread: true,
+    senderVip: sender?.vip ?? false,
+    senderRepliedCount: sender?.repliedCount ?? 0,
+    hasListUnsubscribe: m.hasListUnsubscribe,
+    ...(m.attachmentCount === undefined ? {} : { attachmentCount: m.attachmentCount }),
+  };
+}
+
 interface Data {
-  messages: Map<string, ClassifiableMessage & { category: string }>;
+  messages: Map<string, StoredMessage>;
   derived: Map<string, DerivedMessage>;
   signals: Map<string, StoredSignal>;
   topics: Map<string, Topic>;
@@ -93,7 +119,7 @@ export function createInMemoryClassification(): InMemoryClassification {
       get: async (ws, id) => {
         const m = data().messages.get(`${ws}/${id}`);
         if (!m) return err(new NotFound("Message"));
-        const { category: _category, ...message } = m;
+        const { category: _category, attachmentCount: _count, ...message } = m;
         return ok(copy(message));
       },
       countByCategory: async (ws, accountIds) => {
@@ -110,21 +136,7 @@ export function createInMemoryClassification(): InMemoryClassification {
         for (const id of [...ids].sort()) {
           const m = data().messages.get(`${ws}/${id}`);
           if (!m) return err(new NotFound("Message"));
-          if (m.accountId !== accountId) continue;
-          const sender = data().senders.get(m.from);
-          out.push({
-            messageId: id,
-            from: m.from,
-            subject: m.subject,
-            snippet: m.snippet,
-            storedCategory: m.category,
-            receivedAt: m.receivedAt,
-            opened: m.opened,
-            ownerAddress: OWNER_ADDRESS,
-            lastInThread: true,
-            senderVip: sender?.vip ?? false,
-            senderRepliedCount: sender?.repliedCount ?? 0,
-          });
+          if (m.accountId === accountId) out.push(factsOf(m, data().senders.get(m.from)));
         }
         return ok(out);
       },
@@ -203,11 +215,16 @@ export function createInMemoryClassification(): InMemoryClassification {
         const n = Number(key);
         const message = makeMessage(n, row.message);
         const category = row.category ?? "notifications";
-        committed.messages.set(`${WS_A}/${message.id}`, { ...message, category });
-        committed.derived.set(
-          `${WS_A}/${message.id}`,
-          makeDerived(n, { category, snippet: message.snippet, ...row.derived }),
-        );
+        committed.messages.set(`${WS_A}/${message.id}`, {
+          ...message,
+          category,
+          ...(row.attachmentCount === undefined ? {} : { attachmentCount: row.attachmentCount }),
+        });
+        if (row.derived !== null)
+          committed.derived.set(
+            `${WS_A}/${message.id}`,
+            makeDerived(n, { category, snippet: message.snippet, ...row.derived }),
+          );
       }
     },
     setSender: async (address, stats) => {

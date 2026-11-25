@@ -1,4 +1,10 @@
 import { CATEGORIES, type Category } from "@pochimail/classification/model/category";
+import { DEFAULT_SIGNAL_SETTINGS } from "@pochimail/classification/model/signal-settings";
+import {
+  BULK_CATEGORIES,
+  OLD_AFTER_DAYS,
+  TIME_SENSITIVE_WITHIN_DAYS,
+} from "@pochimail/classification/policies/signal-rules";
 import {
   CORRESPONDENTS,
   ITEMS,
@@ -17,6 +23,7 @@ import {
   quoteFromLines,
 } from "./mbox.ts";
 import { apportion, createRng, type Rng } from "./prng.ts";
+import { assignThreadSignals } from "./signal-labels.ts";
 
 // FAKE DATA ONLY. The mock dataset of brief §6, reproduced with a seeded generator:
 // 2 accounts, 7 categories, 7 people waiting (oldest 9 days), 3 deadlines this week,
@@ -31,6 +38,7 @@ export const FIXTURE_NOW = Date.UTC(2026, 10, 17, 9, 0, 0);
 export const MOCK_DATASET = {
   totalMessages: 48_312,
   documents: 412,
+  /** Threads planted as waiting on the owner; the 12 new important-sender messages also wait, so `needs-reply` labels both. */
   peopleWaiting: 7,
   oldestWaitingDays: 9,
   deadlinesThisWeek: 3,
@@ -83,8 +91,12 @@ const ACCOUNT_DEFS = [
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 const YEARS = 9;
+/** Unopened bulk mail older than this is proposed for archiving (a stricter bar than the signal). */
+const STALE_AFTER_DAYS = 2 * 365;
 const OWNER_NAME = "Pochi Demo";
 const WAITING_AGES_DAYS = [9, 6, 5, 4, 3, 2, 1];
+/** Threads the owner answered last, with no reply since: they wait on the other person. */
+const AWAITING_AGES_DAYS = [4, 6, 10];
 
 const OPENED_RATE: Record<Category, number> = {
   people: 0.95,
@@ -163,6 +175,19 @@ function threadLength(category: Category, rng: Rng): number {
   return 1;
 }
 
+/** How old a thread is. The draw is made even for an awaiting thread, so the seeded mailbox keeps its shape. */
+function ageOf(
+  thread: { waiting: boolean; important: boolean; awaiting: boolean; t: number },
+  rng: Rng,
+): number {
+  if (thread.waiting) return (WAITING_AGES_DAYS[thread.t] ?? 1) * DAY;
+  if (thread.important) return rng.int(0, 3 * DAY);
+  const drawn = Math.floor(rng.next() ** 1.6 * YEARS * 365 * DAY);
+  if (!thread.awaiting) return drawn;
+  const index = thread.t - MOCK_DATASET.peopleWaiting - MOCK_DATASET.newFromImportant;
+  return (AWAITING_AGES_DAYS[index] ?? 5) * DAY;
+}
+
 function planAll(rng: Rng, total: number): Plan[] {
   const counts = apportion(
     total,
@@ -182,6 +207,10 @@ function planAll(rng: Rng, total: number): Plan[] {
         category === "people" &&
         t >= MOCK_DATASET.peopleWaiting &&
         t < MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant;
+      const awaiting =
+        category === "people" &&
+        t >= MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant &&
+        t < MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant + AWAITING_AGES_DAYS.length;
       const length = Math.min(
         waiting ? rng.int(1, 3) : important ? 1 : threadLength(category, rng),
         remaining,
@@ -206,12 +235,12 @@ function planAll(rng: Rng, total: number): Plan[] {
       const suspicious = category === "sign-ins-security" && rng.chance(0.04);
       if (suspicious) peer = SPOOFED_SENDER;
 
-      const age = waiting
-        ? (WAITING_AGES_DAYS[t] ?? 1) * DAY
-        : important
-          ? rng.int(0, 3 * DAY)
-          : Math.floor(rng.next() ** 1.6 * YEARS * 365 * DAY);
-      const lastInbound = waiting || important || category !== "people" || rng.chance(0.7);
+      const age = ageOf({ waiting, important, awaiting, t }, rng);
+      // Only the planted threads wait on the owner (brief §6); any other recent person's thread
+      // was answered, so the mock dataset keeps its numbers.
+      const recent = age < DEFAULT_SIGNAL_SETTINGS.recentDays * DAY;
+      const lastInbound =
+        waiting || important || category !== "people" || (rng.chance(0.7) && !recent && !awaiting);
       const gap = rng.int(1, 48) * HOUR;
       const template = TEMPLATES[category][language];
       const baseSubject = rng.pick(template.subjects);
@@ -257,11 +286,7 @@ function planAll(rng: Rng, total: number): Plan[] {
           signals: new Set(),
         });
       }
-      // The last message of a waiting thread is from them; the first 7 `people` threads are the waiters.
-      if (waiting) plans[plans.length - 1]?.signals.add("needs-reply");
       if (important) plans[plans.length - 1]?.signals.add("important-sender");
-      if (category === "people" && !waiting && !important && length > 1 && !lastInbound)
-        plans[plans.length - 1]?.signals.add("waiting-on-them");
     }
   }
   return plans;
@@ -279,6 +304,14 @@ function assignSignals(rng: Rng, plans: Plan[], total: number): void {
     plan.signals.add("time-sensitive");
     plan.opened = false;
   }
+  // Any other recent records notice was read, so only a deadline notice is recent and unopened.
+  for (const plan of plans)
+    if (
+      plan.category === "records" &&
+      !plan.signals.has("time-sensitive") &&
+      FIXTURE_NOW - plan.at <= TIME_SENSITIVE_WITHIN_DAYS * DAY
+    )
+      plan.opened = true;
   // Documents: a seeded share of records and purchases carry a PDF.
   const documents = Math.round((MOCK_DATASET.documents * total) / MOCK_DATASET.totalMessages);
   const eligible = plans.filter(
@@ -289,19 +322,19 @@ function assignSignals(rng: Rng, plans: Plan[], total: number): void {
     plan.signals.add("has-document");
   }
   // Old and never opened: only bulk senders, where this is what makes a clean-up proposal safe.
-  for (const plan of plans) {
-    const bulk = ["notifications", "newsletters", "promotions"].includes(plan.category);
-    if (bulk && !plan.opened && FIXTURE_NOW - plan.at > 2 * 365 * DAY)
+  for (const plan of plans)
+    if (isBulk(plan) && !plan.opened && FIXTURE_NOW - plan.at >= OLD_AFTER_DAYS * DAY)
       plan.signals.add("old-never-opened");
-  }
+  assignThreadSignals(plans, FIXTURE_NOW, DEFAULT_SIGNAL_SETTINGS);
 }
 
+const isBulk = (plan: Plan) => BULK_CATEGORIES.includes(plan.category);
+
 function suggestionFor(plan: Plan): MessageLabel["expectedSuggestion"] {
-  const cleanable = ["notifications", "newsletters", "promotions"].includes(plan.category);
-  if (!cleanable) return null;
+  if (!isBulk(plan)) return null;
   if (plan.listUnsubscribe && !plan.opened && plan.category !== "notifications")
     return "unsubscribe";
-  return plan.signals.has("old-never-opened") ? "archive" : null;
+  return !plan.opened && FIXTURE_NOW - plan.at > STALE_AFTER_DAYS * DAY ? "archive" : null;
 }
 
 function renderMessage(

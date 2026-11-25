@@ -47,7 +47,10 @@ export const makeDerived = (n: number, over: Partial<DerivedMessage> = {}): Deri
 export interface SeedRow {
   readonly message?: Partial<ClassifiableMessage>;
   readonly category?: Category;
-  readonly derived?: Partial<DerivedMessage>;
+  /** `null` stores no derived data, as for a message the classifier has not answered yet. */
+  readonly derived?: Partial<DerivedMessage> | null;
+  /** Attachments the provider reported; left out when it reported none. */
+  readonly attachmentCount?: number;
 }
 
 /** What the signal rules read about a sender (the mailbox's sender statistics). */

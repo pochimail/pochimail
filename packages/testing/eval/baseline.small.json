@@ -74,22 +74,22 @@
   },
   "signals": {
     "needs-reply": {
-      "support": 7,
-      "truePositives": 7,
-      "falsePositives": 20,
+      "support": 19,
+      "truePositives": 19,
+      "falsePositives": 0,
       "falseNegatives": 0,
-      "precision": 0.2593,
+      "precision": 1,
       "recall": 1,
-      "f1": 0.4118
+      "f1": 1
     },
     "waiting-on-them": {
-      "support": 0,
-      "truePositives": 0,
-      "falsePositives": 2,
+      "support": 4,
+      "truePositives": 4,
+      "falsePositives": 0,
       "falseNegatives": 0,
-      "precision": 0,
+      "precision": 1,
       "recall": 1,
-      "f1": 0
+      "f1": 1
     },
     "important-sender": {
       "support": 12,
@@ -102,30 +102,39 @@
     },
     "has-document": {
       "support": 4,
-      "truePositives": 2,
-      "falsePositives": 26,
-      "falseNegatives": 2,
-      "precision": 0.0714,
-      "recall": 0.5,
-      "f1": 0.125
+      "truePositives": 4,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
     },
     "time-sensitive": {
       "support": 3,
-      "truePositives": 0,
-      "falsePositives": 11,
-      "falseNegatives": 3,
-      "precision": 0,
-      "recall": 0,
-      "f1": 0
+      "truePositives": 3,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
     },
     "old-never-opened": {
-      "support": 161,
-      "truePositives": 161,
-      "falsePositives": 116,
+      "support": 257,
+      "truePositives": 257,
+      "falsePositives": 0,
       "falseNegatives": 0,
-      "precision": 0.5812,
+      "precision": 1,
       "recall": 1,
-      "f1": 0.7352
+      "f1": 1
     }
+  },
+  "suspicious": {
+    "support": 1,
+    "truePositives": 1,
+    "falsePositives": 0,
+    "falseNegatives": 0,
+    "precision": 1,
+    "recall": 1,
+    "f1": 1
   }
 }

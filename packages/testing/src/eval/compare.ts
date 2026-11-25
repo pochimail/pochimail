@@ -5,7 +5,7 @@ import type { EvalReport } from "./report.ts";
 export const DEFAULT_TOLERANCE = 0.02;
 
 export interface Regression {
-  readonly group: "category" | "signal";
+  readonly group: "category" | "signal" | "suspicious";
   readonly name: string;
   readonly metric: "precision" | "recall";
   readonly baseline: number;
@@ -56,6 +56,12 @@ export function compareToBaseline(
   };
   check("category", CATEGORIES, baseline.categories, current.categories);
   check("signal", SIGNAL_KINDS, baseline.signals, current.signals);
+  check(
+    "suspicious",
+    ["suspicious"],
+    { suspicious: baseline.suspicious },
+    { suspicious: current.suspicious },
+  );
   return { ok: regressions.length === 0, regressions };
 }
 

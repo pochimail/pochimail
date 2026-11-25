@@ -39,6 +39,7 @@ describe(`eval gate (${scale})`, () => {
     for (const [group, rows] of [
       ["category", report.categories],
       ["signal", report.signals],
+      ["suspicious", { suspicious: report.suspicious }],
     ] as const)
       for (const [name, m] of Object.entries(rows))
         console.log(

@@ -12,7 +12,7 @@ type Harness = ReturnType<typeof harness>;
 /** Stores the account once, then each message with its label and derived data, through one transaction. */
 async function store(
   h: Harness,
-  rows: Record<number, { incoming: object; category: string; derived: object }>,
+  rows: Record<number, { incoming: object; category: string; derived: object | null }>,
 ) {
   const r = await h.uow.run(async (tx) => {
     await tx.repositories.accounts.save(makeAccount());
@@ -21,15 +21,16 @@ async function store(
       const message = makeIncomingMessage(n, row.incoming as Partial<IncomingMessage>);
       unwrap(await tx.repositories.messages.upsertMany([message]));
       unwrap(await tx.repositories.messages.setCategory(WS_A, message.id, row.category));
-      unwrap(
-        await tx.repositories.derived.save(
-          makeDerived(n, {
-            category: row.category as never,
-            snippet: message.snippet,
-            ...row.derived,
-          }),
-        ),
-      );
+      if (row.derived !== null)
+        unwrap(
+          await tx.repositories.derived.save(
+            makeDerived(n, {
+              category: row.category as never,
+              snippet: message.snippet,
+              ...row.derived,
+            }),
+          ),
+        );
     }
     return ok(undefined);
   });
@@ -45,9 +46,12 @@ export const classificationSeeder = (h: Harness): ClassificationSeeder => ({
         Object.entries(rows).map(([n, row]) => [
           n,
           {
-            incoming: row.message ?? {},
+            incoming: {
+              ...row.message,
+              ...(row.attachmentCount === undefined ? {} : { savedCount: row.attachmentCount }),
+            },
             category: row.category ?? "notifications",
-            derived: row.derived ?? {},
+            derived: row.derived === undefined ? {} : row.derived,
           },
         ]),
       ),

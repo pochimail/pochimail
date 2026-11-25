@@ -8,6 +8,7 @@ import {
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { ClassifyBatch } from "@pochimail/classification/use-cases/classify-batch";
 import { DetectSignals } from "@pochimail/classification/use-cases/detect-signals";
+import { EvaluateSuspicious } from "@pochimail/classification/use-cases/evaluate-suspicious";
 import { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import type { Message } from "@pochimail/mailbox/model/message";
@@ -16,7 +17,7 @@ import { createFakeClock } from "../fake-clock.ts";
 import { createFixtureMailProvider } from "../fixture-mailbox/fixture-mail-provider.ts";
 import { FIXTURE_NOW, type GeneratedMailbox } from "../fixture-mailbox/generator.ts";
 import { createInMemoryUnitOfWork } from "../in-memory-store.ts";
-import { scoreMultiLabel, scoreSingleLabel } from "./metrics.ts";
+import { metricsFromCounts, scoreMultiLabel, scoreSingleLabel } from "./metrics.ts";
 import { type EvalReport, evalReportSchema } from "./report.ts";
 import { seedContext } from "./seed-context.ts";
 
@@ -45,6 +46,7 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
   const expected = new Map(mailbox.labels.messages.map((l) => [l.messageId, l]));
   const predictedCategory = new Map<string, Category>();
   const predictedSignals = new Map<string, SignalKind[]>();
+  const predictedSuspicious = new Set<string>();
   let unclassified = 0;
 
   for (const account of mailbox.accounts) {
@@ -102,6 +104,14 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
     for (const s of signals) {
       predictedSignals.set(s.messageId, [...(predictedSignals.get(s.messageId) ?? []), s.kind]);
     }
+    const flagged = unwrap(
+      await new EvaluateSuspicious({ signalFacts: uow.reads.signalFacts }).execute({
+        workspaceId,
+        accountId,
+        messageIds: messages.map((m) => m.id),
+      }),
+    );
+    for (const f of flagged) predictedSuspicious.add(f.messageId);
   }
 
   const labelled = [...expected.values()];
@@ -116,6 +126,14 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
       predicted: predictedSignals.get(l.messageId) ?? [],
     })),
   );
+  const suspicious = metricsFromCounts({
+    truePositives: labelled.filter((l) => l.suspicious && predictedSuspicious.has(l.messageId))
+      .length,
+    falsePositives: labelled.filter((l) => !l.suspicious && predictedSuspicious.has(l.messageId))
+      .length,
+    falseNegatives: labelled.filter((l) => l.suspicious && !predictedSuspicious.has(l.messageId))
+      .length,
+  });
   return evalReportSchema.parse({
     schemaVersion: 1,
     fixture: { seed: mailbox.labels.seed, scale: mailbox.labels.scale, messages: labelled.length },
@@ -123,6 +141,7 @@ export async function runEval({ classifier, mailbox }: RunEvalOptions): Promise<
     categoryAccuracy: categories.accuracy,
     categories: categories.perClass,
     signals,
+    suspicious,
   });
 }
 

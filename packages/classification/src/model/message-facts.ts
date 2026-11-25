@@ -27,9 +27,8 @@ export type ClassifiableMessage = z.infer<typeof classifiableMessageSchema>;
 /** Everything the signal rules need about one message, as plain data from the mailbox. */
 export interface SignalFacts {
   readonly messageId: MessageId;
+  /** The sender's address; empty when it is no longer known (ADR 0014), which the rules treat as unsure. */
   readonly from: string;
-  readonly subject: string;
-  readonly snippet: string;
   /** The label stored on the message; narrowed here, the mailbox does not know the closed set. */
   readonly storedCategory: string;
   readonly receivedAt: string;
@@ -39,4 +38,7 @@ export interface SignalFacts {
   readonly lastInThread: boolean;
   readonly senderVip: boolean;
   readonly senderRepliedCount: number;
+  readonly hasListUnsubscribe: boolean;
+  /** How many attachments the provider reported; absent when it did not. */
+  readonly attachmentCount?: number;
 }
