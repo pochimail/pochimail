@@ -26,29 +26,37 @@ export interface ResolvePendingReport {
   readonly deferred: number;
 }
 
-/** The provider may simply be unreachable at start: the entry stays pending for the next start. */
+/** The provider may simply be unreachable at start (or hiccup): the entry stays pending for the next start. */
 const TRY_AGAIN_LATER: readonly ErrorCode[] = [
   "provider.offline",
   "provider.rate_limited",
   "provider.auth_expired",
+  "provider.failed",
 ];
+
+/** A `pending` entry older than this is not replayed any more: it is closed `failed` (`action.replay_expired`). */
+export const MAX_REPLAY_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 
 /**
  * Run once at start, before new work. Settles every `pending` entry a crash left behind by
  * replaying its command: provider commands are idempotent, so a replay after a call that already
  * happened changes nothing, and one that never happened completes what the user asked. The entry
  * then becomes `applied` with the provider's inverse, so Activity shows it and Undo reverses it.
- * An unsubscribe is never sent twice: it is closed as `failed` and the user may ask again.
+ * An unsubscribe is never sent twice: it is closed as `failed` (`action.outcome_unknown`, the
+ * request may or may not have left) and the user may ask again. An entry that stays deferred
+ * past `MAX_REPLAY_AGE_MS` is given up the same way. Only entries older than `before`, the start
+ * of this process, are touched: actions running now are never replayed.
  */
 export class ResolvePendingActions {
   constructor(private readonly deps: ResolvePendingActionsDeps) {}
 
   async execute(
     workspaceId: WorkspaceId,
+    before: string,
     signal: CancelSignal,
   ): AsyncResult<ResolvePendingReport, StorageError> {
     const { uow } = this.deps;
-    const pending = await uow.reads.actionLog.listPending(workspaceId);
+    const pending = await uow.reads.actionLog.listPending(workspaceId, before);
     if (!pending.ok) return pending;
     let settled = 0;
     let deferred = 0;
@@ -90,7 +98,10 @@ export class ResolvePendingActions {
       return saved.ok ? "settled" : "deferred";
     };
 
-    if (entry.command.kind === "unsubscribe") return close("domain.invalid_state");
+    if (entry.command.kind === "unsubscribe") return close("action.outcome_unknown");
+    if (clock.now().getTime() - Date.parse(entry.at) > MAX_REPLAY_AGE_MS) {
+      return close("action.replay_expired");
+    }
     const provider = await this.deps.providerFor(entry);
     if (!provider.ok) {
       return provider.error.code === "storage.not_found" ? close("storage.not_found") : "deferred";
@@ -103,7 +114,13 @@ export class ResolvePendingActions {
     ) {
       return "deferred";
     }
-    const done = await settleProviderResult({ record, base, command: entry.command, result });
+    const done = await settleProviderResult({
+      record,
+      base,
+      command: entry.command,
+      result,
+      closeCancelled: false,
+    });
     if (done.status === "cancelled") return "cancelled";
     return done.status === "applied" || done.logId !== undefined ? "settled" : "deferred";
   }

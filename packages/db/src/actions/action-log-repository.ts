@@ -61,12 +61,14 @@ export function createActionLogRepository(db: Database) {
     listForAction: (ws: string, actionId: string) => logs("action_id = ?", ws, actionId),
     listForKey: (ws: string, key: string) => logs("idempotency_key = ?", ws, key),
     listForBatch: (ws: string, batchId: string) => logs("batch_id = ?", ws, batchId),
-    listPending: (ws: string) =>
+    listPending: (ws: string, before: string) =>
       logs(
-        `outcome = 'pending' AND NOT EXISTS (
+        `outcome = 'pending' AND at < ? AND NOT EXISTS (
            SELECT 1 FROM action_log o WHERE o.workspace_id = action_log.workspace_id
-             AND o.idempotency_key = action_log.idempotency_key AND o.outcome <> 'pending')`,
+             AND o.idempotency_key = action_log.idempotency_key AND o.outcome <> 'pending'
+             AND (o.at > action_log.at OR (o.at = action_log.at AND o.seq > action_log.seq)))`,
         ws,
+        before,
       ),
     list: (ws: string, p: { limit: number; cursor?: string }) =>
       guard(() => {

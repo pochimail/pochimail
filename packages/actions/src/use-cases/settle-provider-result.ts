@@ -25,6 +25,11 @@ export interface SettleRequest {
   readonly base: () => EntryBase;
   readonly command: Command;
   readonly result: Result<readonly AppliedCommand[], MailProviderError>;
+  /**
+   * A cancelled call is closed as `failed` (`operation.cancelled`) so it is never replayed: the
+   * user stopped it. Off for recovery, whose own cancellation is a shutdown, not a decision.
+   */
+  readonly closeCancelled: boolean;
 }
 
 /**
@@ -46,7 +51,7 @@ export async function settleProviderResult(request: SettleRequest): Promise<Sett
 }
 
 async function settleFailure(
-  { record, base, command }: SettleRequest,
+  { record, base, command, closeCancelled }: SettleRequest,
   error: MailProviderError,
 ): Promise<Settled> {
   const partial = error instanceof PartiallyApplied ? error : null;
@@ -63,16 +68,19 @@ async function settleFailure(
     const saved = await record.execute({ entry, type: "ActionApplied" });
     if (!saved.ok) return { status: "failed", error: saved.error };
   }
-  if ((partial?.failure ?? error) instanceof Cancelled) return { status: "cancelled" };
+  const cancelled = (partial?.failure ?? error) instanceof Cancelled;
+  if (cancelled && !closeCancelled) return { status: "cancelled" };
+  const errorCode = cancelled ? "operation.cancelled" : error.code;
   const entry: ActionLog = {
     ...base(),
     outcome: "failed",
     command,
     inverse: null,
     irreversible: false,
-    errorCode: error.code,
+    errorCode,
   };
-  const saved = await record.execute({ entry, type: "ActionFailed", errorCode: error.code });
+  const saved = await record.execute({ entry, type: "ActionFailed", errorCode });
+  if (cancelled) return { status: "cancelled" };
   return saved.ok
     ? { status: "failed", error, logId: entry.id }
     : { status: "failed", error: saved.error };

@@ -114,12 +114,19 @@ export const actionLogSchema = z
 export type ActionLog = z.infer<typeof actionLogSchema>;
 
 /**
- * The `pending` entries whose idempotency key has no `applied`, `failed`, `undone` or `refused`
- * entry: the provider call may have happened without being recorded. The one definition the
- * in-memory adapters use; SQL repeats it and the contract suite keeps them equal.
+ * The `pending` entries written before `before` with no later `applied`, `failed`, `undone` or
+ * `refused` entry for the same key: the provider call may have happened without being recorded.
+ * A retry after a failure writes a new `pending` that counts again. `entries` must be oldest
+ * first, ties in write order (SQL orders by `at, seq`). The in-memory adapters use this, SQL
+ * repeats it and the contract suite keeps them equal.
  */
-export function unresolvedPending(entries: readonly ActionLog[]): ActionLog[] {
-  const settled = new Set(entries.filter((e) => e.outcome !== "pending").map(settleKey));
-  return entries.filter((e) => e.outcome === "pending" && !settled.has(settleKey(e)));
+export function unresolvedPending(entries: readonly ActionLog[], before: string): ActionLog[] {
+  const lastSettled = new Map<string, number>();
+  entries.forEach((e, i) => {
+    if (e.outcome !== "pending") lastSettled.set(settleKey(e), i);
+  });
+  return entries.filter(
+    (e, i) => e.outcome === "pending" && e.at < before && i > (lastSettled.get(settleKey(e)) ?? -1),
+  );
 }
 const settleKey = (e: ActionLog) => `${e.workspaceId}\u0000${e.idempotencyKey}`;

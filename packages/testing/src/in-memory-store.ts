@@ -22,11 +22,11 @@ function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
 const oldestFirst = (
   log: Map<string, ActionLog>,
   ws: WorkspaceId,
-  match: (l: ActionLog) => boolean,
+  match: (l: ActionLog) => boolean = () => true,
 ) =>
   [...log.values()]
     .filter((l) => l.workspaceId === ws && match(l))
-    .sort((a, b) => byText(a.at, b.at) || byText(a.id, b.id))
+    .sort((a, b) => byText(a.at, b.at))
     .map(copy);
 function inSequenceRange(
   data: Data,
@@ -163,10 +163,8 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           guarded(() =>
             ok(oldestFirst(data().actionLog, ws, (l) => l.batchId === batchId)),
           ) as never,
-        listPending: (ws) =>
-          guarded(() =>
-            ok(unresolvedPending(oldestFirst(data().actionLog, ws, () => true))),
-          ) as never,
+        listPending: (ws, before) =>
+          guarded(() => ok(unresolvedPending(oldestFirst(data().actionLog, ws), before))) as never,
         list: (ws, page) =>
           guarded(() => {
             const rows = [...data().actionLog.values()].filter((l) => l.workspaceId === ws);

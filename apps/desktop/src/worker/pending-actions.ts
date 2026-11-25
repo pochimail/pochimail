@@ -19,12 +19,14 @@ export interface PendingActionsDeps {
 }
 
 /**
- * Run at start, before any scan: settles the actions a crash left `pending`, so each shows in
- * Activity and can be undone. The entry's provider is the one of the account that owns its messages.
+ * Run at start: settles the actions a crash left `pending`, so each shows in Activity and can be
+ * undone. Only entries older than the start are touched, so an action running while recovery is
+ * still going is never replayed. The entry's provider is the one of the account that owns its messages.
  * Never rejects: a failure is logged and the entries stay pending for the next start.
  */
 export async function resolvePendingActions(adapters: PendingActionsDeps): Promise<void> {
   const { uow, workspaceId } = adapters;
+  const bootedAt = adapters.clock.now().toISOString();
   const resolver = new ResolvePendingActions({
     uow,
     clock: adapters.clock,
@@ -44,7 +46,7 @@ export async function resolvePendingActions(adapters: PendingActionsDeps): Promi
     },
   });
   try {
-    const report = await resolver.execute(workspaceId, new AbortController().signal);
+    const report = await resolver.execute(workspaceId, bootedAt, new AbortController().signal);
     if (!report.ok)
       adapters.logger.error("pending actions not resolved", { code: report.error.code });
   } catch {

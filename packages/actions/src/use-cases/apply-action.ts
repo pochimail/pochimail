@@ -64,7 +64,8 @@ export interface ApplyActionReport {
  * - The provider call sits outside the transaction (no network I/O inside a DB transaction). A
  *   `pending` entry is written before it; the `applied` or `failed` entry and its outbox event
  *   commit together right after. A crash in between leaves the `pending` entry, which
- *   `ResolvePendingActions` settles on the next start.
+ *   `ResolvePendingActions` settles on the next start. A cancelled call is closed `failed` and
+ *   never replayed.
  * - Partial failure: one failing action is logged `failed` and the batch continues.
  */
 export class ApplyAction {
@@ -160,6 +161,7 @@ export class ApplyAction {
       base,
       command: action.command,
       result,
+      closeCancelled: true,
     });
     if (settled.status === "cancelled") return "cancelled";
     if (settled.status === "applied") return { status: "applied", actionId, logId: settled.logId };

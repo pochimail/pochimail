@@ -9,7 +9,7 @@ import {
   PartiallyApplied,
 } from "../ports/mail-commands.ts";
 import type { ActionsUnitOfWork } from "../ports/unit-of-work.ts";
-import type { ActionHarness } from "./action-contract.ts";
+import type { ActionHarness } from "./contract-support.ts";
 
 export const BASE_CAPABILITIES = {
   organization: "labels",
@@ -23,6 +23,7 @@ interface MailboxState {
   readonly archived: Set<string>;
   readonly failing: Set<string>;
   partlyAt: string | null;
+  failNext: MailProviderError | null;
   mutations: number;
 }
 
@@ -62,11 +63,17 @@ export function createActionHarness(
     archived: new Set(),
     failing: new Set(),
     partlyAt: null,
+    failNext: null,
     mutations: 0,
   };
   const provider: MailCommands = {
     capabilities,
     async applyCommands(commands) {
+      if (state.failNext) {
+        const error = state.failNext;
+        state.failNext = null;
+        return err(error);
+      }
       const applied: AppliedCommand[] = [];
       for (const command of commands) {
         const one = applyOne(state, command);
@@ -88,7 +95,11 @@ export function createActionHarness(
       state.partlyAt = id;
     },
     failFor: (ids) => {
+      state.failing.clear();
       for (const id of ids) state.failing.add(id);
+    },
+    failNext: (error) => {
+      state.failNext = error;
     },
   };
 }
