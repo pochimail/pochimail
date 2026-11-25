@@ -4,7 +4,7 @@ import type { z } from "zod";
 import { decodeCursor, page } from "../shared/paging.ts";
 import { reasonCode } from "../shared/reason-code.ts";
 import type { RepositoryContext } from "../shared/repository-context.ts";
-import { find, guard, type Row, sqlHelpers } from "../shared/sql.ts";
+import { CHUNK, find, guard, type Row, sqlHelpers } from "../shared/sql.ts";
 import { text } from "../shared/values.ts";
 
 const derivedOf = (r: Row, context: RepositoryContext) => {
@@ -35,6 +35,19 @@ export function createDerivedRepository(db: Database, context: RepositoryContext
       find("Derived data", () => {
         const r = one("SELECT * FROM derived WHERE workspace_id = ? AND message_id = ?", ws, id);
         return r === undefined ? undefined : derivedOf(r, context);
+      }),
+    listForMessages: (ws: string, ids: readonly string[]) =>
+      guard(() => {
+        const out: z.infer<typeof derivedMessageSchema>[] = [];
+        for (let i = 0; i < ids.length; i += CHUNK)
+          out.push(
+            ...all(
+              "SELECT * FROM derived WHERE workspace_id = ? AND message_id IN (SELECT value FROM json_each(?))",
+              ws,
+              JSON.stringify(ids.slice(i, i + CHUNK)),
+            ).map((r) => derivedOf(r, context)),
+          );
+        return out;
       }),
     list: (ws: string, account: string, p: { limit: number; cursor?: string }) =>
       guard(() => {

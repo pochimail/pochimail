@@ -76,9 +76,7 @@ export function createSenderRepository(db: Database, context: RepositoryContext)
           hash,
         );
         return {
-          fromOwner: [ownerAddress, ownerAddress.toLowerCase()].some(
-            (a) => hash === senderHasher.hash(account, a),
-          ),
+          fromOwner: hash === senderHasher.hash(account, ownerAddress),
           stats: row === undefined ? undefined : senderOf(row, context),
         };
       }),

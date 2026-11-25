@@ -30,7 +30,7 @@ export function mailboxFactsOver(reads: Reads): MailboxFacts {
       return ok({
         items: page.value.items.map((m) => ({
           id: m.id,
-          from: m.from,
+          senderHash: m.senderHash,
           category: m.category,
           receivedAt: m.receivedAt,
           opened: m.opened,
@@ -45,18 +45,16 @@ export function mailboxFactsOver(reads: Reads): MailboxFacts {
     latestSequence: (ws, accountId) => reads.messages.latestSequence(ws, accountId),
     figures: (ws, accountIds) => reads.figures(ws, accountIds),
     async decisions(ws, ids) {
-      const out = [];
-      for (const id of ids) {
-        const derived = await reads.derived.get(ws, id);
-        if (!derived.ok && derived.error.code !== "storage.not_found") return derived;
-        if (derived.ok)
-          out.push({
-            messageId: id,
-            reason: derived.value.reason,
-            confidence: derived.value.confidence,
-          });
-      }
-      return ok(out);
+      const found = await reads.derived.listForMessages(ws, ids);
+      return found.ok
+        ? ok(
+            found.value.map((d) => ({
+              messageId: d.messageId,
+              reason: d.reason,
+              confidence: d.confidence,
+            })),
+          )
+        : found;
     },
     async signals(ws, accountId, ids, now) {
       const found = await evaluate.execute({ workspaceId: ws, accountId, messageIds: ids }, now);

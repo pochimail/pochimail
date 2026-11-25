@@ -11,11 +11,11 @@ import type { MessageQuery } from "@pochimail/mailbox/ports/message-repository";
 import type { Database } from "better-sqlite3-multiple-ciphers";
 import { z } from "zod";
 import { decodeCursor, page } from "../shared/paging.ts";
-import { reasonCode } from "../shared/reason-code.ts";
 import type { RepositoryContext } from "../shared/repository-context.ts";
 import { CHUNK, find, guard, sqlHelpers } from "../shared/sql.ts";
 import { countRow, text } from "../shared/values.ts";
 import { MESSAGE_COLUMNS, messageOf } from "./message-row.ts";
+import { encodeReasons } from "./suspicious-reasons.ts";
 
 const categoryCountRow = z.object({ category: categorySchema, value: z.number() });
 
@@ -125,7 +125,7 @@ export function createMessageRepository(db: Database, context: RepositoryContext
         saved_size: m.savedSize ?? null,
         topic_ids: JSON.stringify(m.topicIds),
         suspicious_reason_code:
-          m.suspicious === undefined ? null : reasonCode(m.suspicious.reasons.join("\u0000")),
+          m.suspicious === undefined ? null : encodeReasons(m.suspicious.reasons),
         suspicious_confidence: m.suspicious === undefined ? null : m.suspicious.confidence,
       };
       const before = one(

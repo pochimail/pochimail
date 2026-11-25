@@ -1,6 +1,6 @@
 # 0004 — Incremental sync and wake-ups
 
-Status: Accepted (2026-11-17) · Amended by [0011](0011-v1-providers-google-and-microsoft.md): v1 has Gmail and Microsoft only; the IMAP parts return in v1.1
+Status: Accepted (2026-11-17) · Amended by [0011](0011-v1-providers-google-and-microsoft.md): v1 has Gmail only; Microsoft and the IMAP parts return in v1.1
 
 ## Decision
 **One `MailProvider` port, one adapter per provider**, each declaring capabilities (`labels` or `folders`, archive semantics, `batchModify`, `deltaSync`, `pushWakeups`, `unsubscribeSend`).
@@ -8,7 +8,7 @@ Status: Accepted (2026-11-17) · Amended by [0011](0011-v1-providers-google-and-
 | Provider | Source | Cursor | Archive / organize |
 |---|---|---|---|
 | Gmail | Gmail API (`history.list`, batch endpoints) | `historyId`; full re-list when expired (404) | remove the `INBOX` label; labels |
-| Microsoft | Graph (`/messages/delta`, `$batch`) | delta token per folder; keep a full-walk fallback | move to Archive; Outlook categories |
+| Microsoft (v1.1) | Graph (`/messages/delta`, `$batch`) | delta token per folder; keep a full-walk fallback | move to Archive; Outlook categories |
 | IMAP (v1.1) | `imapflow` and `mailparser` | `UIDVALIDITY` + `HIGHESTMODSEQ`, UID-range fallback | move to the `\Archive` folder; keywords or `Pochimail/` folders |
 
 - Headers first. Anything else is fetched when a screen or action needs it and kept in memory only ([ADR 0014](0014-store-reports-and-actions-not-mail.md)).

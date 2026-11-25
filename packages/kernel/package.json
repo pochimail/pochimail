@@ -17,6 +17,7 @@
     "./result": "./src/result.ts",
     "./schemas": "./src/schemas.ts",
     "./testing/contract": "./src/testing/contract.ts",
+    "./testing/fake-sender-hash": "./src/testing/fake-sender-hash.ts",
     "./testing/faults": "./src/testing/faults.ts"
   },
   "scripts": {

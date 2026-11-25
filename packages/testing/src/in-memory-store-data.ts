@@ -4,6 +4,7 @@ import type { DerivedMessage } from "@pochimail/classification/model/derived";
 import type { StoredSignal } from "@pochimail/classification/model/signal";
 import type { Topic } from "@pochimail/classification/model/topic";
 import type { Suggestion } from "@pochimail/cleanup/model/suggestion";
+import type { Page, PageRequest } from "@pochimail/kernel/common";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import type { Message } from "@pochimail/mailbox/model/message";
 import type { SenderStats } from "@pochimail/mailbox/model/sender-stats";
@@ -53,6 +54,14 @@ export const emptyData = (): Data => ({
 
 export const key = (...parts: string[]) => parts.join("\u0000");
 export const copy = <T>(value: T): T => structuredClone(value);
+export const byText = (a: string, b: string) => Number(a > b) - Number(a < b);
+
+export function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
+  const start = page.cursor === undefined ? 0 : Number(page.cursor);
+  const items = sorted.slice(start, start + page.limit).map(copy);
+  const end = start + items.length;
+  return { items, nextCursor: end < sorted.length ? String(end) : null };
+}
 
 /** Drops the account and everything that belongs to it; the action log is the audit trail. */
 export function removeAccount(data: Data, ws: WorkspaceId, id: string): void {

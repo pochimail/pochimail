@@ -16,6 +16,8 @@ export interface ModelHostEngine {
   readonly classifier?: Classifier;
   readonly llm: JsonLlmProvider;
   readonly embedder: Embedder;
+  /** Forgets whatever the engine remembered of mail; absent when it remembers nothing. */
+  readonly clearCache?: () => void;
 }
 
 type Work = Exclude<HostRequest, { method: "cancel" }>;
@@ -75,6 +77,9 @@ const run = async (
       return answer(message.id, await engine.embedder.embed(message.texts, signal), (vectors) =>
         vectors.map((v) => [...v]),
       );
+    case "clear-cache":
+      engine.clearCache?.();
+      return { id: message.id, ok: true, result: null };
   }
 };
 
