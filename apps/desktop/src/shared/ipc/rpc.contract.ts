@@ -167,9 +167,7 @@ export const describeRpcContract = (name: string, connect: () => Link): void => 
 
     it("answers NOT_IMPLEMENTED for contract names without a handler yet", async () => {
       const { link, client } = setup({ procedures: {}, subscriptions: {} });
-      expect((await rejection(client.call("digest.get", { accountId: "acc-1" })))?.code).toBe(
-        "NOT_IMPLEMENTED",
-      );
+      expect((await rejection(client.call("settings.get")))?.code).toBe("NOT_IMPLEMENTED");
       link.close();
     });
 
