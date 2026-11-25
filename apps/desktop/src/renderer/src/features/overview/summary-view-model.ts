@@ -1,4 +1,4 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import type { OutputOf } from "#shared/ipc/contract.ts";
 
@@ -8,7 +8,7 @@ export type Digest = OutputOf<"digest.get">;
 type SummaryFigure = {
   readonly count: number;
   readonly labelKey: MessageKey;
-  readonly category: Category;
+  readonly category: EmailType;
 };
 
 export type SummaryViewModel = {
@@ -21,13 +21,13 @@ export type SummaryViewModel = {
 };
 
 const FIGURE_FIELDS = [
-  { field: "archived", labelKey: "summary.figure.archived", category: "notifications" },
-  { field: "saved", labelKey: "summary.figure.saved", category: "records" },
-  { field: "unsubscribed", labelKey: "summary.figure.unsubscribed", category: "newsletters" },
+  { field: "archived", labelKey: "summary.figure.archived", category: "notification" },
+  { field: "saved", labelKey: "summary.figure.saved", category: "transactional" },
+  { field: "unsubscribed", labelKey: "summary.figure.unsubscribed", category: "newsletter" },
 ] as const satisfies readonly {
   readonly field: "archived" | "saved" | "unsubscribed";
   readonly labelKey: MessageKey;
-  readonly category: Category;
+  readonly category: EmailType;
 }[];
 
 /** Turns the digest contract into what the sheet can render; the digest already holds new items only. */

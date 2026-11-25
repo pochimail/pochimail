@@ -6,7 +6,7 @@ import {
   workspaceIdSchema,
 } from "@pochimail/kernel/schemas";
 import { z } from "zod";
-import { categorySchema } from "./category.ts";
+import { emailTypeSchema } from "./email-type.ts";
 import { confidenceSchema } from "./scores.ts";
 
 // PRIVATE MAIL DATA: `snippet` is a few characters of a message. Never log it.
@@ -23,7 +23,7 @@ export const derivedMessageSchema = z.object({
   workspaceId: workspaceIdSchema,
   accountId: accountIdSchema,
   messageId: messageIdSchema,
-  category: categorySchema,
+  category: emailTypeSchema,
   reason: z.string().min(1),
   confidence: confidenceSchema,
   /** Which rules or model version decided, so a decision can be redone when it changes. */

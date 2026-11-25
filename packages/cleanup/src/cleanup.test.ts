@@ -22,11 +22,7 @@ const fakeClock = () => {
 
 digestStateContract(() => createInMemoryCleanup());
 suggestionRepositoryContract(() => createInMemoryCleanup());
-suggestionsContract(() => ({
-  ...createInMemoryCleanup(),
-  clock: fakeClock(),
-  protectedLabels: ["people"],
-}));
+suggestionsContract(() => ({ ...createInMemoryCleanup(), clock: fakeClock() }));
 digestContract(() => ({ ...createInMemoryCleanup(), clock: fakeClock() }));
 
 describe("Suggestion invariants", () => {
@@ -48,10 +44,10 @@ describe("GetOverview", () => {
   it("counts what needs the person and what could be cleaned, largest first (guards a drifting headline figure)", async () => {
     const cleanup = createInMemoryCleanup();
     await cleanup.seed({
-      1: { category: "newsletters", signals: ["needs-reply"] },
-      2: { category: "promotions" },
-      3: { category: "promotions", signals: ["time-sensitive"] },
-      4: { category: "people" },
+      1: { category: "newsletter", signals: ["needs-reply"] },
+      2: { category: "promotion" },
+      3: { category: "promotion", signals: ["time-sensitive"] },
+      4: { category: "personal" },
     });
     const overview = unwrap(
       await new GetOverview({ uow: cleanup.uow, clock: fakeClock() }).execute(WS_A, ACCOUNT_1),
@@ -59,8 +55,8 @@ describe("GetOverview", () => {
     expect(overview.scanned).toBe(4);
     expect([overview.waiting, overview.deadlines, overview.toReview]).toEqual([1, 1, 2]);
     expect(overview.cleanable).toEqual([
-      { category: "promotions", count: 2 },
-      { category: "newsletters", count: 1 },
+      { category: "promotion", count: 2 },
+      { category: "newsletter", count: 1 },
     ]);
   });
 
@@ -68,10 +64,10 @@ describe("GetOverview", () => {
   it("counts only sure signals and counts an email once across waiting and important", async () => {
     const cleanup = createInMemoryCleanup();
     await cleanup.seed({
-      1: { category: "people", signals: ["needs-reply"] },
-      2: { category: "people", signals: ["needs-reply", "important-sender"] },
-      3: { category: "people", signals: ["important-sender", "time-sensitive"] },
-      4: { category: "people", unsureSignals: ["needs-reply", "time-sensitive", "has-document"] },
+      1: { category: "personal", signals: ["needs-reply"] },
+      2: { category: "personal", signals: ["needs-reply", "important-sender"] },
+      3: { category: "personal", signals: ["important-sender", "time-sensitive"] },
+      4: { category: "personal", unsureSignals: ["needs-reply", "time-sensitive", "has-document"] },
     });
     const overview = unwrap(
       await new GetOverview({ uow: cleanup.uow, clock: fakeClock() }).execute(WS_A, ACCOUNT_1),

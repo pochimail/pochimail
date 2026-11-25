@@ -3,7 +3,7 @@ import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory
 import { describeActionUseCases } from "@pochimail/actions/testing/action-contract";
 import { BASE_CAPABILITIES, createActionHarness } from "@pochimail/actions/testing/action-harness";
 import { AiUnavailable } from "@pochimail/classification/errors";
-import { type Category, PROTECTED_CATEGORIES } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { derivedContract } from "@pochimail/classification/testing/derived-contract";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { signalRepositoryContract } from "@pochimail/classification/testing/signal-repository-contract";
@@ -47,7 +47,7 @@ signalRepositoryContract(uowHarness);
 digestStateContract(uowHarness);
 const signalsHarness = () => {
   const h = harness();
-  const labels = new Map<string, Category>();
+  const labels = new Map<string, EmailType>();
   return {
     ...classificationSeeder(h),
     uow: h.uow,
@@ -62,12 +62,7 @@ signalsSafetyContract(signalsHarness);
 suggestionRepositoryContract(uowHarness);
 suggestionsContract(() => {
   const h = harness();
-  return {
-    ...cleanupSeeder(h),
-    uow: h.uow,
-    clock: createFakeClock(),
-    protectedLabels: PROTECTED_CATEGORIES,
-  };
+  return { ...cleanupSeeder(h), uow: h.uow, clock: createFakeClock() };
 });
 digestContract(() => {
   const h = harness();
@@ -76,7 +71,7 @@ digestContract(() => {
 runSyncContract(() => {
   const h = harness();
   const provider = createFakeMailProvider({ pageSize: 2 });
-  const labels = new Map<string, Category>();
+  const labels = new Map<string, EmailType>();
   const classifier = createGroundTruthClassifier(labels);
   let next = 0;
   return {

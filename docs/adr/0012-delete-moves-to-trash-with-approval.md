@@ -22,7 +22,7 @@ Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing i
 
 ## Addendum (#128): unsure
 - Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects unconditionally: never pre-selected, proposed or auto-applied. Its signal has confidence `UNSURE_CONFIDENCE` (0.5), reason "Not sure, kept safe", and is never counted.
-- "Time-sensitive" is a proxy: a recent unopened `records` email. Stored text is off limits (ADR 0014), so deadlines are unread: it misses dated mail of other types and flags undated records.
+- "Time-sensitive" is a proxy: a recent unopened `transactional` email. Stored text is off limits (ADR 0014), so deadlines are unread: it misses dated mail of other types and flags undated transactional email.
 
 ## Consequences
 - "GB you can free" is real again, tied to deletion only.

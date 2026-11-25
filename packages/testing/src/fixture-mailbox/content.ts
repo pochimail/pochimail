@@ -1,18 +1,13 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
+import type { Language, Template } from "./content-types.ts";
+import { TRANSACTIONAL } from "./transactional-content.ts";
 
 // FAKE DATA ONLY: invented brands, invented people, reserved example domains. No real mail,
 // no real address, no real company.
 
-export type Language = "en" | "fr" | "ja";
-
-export interface Template {
-  readonly subjects: readonly string[];
-  readonly bodies: readonly string[];
-}
-
 /** Placeholders: {n} number, {name} first name, {item} product/topic, {amount} money, {date} date. */
-export const TEMPLATES: Record<Category, Record<Language, Template>> = {
-  people: {
+export const TEMPLATES: Record<EmailType, Record<Language, Template>> = {
+  personal: {
     en: {
       subjects: ["Dinner on Friday?", "Photos from the weekend", "Quick question about {item}"],
       bodies: [
@@ -38,101 +33,8 @@ export const TEMPLATES: Record<Category, Record<Language, Template>> = {
       ],
     },
   },
-  records: {
-    en: {
-      subjects: ["Your statement for {date}", "Tax document {n} is ready", "Policy renewal notice"],
-      bodies: [
-        "Your statement for {date} is ready. The balance is {amount}.\nThe document is attached.",
-        "Your tax document {n} is available. Please keep it with your records.",
-        "Your policy renews on {date}. The new premium is {amount}.",
-      ],
-    },
-    fr: {
-      subjects: [
-        "Votre relevé du {date}",
-        "Document fiscal {n} disponible",
-        "Avis de renouvellement",
-      ],
-      bodies: [
-        "Votre relevé du {date} est disponible. Le solde est de {amount}.\nLe document est en pièce jointe.",
-        "Votre document fiscal {n} est disponible. Conservez-le avec vos papiers.",
-        "Votre contrat est renouvelé le {date}. La nouvelle prime est de {amount}.",
-      ],
-    },
-    ja: {
-      subjects: ["{date}のご利用明細", "税務書類{n}のお知らせ", "契約更新のご案内"],
-      bodies: [
-        "{date}のご利用明細をお送りします。残高は{amount}です。\n書類は添付ファイルをご確認ください。",
-        "税務書類{n}をご用意しました。大切に保管してください。",
-        "ご契約は{date}に更新されます。新しい保険料は{amount}です。",
-      ],
-    },
-  },
-  "purchases-travel": {
-    en: {
-      subjects: [
-        "Your order #{n} has shipped",
-        "Receipt for your purchase",
-        "Booking confirmed: {item}",
-      ],
-      bodies: [
-        "Good news: your order #{n} for {item} has shipped. Total {amount}.",
-        "Thanks for your purchase of {item}. Your receipt for {amount} is attached.",
-        "Your booking for {item} is confirmed for {date}. Total {amount}.",
-      ],
-    },
-    fr: {
-      subjects: [
-        "Votre commande n°{n} est expédiée",
-        "Reçu pour votre achat",
-        "Réservation confirmée : {item}",
-      ],
-      bodies: [
-        "Bonne nouvelle : votre commande n°{n} ({item}) a été expédiée. Total {amount}.",
-        "Merci pour votre achat de {item}. Votre reçu de {amount} est en pièce jointe.",
-        "Votre réservation pour {item} est confirmée le {date}. Total {amount}.",
-      ],
-    },
-    ja: {
-      subjects: ["ご注文#{n}を発送しました", "ご購入の領収書", "ご予約確定：{item}"],
-      bodies: [
-        "ご注文#{n}（{item}）を発送しました。合計{amount}です。",
-        "{item}をご購入いただきありがとうございます。{amount}の領収書を添付します。",
-        "{item}のご予約が{date}で確定しました。合計{amount}です。",
-      ],
-    },
-  },
-  "sign-ins-security": {
-    en: {
-      subjects: ["Your verification code", "New sign-in to your account", "Reset your password"],
-      bodies: [
-        "Your verification code is {n}. It expires in 10 minutes. Never share it.",
-        "We noticed a new sign-in to your account on {date}. If this was you, no action is needed.",
-        "Use this request to reset your password. It expires in one hour.",
-      ],
-    },
-    fr: {
-      subjects: [
-        "Votre code de vérification",
-        "Nouvelle connexion à votre compte",
-        "Réinitialisez votre mot de passe",
-      ],
-      bodies: [
-        "Votre code de vérification est {n}. Il expire dans 10 minutes. Ne le partagez jamais.",
-        "Nous avons détecté une nouvelle connexion à votre compte le {date}. Si c'était vous, rien à faire.",
-        "Utilisez cette demande pour réinitialiser votre mot de passe. Elle expire dans une heure.",
-      ],
-    },
-    ja: {
-      subjects: ["確認コードのお知らせ", "アカウントへの新しいログイン", "パスワードの再設定"],
-      bodies: [
-        "確認コードは{n}です。10分で無効になります。他人に教えないでください。",
-        "{date}にアカウントへの新しいログインがありました。ご本人であれば操作は不要です。",
-        "このリクエストでパスワードを再設定できます。有効期限は1時間です。",
-      ],
-    },
-  },
-  notifications: {
+  transactional: TRANSACTIONAL,
+  notification: {
     en: {
       subjects: ["{name} commented on {item}", "Your weekly activity", "Reminder: {item}"],
       bodies: [
@@ -162,7 +64,7 @@ export const TEMPLATES: Record<Category, Record<Language, Template>> = {
       ],
     },
   },
-  newsletters: {
+  newsletter: {
     en: {
       subjects: ["The Weekly Digest #{n}", "This month in {item}", "Five stories on {item}"],
       bodies: [
@@ -192,7 +94,7 @@ export const TEMPLATES: Record<Category, Record<Language, Template>> = {
       ],
     },
   },
-  promotions: {
+  promotion: {
     en: {
       subjects: ["{n}% off {item} this weekend", "Last chance: {item}", "Members get early access"],
       bodies: [
@@ -235,33 +137,29 @@ export interface Sender {
   readonly address: string;
 }
 
-/** Invented senders per bulk category; every domain is reserved (RFC 2606). */
-export const SENDERS: Record<Exclude<Category, "people">, readonly Sender[]> = {
-  records: [
+/** Invented senders per type other than personal; every domain is reserved (RFC 2606). */
+export const SENDERS: Record<Exclude<EmailType, "personal">, readonly Sender[]> = {
+  transactional: [
     { name: "Northwind Bank", address: "statements@bank.example.net" },
     { name: "Fabrikam Insurance", address: "policy@insure.example.net" },
     { name: "Tax Office", address: "documents@tax.example.org" },
-  ],
-  "purchases-travel": [
     { name: "Contoso Shop", address: "orders@shop.example.net" },
     { name: "Wingtip Air", address: "booking@air.example.net" },
     { name: "Tailspin Rail", address: "tickets@rail.example.net" },
-  ],
-  "sign-ins-security": [
     { name: "Accounts", address: "no-reply@accounts.example.net" },
     { name: "Security", address: "security@id.example.net" },
   ],
-  notifications: [
+  notification: [
     { name: "Projects", address: "notify@projects.example.net" },
     { name: "Calendar", address: "calendar@cal.example.net" },
     { name: "Community", address: "hello@community.example.org" },
   ],
-  newsletters: [
+  newsletter: [
     { name: "The Weekly Desk", address: "digest@weekly.example.org" },
     { name: "Garden Notes", address: "letters@garden.example.org" },
     { name: "Tech Sunday", address: "hello@sunday.example.net" },
   ],
-  promotions: [
+  promotion: [
     { name: "Adventure Works", address: "deals@adventure.example.net" },
     { name: "Litware Outlet", address: "offers@outlet.example.net" },
     { name: "Proseware Home", address: "promo@home.example.net" },

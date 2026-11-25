@@ -2,7 +2,7 @@ import type { AsyncResult } from "@pochimail/kernel/common";
 import type { NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { ok } from "@pochimail/kernel/result";
-import type { SuspiciousFlag } from "../model/category.ts";
+import type { SuspiciousFlag } from "../model/suspicious-flag.ts";
 import { suspiciousRules } from "../policies/suspicious-rules.ts";
 import type { SignalFactsSource } from "../ports/message-source.ts";
 

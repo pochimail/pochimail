@@ -72,7 +72,7 @@ const start = async (classifier: Classifier, power?: ReturnType<typeof createFak
   const scan = () => rpc.call("scan.start", { accountId: ACCOUNT });
   const state = async () => ({
     overview: await rpc.call("overview.get", {}),
-    categories: await rpc.call("mailbox.categories", { accountIds: [ACCOUNT] }),
+    types: await rpc.call("mailbox.types", { accountIds: [ACCOUNT] }),
   });
   return {
     app,

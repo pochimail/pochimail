@@ -2,7 +2,7 @@
 import { unwrap } from "@pochimail/kernel/result";
 import { describe, expect, it } from "vitest";
 import { AiUnavailable } from "./errors.ts";
-import type { Category } from "./model/category.ts";
+import type { EmailType } from "./model/email-type.ts";
 import { DEFAULT_SIGNAL_SETTINGS, signalSettingsSchema } from "./model/signal-settings.ts";
 import { type RuleInput, signalRules, UNSURE_CONFIDENCE } from "./policies/signal-rules.ts";
 import { suspiciousDomainFlag, suspiciousRules } from "./policies/suspicious-rules.ts";
@@ -10,12 +10,14 @@ import {
   classifierContract,
   embedderContract,
   llmProviderContract,
+  topicDiscovererContract,
 } from "./testing/ai-contract.ts";
 import { derivedContract } from "./testing/derived-contract.ts";
 import {
   createFakeClassifier,
   createFakeEmbedder,
   createFakeLlmProvider,
+  createFakeTopicDiscoverer,
 } from "./testing/fake-ai.ts";
 import { createGroundTruthClassifier } from "./testing/ground-truth-classifier.ts";
 import { createInMemoryClassification } from "./testing/in-memory-classification.ts";
@@ -24,7 +26,7 @@ import { signalRepositoryContract } from "./testing/signal-repository-contract.t
 import { signalsContract } from "./testing/signals-contract.ts";
 import { signalsSafetyContract } from "./testing/signals-safety-contract.ts";
 import { ClassifyBatch } from "./use-cases/classify-batch.ts";
-import { CountCategories } from "./use-cases/count-categories.ts";
+import { CountTypes } from "./use-cases/count-types.ts";
 
 const fakeClock = () => {
   let at = Date.parse("2026-01-01T00:00:00.000Z");
@@ -39,7 +41,7 @@ const fakeClock = () => {
 derivedContract(() => createInMemoryClassification());
 signalRepositoryContract(() => createInMemoryClassification());
 const signalsHarness = () => {
-  const labels = new Map<string, Category>();
+  const labels = new Map<string, EmailType>();
   return {
     ...createInMemoryClassification(),
     clock: fakeClock(),
@@ -52,6 +54,7 @@ signalsSafetyContract(signalsHarness);
 classifierContract(createFakeClassifier);
 embedderContract(() => createFakeEmbedder(8));
 llmProviderContract(createFakeLlmProvider);
+topicDiscovererContract(createFakeTopicDiscoverer);
 
 describe("classification", () => {
   it("the fake classifier reports AiUnavailable on demand (guards untested model-missing handling)", async () => {
@@ -64,11 +67,11 @@ describe("classification", () => {
 
   it("counts every category, zero when empty (guards a sidebar missing a category)", async () => {
     const c = createInMemoryClassification();
-    await c.seed({ 1: { category: "people" }, 2: { category: "people" }, 3: {} });
-    const counts = unwrap(await new CountCategories({ uow: c.uow }).execute(WS_A, [ACCOUNT_1]));
-    expect(counts.people).toBe(2);
-    expect(counts.notifications).toBe(1);
-    expect(counts.promotions).toBe(0);
+    await c.seed({ 1: { category: "personal" }, 2: { category: "personal" }, 3: {} });
+    const counts = unwrap(await new CountTypes({ uow: c.uow }).execute(WS_A, [ACCOUNT_1]));
+    expect(counts.personal).toBe(2);
+    expect(counts.notification).toBe(1);
+    expect(counts.promotion).toBe(0);
   });
 
   it("an unavailable classifier fails with AiUnavailable and stores nothing (guards a half-classified batch)", async () => {
@@ -114,7 +117,7 @@ describe("signal rules", () => {
     fromOwner: false,
     receivedAt: "2026-01-01T00:00:00.000Z",
     opened: true,
-    category: "people",
+    category: "personal",
     confidence: 0.9,
     now: new Date("2026-01-02T00:00:00.000Z"),
     lastInThread: true,
