@@ -66,6 +66,7 @@ export function reduceRequiredStates(
     case "ScanCompleted":
     case "ScanFailed":
     case "ScanCancelled":
+    case "SyncChanged":
     case "DigestReady":
       return state;
     default: {

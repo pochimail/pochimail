@@ -10,6 +10,7 @@ import { createWorkerApp } from "./app.ts";
 import { createModelHostClient } from "./model-host-client.ts";
 import { acceptPorts } from "./ports.ts";
 import { acceptStart, type WorkerStart } from "./start.ts";
+import { createWindowActivity } from "./window-activity-adapter.ts";
 
 // Runs inside Electron's utilityProcess: the composition root of the app (M4-02).
 const platform = createPlatformAdapter(process.platform, process.cwd());
@@ -29,19 +30,22 @@ const logger = createLogger({
 });
 
 // A graceful shutdown from main releases the database handle before the worker stops.
-let closeDatabase: (() => void) | undefined;
+let closeDatabase: (() => Promise<void>) | undefined;
 let shuttingDown = false;
 const requestShutdown = (): void => {
   shuttingDown = true;
   const close = closeDatabase;
   closeDatabase = undefined;
-  close?.();
+  void close?.();
 };
 
 // Models run in their own process; main hands this worker a new port every time that process (re)starts.
 const modelHost = createModelHostClient({ timer });
+// Main tells the worker what its window is doing, so polling can slow down or stop (ADR 0004).
+const windowActivity = createWindowActivity();
 process.parentPort.on("message", (event) => {
   const type = (event.data as { type?: unknown } | null | undefined)?.type;
+  if (type === "window-activity") windowActivity.receive(event.data);
   if (type === "shutdown") requestShutdown();
   if (type === "model-host-unavailable") modelHost.markUnavailable();
   if (type !== "model-port") return;
@@ -102,6 +106,8 @@ const emptyHandlers: Handlers = {
       promotions: 0,
     }),
     "scan.status": () => [],
+    "sync.status": () => [],
+    "sync.now": () => ({ results: [] }),
     "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
     "settings.get": () => DEFAULT_APP_SETTINGS,
   },
@@ -164,6 +170,7 @@ const realHandlers = async (): Promise<Handlers> => {
     logger,
     deviceName: () => platform.deviceName(),
     classifier: modelHost.classifier,
+    activity: windowActivity,
     clearClassifierCache: () => void modelHost.clearCache(),
   });
   if (app === undefined) return unavailableHandlers;
@@ -196,7 +203,7 @@ const handlers: Promise<Handlers> =
         )
         .then((adapters) =>
           withDemoConnect(
-            createWorkerApp(adapters).handlers,
+            createWorkerApp({ ...adapters, activity: windowActivity }).handlers,
             demoFirstRun(process.env.POCHIMAIL_DEMO_FIRST_RUN),
           ),
         )

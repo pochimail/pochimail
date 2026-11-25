@@ -23,6 +23,11 @@ export const scanEvents = [
     z.object({ accountId: accountIdSchema, processed: count, total: count.optional() }),
   ),
   defineEvent("ScanCompleted", z.object({ accountId: accountIdSchema, processed: count })),
+  /** A sync after the first scan stored or classified mail; sent only when something changed, never as scan progress. */
+  defineEvent(
+    "SyncCompleted",
+    z.object({ accountId: accountIdSchema, stored: count, classified: count }),
+  ),
   defineEvent(
     "ScanFailed",
     z.object({ accountId: accountIdSchema, errorCode: z.enum(ERROR_CODES) }),

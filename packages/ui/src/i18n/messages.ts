@@ -5,6 +5,7 @@ import { reviewMessages } from "./review-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
+import { syncMessages } from "./sync-messages.ts";
 
 /** English is the fallback; French and Japanese ship in v1 (P13, 2026-11-19). */
 export const USER_LOCALES = ["en", "fr", "ja"] as const;
@@ -119,7 +120,7 @@ export const messages = {
   "overview.scan.paused": entry("Paused. Nothing was changed.", []),
   "overview.loading": entry("Loading your overview", []),
   ...summaryMessages.en,
-  "sync.progress": entry("Syncing your email", []),
+  ...syncMessages.en,
   "shell.loading": entry("Starting…", []),
   "shell.error.title": entry("Something went wrong", []),
   "shell.error.body": entry("Pochimail hit a problem. Close and reopen the app to try again.", []),

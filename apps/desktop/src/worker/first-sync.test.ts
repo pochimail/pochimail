@@ -14,6 +14,7 @@ import { loopbackFetch } from "@pochimail/testing/loopback-fetch";
 import { afterEach, expect, it, vi } from "vitest";
 import type { EventOf } from "../shared/ipc/contract.ts";
 import { createAccountsRuntime } from "./accounts-runtime.ts";
+import { ALWAYS_VISIBLE } from "./static-environment.ts";
 
 const cleanups: (() => Promise<void> | void)[] = [];
 afterEach(async () => {
@@ -70,6 +71,7 @@ it("connecting starts the first scan on the real database, tells the renderer an
       },
       logger: createLogger({ sink: { write: () => undefined } }),
       deviceName: () => "Mac",
+      activity: ALWAYS_VISIBLE,
       classifier: createFakeClassifier(),
       network: {
         oauthConfig: {
@@ -102,7 +104,7 @@ it("connecting starts the first scan on the real database, tells the renderer an
   expect(JSON.stringify(gmail.requests().map((r) => r.query.toString()))).not.toMatch(
     /Subject|snippet/i,
   );
-  runtime.close();
+  await runtime.close();
   cleanups.pop();
   const storage = openStorage(databasePath, key);
   if (!storage.ok) throw storage.error;

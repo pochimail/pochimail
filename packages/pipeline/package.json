@@ -20,6 +20,7 @@
     "./power-monitor": "./src/power-monitor.ts",
     "./retry": "./src/retry.ts",
     "./scheduler": "./src/scheduler.ts",
+    "./timer-scheduler": "./src/timer-scheduler.ts",
     "./window-activity": "./src/window-activity.ts"
   },
   "scripts": {

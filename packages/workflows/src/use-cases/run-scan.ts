@@ -2,11 +2,17 @@ import { BuildDigest } from "@pochimail/cleanup/use-cases/build-digest";
 import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import { type DomainError, StorageError } from "@pochimail/kernel/errors";
 import { err, ok } from "@pochimail/kernel/result";
+import type { SyncCursor } from "@pochimail/mailbox/ports/mail-reader";
 import type { DomainEventOf } from "../events.ts";
 import { createScanPipeline, type ScanPipelineDeps } from "../jobs/scan-pipeline.ts";
 import type { WorkflowUnitOfWork } from "../ports/unit-of-work.ts";
 
+/** Written in the transaction that completes the first scan: from then on the account is kept up to date by the incremental sync. */
+export const FIRST_SCAN_DONE: SyncCursor = { scope: "first-scan", token: "done" };
+
 export interface RunScanDeps extends Omit<ScanPipelineDeps, "onBatchProcessed"> {
+  /** Say so with a `ScanFailed` event when the scan fails. Default true; a quiet retry by the scheduler sets false. */
+  readonly announceFailure?: boolean;
   /** Delivers committed events to subscribers (the outbox relay's drain). */
   readonly flush: () => Promise<void>;
 }
@@ -47,7 +53,7 @@ export class RunScan {
     } catch {
       failure = new StorageError();
     }
-    if (failure.code !== "operation.cancelled") {
+    if (failure.code !== "operation.cancelled" && this.deps.announceFailure !== false) {
       const event = {
         id: `scan:${request.jobId}:failed:${clock.now().getTime()}`,
         type: "ScanFailed",
@@ -97,14 +103,19 @@ export class RunScan {
     if (!retried.ok) return err(retried.error);
     if (signal.aborted) return ok({ status: "paused", processed });
 
-    const completed = await append({
+    const done = {
       id: `scan:${request.jobId}:done`,
       type: "ScanCompleted",
       version: 1,
       workspaceId,
       occurredAt: clock.now().toISOString(),
       payload: { accountId, processed },
-    } satisfies DomainEventOf<"ScanCompleted">);
+    } satisfies DomainEventOf<"ScanCompleted">;
+    const completed = await uow.run(async (tx) => {
+      const marked = await tx.repositories.cursors.set(workspaceId, accountId, FIRST_SCAN_DONE);
+      if (!marked.ok) return marked;
+      return tx.outbox.append({ kind: "event", event: done });
+    });
     if (!completed.ok) return err(completed.error);
     const digest = await new BuildDigest({ uow, clock }).execute(
       { workspaceId, accountId },

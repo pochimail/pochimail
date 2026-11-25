@@ -15,6 +15,8 @@ export type PauseSource = "user" | "power";
 interface Job {
   readonly id: string;
   readonly accountId: AccountId;
+  /** Whether a failed run is announced with `ScanFailed`; a quiet retry by the scheduler says nothing. */
+  readonly announceFailure: boolean;
   status: ScanJobStatus;
   /** Set while paused; a user pause always replaces a power pause. */
   pausedBy: PauseSource | undefined;
@@ -34,7 +36,7 @@ export interface ScanRunnerDeps {
   /** A new, unique job id. */
   readonly newJobId: () => string;
   /** The scan for one account; the composition root wires its provider and classifier. */
-  readonly scanFor: (account: Account) => RunScan;
+  readonly scanFor: (account: Account, options: { readonly announceFailure: boolean }) => RunScan;
 }
 
 /**
@@ -53,7 +55,10 @@ export class ScanRunner {
 
   constructor(private readonly deps: ScanRunnerDeps) {}
 
-  start(accountId: AccountId): AsyncResult<{ jobId: string }, StorageError | NotFound> {
+  start(
+    accountId: AccountId,
+    options: { readonly announceFailure?: boolean } = {},
+  ): AsyncResult<{ jobId: string }, StorageError | NotFound> {
     const live = [...this.jobs.values()].find(
       (j) => j.accountId === accountId && (j.status === "running" || j.status === "paused"),
     );
@@ -64,7 +69,9 @@ export class ScanRunner {
     // The account lookup is asynchronous: callers that arrive meanwhile share this one start.
     const pending = this.starting.get(accountId);
     if (pending) return pending;
-    const created = this.create(accountId).finally(() => this.starting.delete(accountId));
+    const created = this.create(accountId, options.announceFailure ?? true).finally(() =>
+      this.starting.delete(accountId),
+    );
     this.starting.set(accountId, created);
     return created;
   }
@@ -126,6 +133,21 @@ export class ScanRunner {
     );
   }
 
+  /** Whether a scan of this account is running, paused or being started. */
+  busy(accountId: AccountId): boolean {
+    return (
+      this.starting.has(accountId) ||
+      [...this.jobs.values()].some(
+        (j) => j.accountId === accountId && (j.status === "running" || j.status === "paused"),
+      )
+    );
+  }
+
+  /** How the newest scan of this account in this session ended or stands; `undefined` when none was started. */
+  latest(accountId: AccountId): ScanJobStatus | undefined {
+    return [...this.jobs.values()].filter((j) => j.accountId === accountId).at(-1)?.status;
+  }
+
   /** Resolves when no job is running; for orderly shutdown and tests. */
   async idle(): Promise<void> {
     await Promise.all(this.running);
@@ -133,12 +155,14 @@ export class ScanRunner {
 
   private async create(
     accountId: AccountId,
+    announceFailure: boolean,
   ): AsyncResult<{ jobId: string }, StorageError | NotFound> {
     const account = await this.deps.uow.reads.accounts.get(this.deps.workspaceId, accountId);
     if (!account.ok) return account;
     const job: Job = {
       id: this.deps.newJobId(),
       accountId,
+      announceFailure,
       status: "running",
       pausedBy: undefined,
       processed: 0,
@@ -171,7 +195,7 @@ export class ScanRunner {
       const found = await this.deps.uow.reads.accounts.get(this.deps.workspaceId, job.accountId);
       const outcome = found.ok
         ? await this.deps
-            .scanFor(found.value)
+            .scanFor(found.value, { announceFailure: job.announceFailure })
             .execute({ jobId: job.id, processedBefore: job.processed }, stop.signal)
             .catch(() => undefined)
         : undefined;

@@ -16,10 +16,7 @@ import { MAX_SNIPPET_CHARS } from "@pochimail/mailbox/policies/sanitize-incoming
 import type { OutboxEntry } from "@pochimail/pipeline/outbox";
 import type { DomainEvent } from "@pochimail/workflows/events";
 import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
-import {
-  INCREMENTAL_SYNC_JOB,
-  RunIncrementalSync,
-} from "@pochimail/workflows/use-cases/run-incremental-sync";
+import { RunIncrementalSync } from "@pochimail/workflows/use-cases/run-incremental-sync";
 import { expect } from "vitest";
 import { makeIncomingMessage, WS_A, WS_B } from "./fixtures.ts";
 import type { UnitOfWork } from "./uow-types.ts";
@@ -205,7 +202,7 @@ export const syncChecks: readonly Check<SyncHarness>[] = [
     },
   ),
   check(
-    "RateLimited pauses the account and queues a resume at the provider's retry time, keeping committed batches (guards a hammered provider and lost progress)",
+    "RateLimited pauses the account and answers the provider's retry time, queues no job, and keeps committed batches (guards a hammered provider, an unconsumed job and lost progress)",
     async (h) => {
       const account = await connected(h);
       const { sync } = cases(h);
@@ -222,8 +219,7 @@ export const syncChecks: readonly Check<SyncHarness>[] = [
       const states = (await events(h, "AccountStateChanged")).map((e) => e.payload);
       expect(states.at(-1)).toMatchObject({ accountId: account.id, state: "paused" });
       const jobs = (await h.committedOutbox()).flatMap((e) => (e.kind === "job" ? [e.job] : []));
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0]).toMatchObject({ type: INCREMENTAL_SYNC_JOB, runAt: resumeAt });
+      expect(jobs).toHaveLength(0);
 
       h.clock.advance(30_000);
       const retried = unwrap(

@@ -18,6 +18,7 @@ import { fromDomPort } from "../shared/ipc/transport.ts";
 import { createWorkerApp, type WorkerAdapters } from "./app.ts";
 import { createFixtureAdapters } from "./fixture-adapters.ts";
 import { createInMemorySettingsStore } from "./in-memory-settings-store.ts";
+import { ALWAYS_VISIBLE } from "./static-environment.ts";
 
 const silent = createLogger({ sink: { write: () => {} } });
 const mailbox = generateMailbox({ seed: DEMO_SEED, scale: "small" });
@@ -242,6 +243,7 @@ describe("worker app over the real IPC layer", () => {
         settings: createInMemorySettingsStore(),
         classifier: createFakeClassifier(),
         providerFor: () => createFakeMailProvider(),
+        activity: ALWAYS_VISIBLE,
         deviceName: () => "PC",
       },
     });
@@ -277,6 +279,7 @@ describe("worker app over the real IPC layer", () => {
         settings: createInMemorySettingsStore(),
         classifier: createFakeClassifier(),
         providerFor: () => provider,
+        activity: ALWAYS_VISIBLE,
         deviceName: () => "PC",
       },
     });
@@ -312,6 +315,7 @@ describe("worker app over the real IPC layer", () => {
         settings: createInMemorySettingsStore(),
         classifier: createFakeClassifier(),
         providerFor: () => provider,
+        activity: ALWAYS_VISIBLE,
         deviceName: () => "Mac",
       },
     });

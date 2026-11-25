@@ -14,21 +14,27 @@ import { ok } from "@pochimail/kernel/result";
 import { sanitizeIncoming } from "@pochimail/mailbox/policies/sanitize-incoming";
 import type { SyncCursor } from "@pochimail/mailbox/ports/mail-reader";
 import { UpsertThreads } from "@pochimail/mailbox/use-cases/upsert-threads";
-import type { JobRequest } from "@pochimail/pipeline/job-queue";
 import type { DomainEvent, DomainEventOf, DomainEventType } from "../events.ts";
 import { flagSuspicious } from "../flag-suspicious.ts";
 import type { MailProvider } from "../ports/mail-provider.ts";
 import type { WorkflowUnitOfWork } from "../ports/unit-of-work.ts";
 
-/** Job type enqueued to resume a rate-limited sync; a worker maps it back to this use case. */
-export const INCREMENTAL_SYNC_JOB = "sync.incremental";
 export const DEFAULT_CURSOR_SCOPE = "inbox";
 export const DEFAULT_RATE_LIMIT_DELAY_MS = 60_000;
+
+/** How a cursor is stored when it is not kept as the provider wrote it (the scan keeps its own form). */
+export interface CursorCodec {
+  readonly scope: string;
+  encode(cursor: SyncCursor): SyncCursor;
+  decode(stored: SyncCursor | null): SyncCursor | null;
+}
 
 export interface RunIncrementalSyncDeps {
   readonly uow: WorkflowUnitOfWork;
   readonly provider: MailProvider;
   readonly clock: Clock;
+  /** Reads and writes the cursor in another form; by default it is stored as the provider wrote it. */
+  readonly cursorCodec?: CursorCodec;
 }
 
 export interface RunIncrementalSyncRequest {
@@ -50,7 +56,7 @@ export type RunIncrementalSyncOutcome =
   | (Progress & { readonly status: "completed"; readonly restarted: boolean })
   /** The signal fired: progress is committed, a later run resumes from the cursor. */
   | (Progress & { readonly status: "paused" })
-  /** The provider asked us to slow down: state `paused`, a resume job is queued for `resumeAt`. */
+  /** The provider asked us to slow down: state `paused`; the caller leaves the account alone until `resumeAt`. */
   | (Progress & { readonly status: "rate-limited"; readonly resumeAt: string })
   /** Credentials expired: state `needs_reauth`. */
   | (Progress & { readonly status: "needs-reauth" });
@@ -60,11 +66,11 @@ export type RunIncrementalSyncError = StorageError | NotFound | Cancelled | Doma
 /**
  * Pulls mail by cursor and stores headers and metadata only (follows proposed D11: bodies are
  * fetched on demand and never persisted here). Each batch commits rows, the new cursor and its
- * progress events in ONE transaction, so an interruption at any point resumes with neither
+ * batch events in ONE transaction, so an interruption at any point resumes with neither
  * a gap nor a repeat, and the final state equals an uninterrupted run.
  *
- * Failure handling: `RateLimited` → account state `paused` + a resume job at `resumeAt`
- * (honouring `retryAfterMs`); `AuthExpired` → `needs_reauth`; `Cancelled` or an aborted signal →
+ * Failure handling: `RateLimited` → account state `paused` and a `resumeAt`
+ * (honouring `retryAfterMs`) for the caller to wait for; `AuthExpired` → `needs_reauth`; `Cancelled` or an aborted signal →
  * `paused` outcome; anything else is returned as an error with committed batches kept.
  */
 export class RunIncrementalSync {
@@ -80,10 +86,11 @@ export class RunIncrementalSync {
 
     const account = await uow.reads.accounts.get(workspaceId, accountId);
     if (!account.ok) return account;
-    const stored = await uow.reads.cursors.get(workspaceId, accountId, scope);
+    const { cursorCodec } = this.deps;
+    const stored = await uow.reads.cursors.get(workspaceId, accountId, cursorCodec?.scope ?? scope);
     if (!stored.ok) return stored;
 
-    let cursor: SyncCursor | null = stored.value;
+    let cursor: SyncCursor | null = cursorCodec ? cursorCodec.decode(stored.value) : stored.value;
     let progress: Progress = { batches: 0, fetched: 0, stored: 0 };
     let restarted = false;
 
@@ -107,13 +114,13 @@ export class RunIncrementalSync {
         state: s,
         occurredAt: this.deps.clock.now().toISOString(),
       });
-    const emit = (events: readonly DomainEvent[], job?: JobRequest) =>
+    const emit = (events: readonly DomainEvent[]) =>
       uow.run(async (tx) => {
         for (const e of events) {
           const appended = await tx.outbox.append({ kind: "event", event: e });
           if (!appended.ok) return appended;
         }
-        return job ? tx.outbox.append({ kind: "job", workspaceId, job }) : ok(undefined);
+        return ok(undefined);
       });
     const pausedByCaller = async (): AsyncResult<
       RunIncrementalSyncOutcome,
@@ -138,12 +145,7 @@ export class RunIncrementalSync {
           const resumeAt = new Date(
             this.deps.clock.now().getTime() + (failure.retryAfterMs ?? DEFAULT_RATE_LIMIT_DELAY_MS),
           ).toISOString();
-          const paused = await emit([state("paused")], {
-            type: INCREMENTAL_SYNC_JOB,
-            payload: { accountId, cursorScope: scope },
-            idempotencyKey: `${INCREMENTAL_SYNC_JOB}:${accountId}:${scope}:${resumeAt}`,
-            runAt: resumeAt,
-          });
+          const paused = await emit([state("paused")]);
           return paused.ok ? ok({ status: "rate-limited", resumeAt, ...progress }) : paused;
         }
         if (failure instanceof AuthExpired) {
@@ -163,15 +165,15 @@ export class RunIncrementalSync {
         if (!rows.ok) return rows;
         const threads = await new UpsertThreads().execute(tx, keep);
         if (!threads.ok) return threads;
-        const saved = await tx.repositories.cursors.set(workspaceId, accountId, nextCursor);
+        const saved = await tx.repositories.cursors.set(
+          workspaceId,
+          accountId,
+          cursorCodec ? cursorCodec.encode(nextCursor) : nextCursor,
+        );
         if (!saved.ok) return saved;
         const events = [
           event("SyncBatchFetched", `${key}:fetched`, { accountId, fetched: messages.length }),
           event("MessagesUpserted", `${key}:upserted`, { accountId, count: keep.length }),
-          event("ScanProgressed", `${key}:progress`, {
-            accountId,
-            processed: progress.stored + keep.length,
-          }),
         ];
         for (const e of events) {
           const appended = await tx.outbox.append({ kind: "event", event: e });
@@ -192,13 +194,7 @@ export class RunIncrementalSync {
       if (!hasMore) break;
     }
 
-    const done = await emit([
-      event("ScanCompleted", `${accountId}:${scope}:completed:${cursor?.token ?? "start"}`, {
-        accountId,
-        processed: progress.stored,
-      }),
-      state("connected"),
-    ]);
+    const done = await emit([state("connected")]);
     return done.ok ? ok({ status: "completed", restarted, ...progress }) : done;
   }
 }

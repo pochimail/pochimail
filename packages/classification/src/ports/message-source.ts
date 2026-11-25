@@ -4,13 +4,26 @@ import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import type { ClassifiableMessage, SignalFacts } from "../model/message-facts.ts";
 
 /** Read access to the mailbox's messages as plain data; the adapter maps from the mailbox rows. */
-export interface MessageSource {
+export interface MessageSource extends UnclassifiedSource {
   get(ws: WorkspaceId, id: MessageId): AsyncResult<ClassifiableMessage, StorageError | NotFound>;
   /** Emails per stored label for the given accounts; a label with no email may be absent. */
   countByCategory(
     ws: WorkspaceId,
     accountIds: readonly AccountId[],
   ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
+}
+
+/** Stored messages of an account that no classification was recorded for, so mail synced after the first scan is found. */
+export interface UnclassifiedSource {
+  /**
+   * Ids of the account's messages that have no derived decision, in id order, at most `limit`. A message stops
+   * being listed once it is classified, so a crash between sync and classify is repaired by the next call.
+   */
+  listUnclassified(
+    ws: WorkspaceId,
+    accountId: AccountId,
+    limit: number,
+  ): AsyncResult<readonly MessageId[], StorageError>;
 }
 
 export interface MessageLabeler {

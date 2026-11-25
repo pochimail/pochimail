@@ -1,7 +1,12 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { type ElectronApplication, _electron as electron, type Page } from "@playwright/test";
+import {
+  type ConsoleMessage,
+  type ElectronApplication,
+  _electron as electron,
+  type Page,
+} from "@playwright/test";
 import { E2E_OUT_DIR } from "#shared/gallery-build.ts";
 
 export type ColorScheme = "light" | "dark";
@@ -24,6 +29,23 @@ export interface RunningApp {
   /** Opens a route of the E2E build (the in-memory router starts at the URL hash): `/gallery`, `/settings`, … */
   open(route: string): Promise<void>;
   close(): Promise<void>;
+}
+
+/** What a console error means for the harness: a screen that failed to render, or a CSP block that leaves it unstyled. */
+const problemIn = (message: ConsoleMessage): string | undefined => {
+  if (message.type() !== "error") return undefined;
+  // AppErrorBoundary logs this event when a screen fails to render.
+  if (message.text().includes('"renderer-error"')) return `boundary: ${message.text()}`;
+  // The strict CSP blocks a library that styles itself with an inline <style>: the screen then looks unstyled.
+  if (message.text().includes("Content Security Policy")) return `csp: ${message.text()}`;
+  return undefined;
+};
+
+/** The problems a page has logged so far, read from its own buffer: that includes what was logged before any listener existed. */
+export async function loggedProblems(page: Page): Promise<string[]> {
+  const logged = (await page.consoleMessages()).flatMap((message) => problemIn(message) ?? []);
+  const thrown = (await page.pageErrors()).map((error) => `uncaught: ${error.message}`);
+  return [...logged, ...thrown];
 }
 
 /** The window content size every test (and every baseline) is taken at. */
@@ -66,16 +88,22 @@ export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
     ],
     env: environment(options),
   });
-  const page = await app.firstWindow();
   const problems: string[] = [];
-  page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
-  page.on("console", (message) => {
-    if (message.type() !== "error") return;
-    // AppErrorBoundary logs this event when a screen fails to render.
-    if (message.text().includes('"renderer-error"')) problems.push(`boundary: ${message.text()}`);
-    // The strict CSP blocks a library that styles itself with an inline <style>: the screen then looks unstyled.
-    if (message.text().includes("Content Security Policy")) problems.push(`csp: ${message.text()}`);
-  });
+  const report = (problem: string) => {
+    if (!problems.includes(problem)) problems.push(problem);
+  };
+  const watch = (window: Page) => {
+    window.on("pageerror", (error) => report(`uncaught: ${error.message}`));
+    window.on("console", (message) => {
+      const problem = problemIn(message);
+      if (problem !== undefined) report(problem);
+    });
+  };
+  // Listening starts before the window exists, and what it logged while the bundle loaded is read back afterwards.
+  app.on("window", watch);
+  const page = await app.firstWindow();
+  watch(page);
+  for (const problem of await loggedProblems(page)) report(problem);
   // The window shows on ready-to-show; its size and the colour scheme are then fixed before anything is read from it.
   await app.evaluate(
     ({ BrowserWindow }, size) =>

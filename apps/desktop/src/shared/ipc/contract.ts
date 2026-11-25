@@ -4,6 +4,7 @@ import { digestFiguresSchema } from "@pochimail/cleanup/model/digest";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
 import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
+import { syncChangedEvent, syncMutations, syncQueries } from "./sync-contract.ts";
 
 /**
  * The typed contract every screen uses (ADR 0002, M4-01). Handlers backed by core use cases live in worker/handlers.ts (M4-02).
@@ -106,6 +107,7 @@ const queries = {
     input: z.object({ accountId: accountId.optional() }),
     output: z.object({ ready: z.boolean(), itemCount: count }).extend(digestFiguresSchema.shape),
   },
+  ...syncQueries,
   "settings.get": {
     input: z.undefined(),
     // Optional so a caller written before these preferences existed stays valid; the controller defaults it.
@@ -177,6 +179,7 @@ const mutations = {
     input: z.object({ jobId }),
     output: z.undefined(),
   },
+  ...syncMutations,
   "settings.update": {
     input: z.object({
       autonomy: autonomySchema.optional(),
@@ -224,6 +227,7 @@ const subscriptions = {
         reason: z.enum(["offline", "rate-limited", "auth-expired", "unknown"]),
       }),
       z.object({ type: z.literal("ScanCancelled"), accountId, jobId }),
+      syncChangedEvent,
       z.object({ type: z.literal("DigestReady"), itemCount: z.number().int().nonnegative() }),
       // Required-state triggers (M4-16). M2/M3/M8 emit the real events; fixtures emit them until then.
       z.object({ type: z.literal("Offline") }),

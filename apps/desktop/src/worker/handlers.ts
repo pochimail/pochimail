@@ -8,6 +8,7 @@ import { AccountId } from "@pochimail/kernel/ids";
 import type { EventBus } from "@pochimail/pipeline/event-bus";
 import type { DomainEvent } from "@pochimail/workflows/events";
 import type { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
+import type { SyncResult, SyncRunner } from "@pochimail/workflows/use-cases/sync-runner";
 import type { EventOf, OutputOf } from "../shared/ipc/contract.ts";
 import type { Handlers } from "../shared/ipc/server.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
@@ -25,6 +26,7 @@ export interface HandlerDeps {
   readonly digestStatus: GetDigestStatus;
   readonly settings: ManageSettings;
   readonly scans: ScanRunner;
+  readonly syncs: Pick<SyncRunner, "now" | "status" | "onChange" | "settled">;
   readonly events: Pick<EventBus<DomainEvent>, "subscribe">;
   readonly deviceName: () => DeviceName;
 }
@@ -44,6 +46,13 @@ const scanFailureReason = (code: string): ScanFailureReason => {
   if (code === "provider.auth_expired") return "auth-expired";
   return "unknown";
 };
+
+type SyncResultView = OutputOf<"sync.now">["results"][number]["result"];
+
+const syncView = (result: SyncResult): SyncResultView =>
+  result.status === "rate-limited"
+    ? { status: "rate-limited", resumeAt: Date.parse(result.resumeAt) }
+    : result;
 
 const failureReason = (code: string): FailureReason => {
   if (code === "storage.not_found") return "not-found";
@@ -123,8 +132,30 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       "settings.update": async (patch) => {
         unwrapOrThrow(await deps.settings.update(workspaceId, patch));
       },
+      "sync.status": ({ accountIds }) =>
+        deps.syncs.status(accountIds.map((id) => unwrapOrThrow(AccountId(id)))).map((entry) => ({
+          accountId: entry.accountId,
+          running: entry.running,
+          last:
+            entry.last === null
+              ? null
+              : { result: syncView(entry.last.result), at: Date.parse(entry.last.at) },
+        })),
+      "sync.now": async ({ accountId }) => {
+        const results = await deps.syncs.now(
+          accountId === undefined ? undefined : unwrapOrThrow(AccountId(accountId)),
+        );
+        return {
+          results: results.map((entry) => ({
+            accountId: entry.accountId,
+            result: syncView(entry.result),
+          })),
+        };
+      },
       "scan.start": async ({ accountId }) => {
         const id = unwrapOrThrow(AccountId(accountId));
+        // A sync in flight holds the account's cursor: the scan starts after it, never beside it.
+        await deps.syncs.settled(id);
         return unwrapOrThrow(await deps.scans.start(id));
       },
       "scan.pause": ({ jobId }) => {
@@ -165,6 +196,14 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       "app.events": (_input, emit) => {
         appEventEmitters.add(emit);
         const stops = [
+          deps.syncs.onChange((change) =>
+            emit({
+              type: "SyncChanged",
+              accountId: change.accountId,
+              running: change.running,
+              ...(change.result === undefined ? {} : { result: syncView(change.result) }),
+            }),
+          ),
           deps.events.subscribe("ActionApplied", (event) =>
             emit({ type: "ActionApplied", actionId: event.payload.actionId }),
           ),

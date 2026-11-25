@@ -33,7 +33,7 @@ import {
 } from "@pochimail/ui/components/sidebar";
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import {
   AtSignIcon,
@@ -51,13 +51,15 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react";
-import { type ComponentType, useEffect } from "react";
+import type { ComponentType } from "react";
 import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { isMacDesktop } from "../../lib/platform.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { ProviderIcon } from "./provider-icon.tsx";
+import { SyncNow } from "./sync-now.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
+import { useRefreshCategoriesWhileScanning } from "./use-refresh-categories-while-scanning.ts";
 import { visibleCategories } from "./visible-categories.ts";
 
 const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
@@ -94,42 +96,6 @@ function NavItem({
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
-}
-
-const REFRESH_EVERY_MS = 2000;
-
-/** A category appears when it gets mail (D5): while an account scans, refresh the counts at most every 2 s. */
-function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) {
-  const accountIds = accounts.map((a) => a.id);
-  const client = useWorkerClient();
-  const queryClient = useQueryClient();
-  const key = accountIds.join("\u0000");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` is the stable identity of `accountIds`.
-  useEffect(() => {
-    let last = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = () => {
-      last = Date.now();
-      timer = undefined;
-      void queryClient.invalidateQueries({ queryKey: ["mailbox"] });
-    };
-    const stops = accountIds.map((accountId) =>
-      client.subscribe(
-        "scan.progress",
-        { accountId },
-        () => {
-          const wait = REFRESH_EVERY_MS - (Date.now() - last);
-          if (wait <= 0) refresh();
-          else timer ??= setTimeout(refresh, wait);
-        },
-        () => {},
-      ),
-    );
-    return () => {
-      for (const stop of stops) stop();
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, [client, queryClient, key]);
 }
 
 /** The signed-in shell: sidebar/tabs, account switcher (`?account=`) and counts. */
@@ -277,6 +243,11 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
+            <SyncNow
+              accounts={accountList}
+              selected={selected}
+              onReconnect={() => void navigate({ to: "/connect" })}
+            />
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tone="muted" tooltip={t("nav.teams")}>

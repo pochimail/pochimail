@@ -19,12 +19,14 @@ import { notifierContract } from "./notifier-contract.ts";
 import { powerMonitorContract } from "./power-monitor-contract.ts";
 import { repositoriesContract } from "./repositories-contract.ts";
 import { schedulerContract } from "./scheduler-contract.ts";
+import { unclassifiedContract } from "./unclassified-contract.ts";
 import { unitOfWorkContract } from "./unit-of-work-contract.ts";
 import { windowActivityContract } from "./window-activity-contract.ts";
 
 // Every in-memory adapter must pass its own contract suite.
 unitOfWorkContract(createInMemoryUnitOfWork);
 repositoriesContract(createInMemoryUnitOfWork);
+unclassifiedContract(createInMemoryUnitOfWork);
 figuresContract(createInMemoryUnitOfWork);
 secretStoreContract(createInMemorySecretStore);
 jobQueueContract(() => {

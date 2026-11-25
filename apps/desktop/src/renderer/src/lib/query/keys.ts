@@ -11,5 +11,6 @@ export const queryKeys = {
   settings: () => ["settings"] as const,
   deviceName: () => ["device", "name"] as const,
   scanStatus: (accountIds: readonly string[]) => ["scan", "status", accountIds] as const,
+  syncStatus: (accountIds: readonly string[]) => ["sync", "status", accountIds] as const,
   scanProgress: (accountId: string) => ["scan", "progress", accountId] as const,
 };

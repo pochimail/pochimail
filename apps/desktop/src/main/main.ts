@@ -33,6 +33,7 @@ import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
+import { bridgeWindowActivityToWorker } from "./window-activity-bridge.ts";
 import { linkWorkerOnEveryLoad } from "./worker-link.ts";
 import { bootWorker } from "./worker-start.ts";
 
@@ -160,6 +161,8 @@ const connectWorker = (window: BrowserWindow): void => {
     logger,
   });
   linkWorkerOnEveryLoad(window.webContents, worker, () => new MessageChannelMain());
+  // Polling follows the window (ADR 0004): the worker learns now, and on each change, what the window is doing.
+  bridgeWindowActivityToWorker(window, worker);
   const userData = app.getPath("userData");
   const databasePath = databasePathFor(userData);
   void bootWorker({
