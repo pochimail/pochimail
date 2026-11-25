@@ -33,6 +33,8 @@ export interface SeedRow {
   readonly category?: string;
   readonly reason?: string;
   readonly confidence?: number;
+  /** The message has no recorded decision yet; `reason` and `confidence` are then ignored. */
+  readonly undecided?: boolean;
   /** Signals the message carries. Adapters that evaluate signals themselves must agree with it. */
   readonly signals?: readonly string[];
   /** Signals raised only because a gate was unsure (ADR 0012): they protect but are never counted. */

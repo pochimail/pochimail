@@ -187,10 +187,12 @@ export function createInMemoryCleanup(): InMemoryCleanup {
           hasListUnsubscribe: false,
           ...message,
           seq: existing?.seq ?? ++counter,
-          decision: {
-            reason: row.reason ?? "Weekly newsletter, never opened",
-            confidence: row.confidence ?? 0.9,
-          },
+          decision: row.undecided
+            ? null
+            : {
+                reason: row.reason ?? "Weekly newsletter, never opened",
+                confidence: row.confidence ?? 0.9,
+              },
           signals: [
             ...(row.signals ?? []).map((kind) => ({ kind, confidence: 1 })),
             ...(row.unsureSignals ?? []).map((kind) => ({ kind, confidence: UNSURE_BELOW - 0.1 })),

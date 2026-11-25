@@ -76,10 +76,12 @@ export const cleanupSeeder = (h: Harness): CleanupSeeder => ({
           {
             incoming: row.message ?? {},
             category: row.category ?? "notifications",
-            derived: {
-              ...(row.reason === undefined ? {} : { reason: row.reason }),
-              ...(row.confidence === undefined ? {} : { confidence: row.confidence }),
-            },
+            derived: row.undecided
+              ? null
+              : {
+                  ...(row.reason === undefined ? {} : { reason: row.reason }),
+                  ...(row.confidence === undefined ? {} : { confidence: row.confidence }),
+                },
           },
         ]),
       ),
