@@ -7,6 +7,8 @@ export interface ModelHostEngine {
   readonly classifier: Classifier;
   readonly llm: LlmProvider;
   readonly embedder: Embedder;
+  /** Forgets whatever the engine remembered of mail; absent when it remembers nothing. */
+  readonly clearCache?: () => void;
 }
 
 const NEVER = { aborted: false, addEventListener: () => {}, removeEventListener: () => {} };
@@ -49,6 +51,10 @@ export const serveModelHost = (transport: Transport, engine: ModelHostEngine | u
           NEVER,
         );
         return respond(done.ok ? { id: message.id, ok: true, result: done.value } : unavailable);
+      }
+      if (message.method === "clear-cache") {
+        engine.clearCache?.();
+        return respond({ id: message.id, ok: true, result: null });
       }
       const done = await engine.embedder.embed(message.texts, NEVER);
       respond(
