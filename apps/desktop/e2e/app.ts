@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { type ElectronApplication, _electron as electron, type Page } from "@playwright/test";
@@ -53,6 +53,10 @@ const environment = (options: AppOptions): Record<string, string> => {
  */
 export async function launchApp(options: AppOptions = {}): Promise<RunningApp> {
   const userData = mkdtempSync(join(tmpdir(), "pochimail-e2e-"));
+  // Linux CI has no keychain, so main would ask how to protect the data first (ADR 0005). The demo keeps nothing, and the
+  // prompt has its own tests: start as if "store without protection" was chosen already (storage-choice.ts).
+  writeFileSync(join(userData, "storage-protection.json"), JSON.stringify({ mode: "unprotected" }));
+  writeFileSync(join(userData, "db.key.plain"), "0".repeat(64));
   const app = await electron.launch({
     args: [
       mainEntry,
