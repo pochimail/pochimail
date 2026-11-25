@@ -446,6 +446,9 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@pochimail/testing':
+        specifier: workspace:*
+        version: link:../testing
       '@pochimail/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript
