@@ -37,8 +37,8 @@ export const ws = unwrap(WorkspaceId("wsp_1"));
 export const FAR_FUTURE = "2100-01-01T00:00:00.000Z";
 export const confirmed: ApplyActionItem["authorization"] = {
   autonomy: "suggest",
-  categories: ["newsletters"],
-  protectedCategories: ["people"],
+  categories: ["newsletter"],
+  protectedCategories: ["personal"],
   confidence: 0.95,
   userConfirmed: true,
 };

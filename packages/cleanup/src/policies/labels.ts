@@ -1,16 +1,6 @@
-/** Labels the Overview counts as mail Pochi could propose to clean, in tie-break order. */
-export const CLEANABLE_LABELS = [
-  "newsletters",
-  "promotions",
-  "notifications",
-  "sign-ins-security",
-] as const;
+/** Types the Overview counts, and Pochi may propose to clean, as mail nobody wrote to you: in tie-break order. */
+export const CLEANABLE_LABELS = ["newsletter", "promotion", "notification"] as const;
 export type CleanableLabel = (typeof CLEANABLE_LABELS)[number];
-
-/** Labels where sender-level archive or unsubscribe may be proposed; everything else never is. */
-export const PROPOSABLE_LABELS: readonly string[] = CLEANABLE_LABELS.filter(
-  (label) => label !== "sign-ins-security",
-);
 
 /** Signals worth interrupting someone for; the rest stay in the Overview (brief §7). */
 export const ATTENTION_SIGNALS: readonly string[] = [
@@ -19,3 +9,9 @@ export const ATTENTION_SIGNALS: readonly string[] = [
   "important-sender",
   "has-document",
 ];
+
+/**
+ * An email carrying any of these, at any confidence, is never proposed for cleanup (ADR 0012).
+ * Protection reads signals only: no type name appears here, so a misfiled email stays protected.
+ */
+export const PROTECTING_SIGNALS: readonly string[] = [...ATTENTION_SIGNALS, "waiting-on-them"];

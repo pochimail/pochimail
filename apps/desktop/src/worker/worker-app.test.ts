@@ -199,7 +199,7 @@ describe("worker app over the real IPC layer", () => {
     expect((first?.scanned ?? 0) + (second?.scanned ?? 0)).toBe(all.scanned);
     expect(all.toReview).toBe(all.waiting + all.deadlines + all.important);
     // Numbers come from the real detectors: assert the shape, never the brief's 22 (known M3 gap).
-    const counts = await client.call("mailbox.categories", {
+    const counts = await client.call("mailbox.types", {
       accountIds: mailbox.accounts.map((a) => a.id),
     });
     for (const { category, count } of all.cleanable) expect(count).toBe(counts[category]);

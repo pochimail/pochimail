@@ -1,6 +1,6 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import type { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
-import type { CountCategories } from "@pochimail/classification/use-cases/count-categories";
+import type { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import type { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import type { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
@@ -21,7 +21,7 @@ export interface HandlerDeps {
   readonly workspaceId: WorkspaceId;
   readonly listAccounts: ListAccounts;
   readonly getOverview: GetOverview;
-  readonly categories: CountCategories;
+  readonly categories: CountTypes;
   readonly digestStatus: GetDigestStatus;
   readonly settings: ManageSettings;
   readonly scans: ScanRunner;
@@ -105,7 +105,7 @@ export function createHandlers(deps: HandlerDeps): Handlers {
           noAccount: !hasAccount,
         };
       },
-      "mailbox.categories": async ({ accountIds }) => {
+      "mailbox.types": async ({ accountIds }) => {
         return unwrapOrThrow(
           await deps.categories.execute(
             workspaceId,

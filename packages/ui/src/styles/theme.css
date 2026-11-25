@@ -38,13 +38,11 @@
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-frame: var(--frame);
   --color-mascot-rim: var(--mascot-rim);
-  --color-category-people: var(--category-people);
-  --color-category-records: var(--category-records);
-  --color-category-purchases: var(--category-purchases);
-  --color-category-signins: var(--category-signins);
-  --color-category-notifications: var(--category-notifications);
-  --color-category-newsletters: var(--category-newsletters);
-  --color-category-promotions: var(--category-promotions);
+  --color-type-personal: var(--type-personal);
+  --color-type-transactional: var(--type-transactional);
+  --color-type-notification: var(--type-notification);
+  --color-type-newsletter: var(--type-newsletter);
+  --color-type-promotion: var(--type-promotion);
 
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);

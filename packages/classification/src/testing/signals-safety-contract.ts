@@ -8,7 +8,7 @@ import { ACCOUNT_1, WS_A } from "./samples.ts";
 import { ago, DAY, detect, idOf, kinds, type SignalsHarness } from "./signals-harness.ts";
 
 const recentFromAlice = (h: SignalsHarness, over: object = {}) => ({
-  category: "people" as const,
+  category: "personal" as const,
   message: { from: "alice@example.com", receivedAt: ago(h, DAY), ...over },
 });
 
@@ -28,8 +28,8 @@ export const signalsSafetyChecks: readonly Check<SignalsHarness>[] = [
     "an unsure classifier still raises needs-reply at reduced confidence, a sure one does not (guards an unsure email left unprotected, ADR 0012)",
     async (h) => {
       await h.seed({
-        1: { ...recentFromAlice(h), category: "newsletters", derived: { confidence: 0.3 } },
-        2: { ...recentFromAlice(h), category: "newsletters", derived: { confidence: 0.95 } },
+        1: { ...recentFromAlice(h), category: "newsletter", derived: { confidence: 0.3 } },
+        2: { ...recentFromAlice(h), category: "newsletter", derived: { confidence: 0.95 } },
         3: { ...recentFromAlice(h), derived: null },
       });
       const found = await detect(h, [1, 2, 3]);

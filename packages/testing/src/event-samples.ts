@@ -23,7 +23,7 @@ export function sampleClassified(n = 0): DomainEvent {
     payload: {
       accountId: "a-1" as never,
       messageId: `m-${n}` as never,
-      category: "newsletters",
+      category: "newsletter",
       confidence: 0.9,
     },
   };

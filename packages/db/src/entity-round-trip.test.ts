@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { unwrap } from "@pochimail/kernel/result";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
 import { entityRoundTripContract } from "@pochimail/testing/entity-contract";
@@ -57,7 +57,7 @@ function sqliteRoundTrip() {
       return done(core.accounts.get(String(v.workspaceId), String(v.id)));
     }
     if ("from" in v) {
-      const m = v as unknown as IncomingMessage & { category?: Category };
+      const m = v as unknown as IncomingMessage & { category?: EmailType };
       done(core.messages.upsertMany([m]));
       if (m.category !== undefined)
         done(core.messages.setCategory(m.workspaceId, m.id, m.category));

@@ -3,39 +3,51 @@ import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
 import { ok, unwrap } from "@pochimail/kernel/result";
 import { type Check, check, registerContract } from "@pochimail/kernel/testing/contract";
 import { expect } from "vitest";
+import { CLEANABLE_LABELS } from "../policies/labels.ts";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 import { GetOverview } from "../use-cases/get-overview.ts";
 import { ProposeSuggestions } from "../use-cases/propose-suggestions.ts";
-import { ACCOUNT_1, live, type Seeder, type SeedRow, WS_A } from "./samples.ts";
+import { ACCOUNT_1, idOf, live, type Seeder, type SeedRow, WS_A } from "./samples.ts";
 
 /** What the suggestion suite needs; in-memory here, SQLite in the db package. */
 export interface SuggestionsHarness extends Seeder {
   readonly uow: CleanupUnitOfWork;
   readonly clock: Clock;
-  /** The labels the adapter under test treats as protected; the contract seeds "people". */
-  readonly protectedLabels: readonly string[];
 }
 
-const unopenedPromos = (extra: Partial<NonNullable<SeedRow["message"]>> = {}) =>
+// Three unopened emails of one sender. `attachments` is what the provider reported: none (0) by
+// default, since an unknown count (null) protects the email (ADR 0012).
+const unopenedPromos = (
+  extra: Partial<NonNullable<SeedRow["message"]>> = {},
+  type = "promotion",
+  signals: Pick<SeedRow, "signals" | "unsureSignals"> = {},
+  attachments: number | null = 0,
+  first = 1,
+) =>
   Object.fromEntries(
-    [1, 2, 3].map((n) => [
+    [first, first + 1, first + 2].map((n) => [
       n,
       {
-        category: "promotions",
-        message: { from: "promo@example.com", hasListUnsubscribe: true, ...extra },
+        category: type,
+        message: {
+          from: "promo@example.com",
+          hasListUnsubscribe: true,
+          ...(attachments === null ? {} : { savedCount: attachments }),
+          ...extra,
+        },
         reason: "Weekly promo, never opened",
         confidence: 0.95,
+        ...signals,
       } satisfies SeedRow,
     ]),
   );
 
 const suggestionsFor = async (h: SuggestionsHarness) =>
   unwrap(
-    await new ProposeSuggestions({
-      uow: h.uow,
-      clock: h.clock,
-      protectedLabels: h.protectedLabels,
-    }).execute({ workspaceId: WS_A, accountId: ACCOUNT_1 }, live()),
+    await new ProposeSuggestions({ uow: h.uow, clock: h.clock }).execute(
+      { workspaceId: WS_A, accountId: ACCOUNT_1 },
+      live(),
+    ),
   );
 
 export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
@@ -63,23 +75,40 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     },
   ),
   check(
-    "no suggestion touches People mail, even from a sender that also sends promotions, and none is a delete (guards the brief §2 invariants)",
+    "protection reads signals only: every cleanable type is proposed without a protecting signal and never with one (guards a protection tied to a type name)",
     async (h) => {
-      const people = Object.fromEntries(
-        [1, 2, 3].map((n) => [
-          n,
-          {
-            category: "people",
-            message: { from: "friend@example.com", hasListUnsubscribe: true },
-          } satisfies SeedRow,
-        ]),
-      );
-      const shop = { from: "shop@example.com", hasListUnsubscribe: true };
+      for (const [i, type] of CLEANABLE_LABELS.entries()) {
+        const sender = (n: number) => ({ from: `sender-${i}-${n}@example.com` });
+        await h.seed({
+          ...unopenedPromos(sender(0), type, {}, 0, 100 * i + 1),
+          ...unopenedPromos(sender(1), type, { signals: ["has-document"] }, 2, 100 * i + 11),
+          ...unopenedPromos(
+            sender(2),
+            type,
+            { unsureSignals: ["has-document"] },
+            null,
+            100 * i + 21,
+          ),
+        });
+        const made = await suggestionsFor(h);
+        const first = 100 * i + 1;
+        expect(made.map((s) => [...s.recommendation.messageIds].sort())).toEqual([
+          [first, first + 1, first + 2].map(idOf).sort(),
+        ]);
+      }
+    },
+  ),
+  check(
+    "no suggestion is a delete or touches personal or transactional mail, even from a sender that also sends promotional mail (guards the brief §2 invariants)",
+    async (h) => {
+      const shop = { from: "shop@example.com", hasListUnsubscribe: true, savedCount: 0 };
       await h.seed({
-        ...people,
-        4: { category: "promotions", message: shop },
-        5: { category: "promotions", message: shop },
-        6: { category: "people", message: shop },
+        ...unopenedPromos({}, "personal"),
+        ...Object.fromEntries(
+          [4, 5, 6].map((n) => [n, { category: "transactional", message: shop } satisfies SeedRow]),
+        ),
+        7: { category: "promotion", message: shop },
+        8: { category: "promotion", message: shop },
       });
       expect(await suggestionsFor(h)).toEqual([]);
       const all = unwrap(await h.uow.reads.suggestions.listPending(WS_A, { limit: 100 }));
@@ -113,7 +142,7 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     "the Overview counts as cleanable only the mail that suggestions propose, never unsure or undecided mail (guards ADR 0012)",
     async (h) => {
       const doubtful = (from: string, over: Partial<SeedRow> = {}): SeedRow => ({
-        category: "promotions",
+        category: "promotion",
         message: { from, hasListUnsubscribe: true },
         confidence: UNSURE_BELOW - 0.01,
         ...over,
@@ -127,7 +156,7 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
       const proposed = await suggestionsFor(h);
       const overview = unwrap(await new GetOverview({ uow: h.uow, clock: h.clock }).execute(WS_A));
       expect(proposed.flatMap((s) => s.recommendation.messageIds)).toHaveLength(3);
-      expect(overview.cleanable).toEqual([{ category: "promotions", count: 3 }]);
+      expect(overview.cleanable).toEqual([{ category: "promotion", count: 3 }]);
     },
   ),
   check(
@@ -135,7 +164,10 @@ export const suggestionsChecks: readonly Check<SuggestionsHarness>[] = [
     async (h) => {
       const read = (n: number): [number, SeedRow] => [
         n,
-        { category: "newsletters", message: { from: "read@example.com", opened: true } },
+        {
+          category: "newsletter",
+          message: { from: "read@example.com", opened: true, savedCount: 0 },
+        },
       ];
       await h.seed({ ...unopenedPromos(), ...Object.fromEntries([4, 5, 6].map(read)) });
       const first = await suggestionsFor(h);

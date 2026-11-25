@@ -8,7 +8,7 @@
   "unclassified": 0,
   "categoryAccuracy": 1,
   "categories": {
-    "people": {
+    "personal": {
       "support": 68,
       "truePositives": 68,
       "falsePositives": 0,
@@ -17,34 +17,16 @@
       "recall": 1,
       "f1": 1
     },
-    "records": {
-      "support": 21,
-      "truePositives": 21,
+    "transactional": {
+      "support": 77,
+      "truePositives": 77,
       "falsePositives": 0,
       "falseNegatives": 0,
       "precision": 1,
       "recall": 1,
       "f1": 1
     },
-    "purchases-travel": {
-      "support": 36,
-      "truePositives": 36,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "precision": 1,
-      "recall": 1,
-      "f1": 1
-    },
-    "sign-ins-security": {
-      "support": 20,
-      "truePositives": 20,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "precision": 1,
-      "recall": 1,
-      "f1": 1
-    },
-    "notifications": {
+    "notification": {
       "support": 142,
       "truePositives": 142,
       "falsePositives": 0,
@@ -53,7 +35,7 @@
       "recall": 1,
       "f1": 1
     },
-    "newsletters": {
+    "newsletter": {
       "support": 104,
       "truePositives": 104,
       "falsePositives": 0,
@@ -62,7 +44,7 @@
       "recall": 1,
       "f1": 1
     },
-    "promotions": {
+    "promotion": {
       "support": 92,
       "truePositives": 92,
       "falsePositives": 0,
@@ -83,8 +65,8 @@
       "f1": 0.9268
     },
     "waiting-on-them": {
-      "support": 4,
-      "truePositives": 4,
+      "support": 3,
+      "truePositives": 3,
       "falsePositives": 0,
       "falseNegatives": 0,
       "precision": 1,
@@ -119,8 +101,8 @@
       "f1": 0.6667
     },
     "old-never-opened": {
-      "support": 257,
-      "truePositives": 257,
+      "support": 276,
+      "truePositives": 276,
       "falsePositives": 0,
       "falseNegatives": 0,
       "precision": 1,
@@ -129,12 +111,12 @@
     }
   },
   "suspicious": {
-    "support": 4,
-    "truePositives": 3,
+    "support": 3,
+    "truePositives": 2,
     "falsePositives": 1,
     "falseNegatives": 1,
-    "precision": 0.75,
-    "recall": 0.75,
-    "f1": 0.75
+    "precision": 0.6667,
+    "recall": 0.6667,
+    "f1": 0.6667
   }
 }

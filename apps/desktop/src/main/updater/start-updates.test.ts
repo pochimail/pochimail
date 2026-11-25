@@ -37,8 +37,11 @@ const launch = (options: {
     isAppUrl: (url) => url === "file:///app/index.html",
     releaseBuild: options.releaseBuild,
     env: options.env ?? {},
-    currentVersion: "1.0.0",
-    preferencesFile: join(tmpdir(), `pochimail-start-${Math.random()}.json`),
+    app: {
+      getVersion: () => "1.0.0",
+      getPath: () => tmpdir(),
+      on: () => undefined,
+    },
     windows: () => [{ webContents: { send: (channel) => void sent.push(channel) } }],
     timer: {
       set: (fn) => {

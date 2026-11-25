@@ -99,15 +99,15 @@ export const repositoriesChecks: readonly Check<H>[] = [
     async (h) => {
       const m = makeIncomingMessage(1);
       await write(h, (tx) => tx.repositories.messages.upsertMany([m]));
-      await write(h, (tx) => tx.repositories.messages.setCategory(WS_A, m.id, "newsletters"));
+      await write(h, (tx) => tx.repositories.messages.setCategory(WS_A, m.id, "newsletter"));
       await write(h, (tx) => tx.repositories.messages.upsertMany([{ ...m, opened: true }]));
       const stored = unwrap(await h.uow.reads.messages.get(WS_A, m.id));
-      expect(stored.category).toBe("newsletters");
+      expect(stored.category).toBe("newsletter");
       expect(stored.opened).toBe(true);
     },
   ),
   check(
-    "countByCategory counts only the selected accounts and lists every category (guards counts leaking across accounts)",
+    "countByCategory counts only the selected accounts and lists every type (guards counts leaking across accounts)",
     async (h) => {
       const other = "acc-2" as AccountId;
       await write(h, (tx) =>
@@ -118,12 +118,12 @@ export const repositoriesChecks: readonly Check<H>[] = [
         ]),
       );
       await write(h, (tx) =>
-        tx.repositories.messages.setCategory(WS_A, makeIncomingMessage(1).id, "newsletters"),
+        tx.repositories.messages.setCategory(WS_A, makeIncomingMessage(1).id, "newsletter"),
       );
       const one = unwrap(await h.uow.reads.messages.countByCategory(WS_A, [ACCOUNT_1]));
       expect(Object.values(one).reduce((a, b) => a + b, 0)).toBe(2);
-      expect(one.newsletters).toBe(1);
-      expect(one.promotions).toBe(0);
+      expect(one.newsletter).toBe(1);
+      expect(one.promotion).toBe(0);
       const none = unwrap(await h.uow.reads.messages.countByCategory(WS_A, []));
       expect(Object.values(none).every((n) => n === 0)).toBe(true);
     },
@@ -132,7 +132,7 @@ export const repositoriesChecks: readonly Check<H>[] = [
     "setCategory on an unknown message is NotFound (guards silently ignoring a bad id)",
     async (h) => {
       await write(h, async (tx) => {
-        const r = await tx.repositories.messages.setCategory(WS_A, "nope" as MessageId, "people");
+        const r = await tx.repositories.messages.setCategory(WS_A, "nope" as MessageId, "personal");
         expect(r.ok).toBe(false);
         if (!r.ok) expect(r.error.code).toBe("storage.not_found");
       });
@@ -148,13 +148,13 @@ export const repositoriesChecks: readonly Check<H>[] = [
       ];
       await write(h, async (tx) => {
         await tx.repositories.messages.upsertMany(batch);
-        await tx.repositories.messages.setCategory(WS_A, batch[0]?.id as MessageId, "promotions");
-        await tx.repositories.messages.setCategory(WS_A, batch[1]?.id as MessageId, "promotions");
-        await tx.repositories.messages.setCategory(WS_A, batch[2]?.id as MessageId, "people");
+        await tx.repositories.messages.setCategory(WS_A, batch[0]?.id as MessageId, "promotion");
+        await tx.repositories.messages.setCategory(WS_A, batch[1]?.id as MessageId, "promotion");
+        await tx.repositories.messages.setCategory(WS_A, batch[2]?.id as MessageId, "personal");
       });
       const base = { accountId: ACCOUNT_1, limit: 10 };
       const promos = unwrap(
-        await h.uow.reads.messages.query(WS_A, { ...base, category: "promotions" }),
+        await h.uow.reads.messages.query(WS_A, { ...base, category: "promotion" }),
       );
       expect(promos.items.map((m) => m.id)).toEqual(["msg-2", "msg-1"]);
       const fromA = unwrap(

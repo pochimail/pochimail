@@ -58,7 +58,7 @@ const textPairs: [string, string][] = [
   ["destructive", "card"],
   ["background", "destructive"], // destructive button label
 ];
-const categories = Object.keys(json.color.category ?? {}).map((n) => `category-${n}`);
+const types = Object.keys(json.color.type ?? {}).map((n) => `type-${n}`);
 const graphicPairs: [string, string][] = [
   ["ring", "background"],
   ["ring", "card"],
@@ -70,8 +70,8 @@ const graphicPairs: [string, string][] = [
   // Composites (M4-03): hatched storage segment and ledger bar fill on the muted track, progress fill on its track.
   ["foreground-tertiary", "muted"],
   ["primary", "muted"],
-  ...categories.map((c): [string, string] => [c, "muted"]),
-  ...categories.flatMap((c): [string, string][] => [
+  ...types.map((c): [string, string] => [c, "muted"]),
+  ...types.flatMap((c): [string, string][] => [
     [c, "background"],
     [c, "card"],
   ]),
@@ -130,9 +130,9 @@ it("tokens.css matches tokens.json in both themes", () => {
       if (expected?.toLowerCase() !== themes[theme][cssName]?.toLowerCase())
         mismatches.push(`${theme}.${name} -> --${cssName}`);
     }
-    for (const [name, v] of Object.entries(json.color.category ?? {})) {
-      if (v[theme]?.$value.toLowerCase() !== themes[theme][`category-${name}`]?.toLowerCase())
-        mismatches.push(`${theme}.category.${name}`);
+    for (const [name, v] of Object.entries(json.color.type ?? {})) {
+      if (v[theme]?.$value.toLowerCase() !== themes[theme][`type-${name}`]?.toLowerCase())
+        mismatches.push(`${theme}.type.${name}`);
     }
   }
   const rim = json.color.dark?.mascotRim?.$value?.toLowerCase();

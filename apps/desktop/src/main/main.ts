@@ -19,9 +19,7 @@ import {
 } from "electron";
 import { demoScale, demoSwitches } from "../shared/demo.ts";
 import { databasePathFor } from "./database-path.ts";
-import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
-import { isReleaseBuild } from "./release-build.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
 import {
   hardenWebContents,
@@ -35,8 +33,7 @@ import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
 import { startUpdates } from "./updater/start-updates.ts";
-import { linkWorkerOnEveryLoad } from "./worker-link.ts";
-import { bootWorker } from "./worker-start.ts";
+import { createWorkerLifecycle, type WorkerLifecycle } from "./worker-lifecycle.ts";
 
 // A packaged app never honours the dev-server variable, so an environment override cannot point the window elsewhere.
 const devServerUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
@@ -86,6 +83,7 @@ const processSecretVault = (): SecretVault => {
     vault: safeStorage,
     file: join(app.getPath("userData"), "secrets.json"),
     platform: process.platform,
+    passphraseKey: () => processStorageGate().passphraseKey(),
     logger,
   });
   return secretVault;
@@ -139,19 +137,21 @@ const workerEnv = (): Record<string, string> => ({
   ),
 });
 
-const connectWorker = (window: BrowserWindow): void => {
-  const worker = utilityProcess.fork(join(import.meta.dirname, "worker.js"), [], {
-    serviceName: "pochimail-worker",
-    env: workerEnv(),
-  });
-  // The model host is its own process so a model crash never takes the worker down; main restarts it.
-  const modelHost = superviseModelHost({
-    fork: () =>
+// One lifecycle per process: it owns every window's worker and model host (restart, orderly shutdown).
+let workerLifecycle: WorkerLifecycle | undefined;
+const processWorkerLifecycle = (): WorkerLifecycle => {
+  workerLifecycle ??= createWorkerLifecycle({
+    forkWorker: () =>
+      utilityProcess.fork(join(import.meta.dirname, "worker.js"), [], {
+        serviceName: "pochimail-worker",
+        env: workerEnv(),
+      }),
+    // The model host is its own process so a model crash never takes the worker down; main restarts it.
+    forkModelHost: () =>
       utilityProcess.fork(join(import.meta.dirname, "model-host.js"), [], {
         serviceName: "pochimail-model-host",
         env: demoEnv,
       }),
-    worker,
     createChannel: () => new MessageChannelMain(),
     timer: {
       set: (fn, ms) => {
@@ -159,25 +159,14 @@ const connectWorker = (window: BrowserWindow): void => {
         return () => clearTimeout(handle);
       },
     },
-    logger,
-  });
-  linkWorkerOnEveryLoad(window.webContents, worker, () => new MessageChannelMain());
-  const userData = app.getPath("userData");
-  const databasePath = databasePathFor(userData);
-  void bootWorker({
-    worker,
     secrets: processSecretVault(),
-    databasePath,
+    databasePath: databasePathFor(app.getPath("userData")),
     loadKey: () => processStorageGate().key(),
-    createChannel: () => new MessageChannelMain(),
     // Sign-in consent opens in the user's browser, never in an app window (ADR 0007).
     openExternal: (url) => shell.openExternal(url),
     logger,
   });
-  window.once("closed", () => {
-    modelHost.stop();
-    worker.kill();
-  });
+  return workerLifecycle;
 };
 
 const createWindow = (): void => {
@@ -197,13 +186,14 @@ const createWindow = (): void => {
     },
   });
   window.once("ready-to-show", () => window.show());
-  connectWorker(window);
+  processWorkerLifecycle().connect(window);
   // Packaging smoke test (M0-10): report that the renderer loaded, then quit.
   if (process.env.POCHIMAIL_SMOKE === "1")
     window.webContents.once("did-finish-load", () => {
       process.stdout.write(`smoke:window-loaded version=${app.getVersion()}\n`);
       void smokeStorage({
         vault: safeStorage,
+        keyFile: process.env.POCHIMAIL_SMOKE_KEY_FILE,
         fork: () =>
           utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
             serviceName: "pochimail-storage-smoke",
@@ -241,18 +231,14 @@ void app.whenReady().then(() => {
     gate: processStorageGate(),
     isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
   });
-  const stopUpdates = startUpdates({
+  startUpdates({
+    app,
     ipc: ipcMain,
     openExternal: (url) => shell.openExternal(url),
     isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-    releaseBuild: isReleaseBuild(),
-    env: process.env,
-    currentVersion: app.getVersion(),
-    preferencesFile: join(app.getPath("userData"), "update-preferences.json"),
     windows: () => BrowserWindow.getAllWindows(),
     logger,
   });
-  app.on("will-quit", stopUpdates);
   createWindow();
   const locale = localeFromLanguages(app.getPreferredSystemLanguages());
   // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
@@ -286,8 +272,23 @@ void app.whenReady().then(() => {
     },
     quit: () => app.quit(),
   });
-  app.on("will-quit", appTray.dispose);
-  app.on("will-quit", () => processStorageGate().dispose());
+  // Quitting waits (briefly) for each worker to release its database, then lets the app go.
+  let workersStopped = false;
+  app.on("will-quit", (event) => {
+    if (!workersStopped) {
+      event.preventDefault();
+      void processWorkerLifecycle()
+        .shutdown()
+        .catch(() => undefined)
+        .finally(() => {
+          workersStopped = true;
+          app.quit();
+        });
+      return;
+    }
+    appTray.dispose();
+    processStorageGate().dispose();
+  });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

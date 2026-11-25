@@ -1,4 +1,5 @@
-import type { Category, SignalKind } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
+import type { SignalKind } from "@pochimail/classification/model/signal";
 import type { SignalSettings } from "@pochimail/classification/model/signal-settings";
 import { TIME_SENSITIVE_WITHIN_DAYS } from "@pochimail/classification/policies/signal-rules";
 
@@ -6,7 +7,7 @@ const DAY = 86_400_000;
 
 /** What the thread labels read of one planned message. */
 export interface SignalPlan {
-  readonly category: Category;
+  readonly category: EmailType;
   readonly threadKey: number;
   readonly pos: number;
   readonly inbound: boolean;
@@ -33,7 +34,7 @@ export function assignThreadSignals(
       lastOfThread.set(plan.threadKey, plan);
   }
   for (const plan of lastOfThread.values()) {
-    if (plan.category !== "people" || noReply.has(plan.threadKey)) continue;
+    if (plan.category !== "personal" || noReply.has(plan.threadKey)) continue;
     const age = (now - plan.at) / DAY;
     if (age > settings.recentDays) continue;
     if (plan.inbound) plan.signals.add("needs-reply");
@@ -41,11 +42,11 @@ export function assignThreadSignals(
   }
 }
 
-/** Any recent records notice that is not a deadline was read, so only a deadline notice is recent and unopened. */
-export function markRecentRecordsRead(plans: readonly SignalPlan[], now: number): void {
+/** Any recent transactional email that is not a deadline was read, so only a deadline notice is recent and unopened. */
+export function markRecentTransactionalRead(plans: readonly SignalPlan[], now: number): void {
   for (const plan of plans)
     if (
-      plan.category === "records" &&
+      plan.category === "transactional" &&
       !plan.signals.has("time-sensitive") &&
       now - plan.at <= TIME_SENSITIVE_WITHIN_DAYS * DAY
     )

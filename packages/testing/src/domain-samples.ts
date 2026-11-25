@@ -1,6 +1,7 @@
 import { PROVIDER_KINDS } from "@pochimail/accounts/model/account";
 import { ACTION_KINDS } from "@pochimail/actions/model/action";
-import { CATEGORIES, SIGNAL_KINDS } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
+import { SIGNAL_KINDS } from "@pochimail/classification/model/signal";
 import { SUSPICIOUS_REASONS } from "@pochimail/classification/policies/suspicious-rules";
 import { RECOMMENDATION_KINDS } from "@pochimail/cleanup/model/suggestion";
 import { fakeSenderHash } from "@pochimail/kernel/testing/fake-sender-hash";
@@ -79,7 +80,7 @@ export const sampleBuilders = {
     const incoming = sampleBuilders.incomingMessage(r);
     return {
       ...incoming,
-      category: r.pick(CATEGORIES),
+      category: r.pick(EMAIL_TYPES),
       senderHash: fakeSenderHash(incoming.accountId, incoming.from),
     };
   },

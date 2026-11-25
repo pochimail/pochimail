@@ -3,7 +3,7 @@
 Pochimail handles a whole mailbox. Local only: no Pochimail server, no telemetry. Report vulnerabilities privately ([SECURITY.md](../SECURITY.md)). Reasons live in ADRs [0002](adr/0002-electron-process-model-and-ipc.md), [0005](adr/0005-local-storage.md), [0007](adr/0007-oauth-credentials-scopes.md), [0008](adr/0008-notifications-and-privacy.md), [0012](adr/0012-delete-moves-to-trash-with-approval.md), [0013](adr/0013-unsubscribe-suggested-user-decides.md), [0014](adr/0014-store-reports-and-actions-not-mail.md).
 
 ## Rules
-- **Storage**: the database is encrypted. Its key and OAuth refresh tokens live only in the OS keychain (`safeStorage`), never in files or logs. On Linux `basic_text` the key comes from a passphrase (scrypt, never stored) unless the user explicitly chooses to store without protection. Access tokens stay in memory. Client ids come from env or config, never hard-coded.
+- **Storage**: the database is encrypted. Its key and OAuth refresh tokens live only in the OS keychain (`safeStorage`), never in files or logs. On Linux `basic_text` the key comes from a passphrase (scrypt, never stored) unless the user explicitly chooses to store without protection. There, refresh tokens persist only with a passphrase, sealed under a subkey of the passphrase-derived key; with no protection chosen they are not persisted and the user signs in again at each launch. The `basic_text` wrap is never used for tokens. The packaged smoke runs on each OS and, over two launches, proves macOS Keychain and Windows DPAPI return the same database key after a restart; Linux CI runners have no secret service, so that proof is not run there and no libsecret job is added. Access tokens stay in memory. Client ids come from env or config, never hard-coded.
 - **Scopes**: least privilege, requested incrementally. Never a delete scope and never `https://mail.google.com/`.
 - **Electron**: `contextIsolation`, sandbox, no `nodeIntegration`, a narrow preload through `contextBridge`, strict CSP, navigation and new-window blocking, `webSecurity` on, Fuses set, a supported Electron major.
 - **Email is hostile**: never execute or render remote content, block remote images, never follow links in bodies. Unsubscribe only through RFC 8058 one-click or `mailto:`. Attachments are hashed and written only when the user saves them, never opened automatically. Never persist bodies, subjects, snippets or addresses ([ADR 0014](adr/0014-store-reports-and-actions-not-mail.md)).
@@ -16,7 +16,7 @@ Pochimail handles a whole mailbox. Local only: no Pochimail server, no telemetry
 | Asset | Protection |
 |---|---|
 | Mail data and reports | Encrypted SQLite owned by the worker; only ids, dates, hashes and reports ([ADR 0014](adr/0014-store-reports-and-actions-not-mail.md)) |
-| Tokens, database key | OS keychain; Linux `basic_text` is refused unless the user chooses to continue |
+| Tokens, database key | OS keychain; Linux `basic_text` is refused unless the user chooses to continue. Tokens there persist only under a passphrase |
 | Mailbox integrity | The promise is in [product.md](product.md). Every action is logged with its inverse |
 | Saved documents | The user's own folder, kept when an account is removed |
 | Models | SHA-256 pinned in a signed manifest |

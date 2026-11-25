@@ -1,6 +1,7 @@
 import { authorize } from "@pochimail/actions/policies/authorize";
 import { authorizeContract } from "@pochimail/actions/testing/policy-contract";
-import { CATEGORIES, PROTECTED_CATEGORIES } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 
-// The safety matrix over classification's real categories, so the two domains cannot drift apart.
-authorizeContract(authorize, { categories: CATEGORIES, protectedCategories: PROTECTED_CATEGORIES });
+// The safety matrix over classification's real types, so the two domains cannot drift apart.
+// `authorize` treats labels as opaque: "personal" stands for whatever the composition protects.
+authorizeContract(authorize, { categories: EMAIL_TYPES, protectedCategories: ["personal"] });

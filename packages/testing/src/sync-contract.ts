@@ -2,7 +2,7 @@ import type { Account } from "@pochimail/accounts/model/account";
 import type { SecretStore } from "@pochimail/accounts/ports/secret-store";
 import { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
 import { AiUnavailable } from "@pochimail/classification/errors";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { ClassifyBatch } from "@pochimail/classification/use-cases/classify-batch";
 import type { Clock } from "@pochimail/kernel/clock";
@@ -35,7 +35,7 @@ export interface SyncHarness {
   readonly clock: Clock & { advance(ms: number): void };
   readonly ids: IdGenerator;
   /** Ground-truth labels by message id; the classifier answers from them. */
-  readonly labels: Map<string, Category>;
+  readonly labels: Map<string, EmailType>;
   readonly classifier: Classifier;
   /** The next classifier call fails with `AiUnavailable`. */
   makeClassifierUnavailable(): void;
@@ -265,8 +265,8 @@ export const syncChecks: readonly Check<SyncHarness>[] = [
       const account = await connected(h);
       const { sync, classify } = cases(h);
       await h.deliver(...[1, 2, 3].map((n) => mail(account, n)));
-      h.labels.set("msg-1", "newsletters");
-      h.labels.set("msg-2", "records");
+      h.labels.set("msg-1", "newsletter");
+      h.labels.set("msg-2", "transactional");
       unwrap(await sync.execute({ workspaceId: WS_A, accountId: account.id }, live()));
       const ids = [1, 2, 3].map((n) => unwrap(MessageIdOf(`msg-${n}`)));
 
@@ -279,7 +279,7 @@ export const syncChecks: readonly Check<SyncHarness>[] = [
       expect(report.classified).toBe(2);
       expect(report.unclassified).toEqual(["msg-3"]);
       const stored = unwrap(await h.uow.reads.messages.get(WS_A, ids[0] as (typeof ids)[number]));
-      expect(stored.category).toBe("newsletters");
+      expect(stored.category).toBe("newsletter");
       expect(await events(h, "MessageClassified")).toHaveLength(2);
     },
   ),
@@ -298,7 +298,7 @@ export const syncChecks: readonly Check<SyncHarness>[] = [
       } as IncomingMessage;
       await h.deliver(bloated);
       h.setBody("msg-1", `${BODY} full text`);
-      h.labels.set("msg-1", "records");
+      h.labels.set("msg-1", "transactional");
 
       unwrap(await sync.execute({ workspaceId: WS_A, accountId: account.id }, live()));
       unwrap(
