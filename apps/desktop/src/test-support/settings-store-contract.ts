@@ -36,7 +36,7 @@ const settingsStoreChecks: readonly Check<SettingsStore>[] = [
   ),
 ];
 
-/** Contract for any `SettingsStore` (in-memory today; the SQLite adapter reuses it). `make` returns a fresh, empty store. */
+/** Contract for any `SettingsStore` (in-memory and SQLite). `make` returns a fresh, empty store. */
 export function settingsStoreContract(make: () => SettingsStore | Promise<SettingsStore>): void {
   registerContract("SettingsStore contract", settingsStoreChecks, make);
 }
