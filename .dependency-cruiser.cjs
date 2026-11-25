@@ -234,7 +234,7 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    exclude: { path: "(^|/)(node_modules|dist|out|build|coverage|storybook-static)/" },
+    exclude: { path: "(^|/)(node_modules|dist|out|out-e2e|build|coverage|storybook-static)/" },
     // TypeScript 7.0 lacks the compiler API dependency-cruiser uses; SWC parses TS/TSX without it.
     parser: "swc",
     tsPreCompilationDeps: true,

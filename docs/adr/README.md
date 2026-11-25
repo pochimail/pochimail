@@ -1,6 +1,6 @@
 # Architecture decision records
 
-One file per decision. An accepted ADR wins over any rule; changing one needs approval.
+One file per decision. Accepted ADRs win.
 
 | # | Decision | Status |
 |---|---|---|
@@ -20,4 +20,5 @@ One file per decision. An accepted ADR wins over any rule; changing one needs ap
 | 0014 | Store reports, not mail | Accepted |
 | 0015 | Bounded-context packages, gates | Accepted |
 | 0016 | Fixed types, automatic topics | Accepted |
+| 0017 | E2E tests | Accepted |
 

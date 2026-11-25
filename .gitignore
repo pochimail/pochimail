@@ -13,3 +13,6 @@ coverage/
 *.local
 release/
 packages/testing/eval/report.json
+apps/desktop/out-e2e/
+apps/desktop/e2e/test-results/
+apps/desktop/e2e/playwright-report/

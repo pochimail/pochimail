@@ -1,6 +1,6 @@
 import { createLogger } from "@pochimail/logger/logger";
 import type { Timer } from "@pochimail/pipeline/event-batching";
-import { demoScale } from "../shared/demo.ts";
+import { DEMO_PACED_PAGE_SIZE, demoFirstRun, demoScale, demoScanPaceMs } from "../shared/demo.ts";
 import type { Handlers } from "../shared/ipc/server.ts";
 import { serveRpc } from "../shared/ipc/server.ts";
 import { createPlatformAdapter } from "../shared/platform.ts";
@@ -114,19 +114,33 @@ const unavailableHandlers: Handlers = {
   },
 };
 
-/** Demo mode has no Google: "connecting" answers with the first fixture account, so onboarding can be tried end to end. */
-const withDemoConnect = (demo: Handlers): Handlers => ({
-  ...demo,
-  procedures: {
-    ...demo.procedures,
-    "accounts.connect": async () => {
-      const [first] = (await demo.procedures["accounts.list"]?.(undefined)) ?? [];
-      return first === undefined
-        ? { status: "failed" as const, reason: "unknown" as const }
-        : { status: "connected" as const, accountId: first.id };
+/**
+ * Demo mode has no Google: "connecting" answers with the first fixture account, so onboarding can be tried end to end.
+ * In first-run demo mode (E2E) no account is visible until that connect, as in a fresh install.
+ */
+const withDemoConnect = (demo: Handlers, firstRun: boolean): Handlers => {
+  let connected = !firstRun;
+  const list = (): ReturnType<NonNullable<Handlers["procedures"]["accounts.list"]>> =>
+    connected ? (demo.procedures["accounts.list"]?.(undefined) ?? []) : [];
+  return {
+    ...demo,
+    procedures: {
+      ...demo.procedures,
+      "accounts.list": list,
+      "app.state": async () => ({
+        status: "ready" as const,
+        hasConnectedAccount: (await list()).length > 0,
+      }),
+      "accounts.connect": async () => {
+        connected = true;
+        const [first] = await list();
+        return first === undefined
+          ? { status: "failed" as const, reason: "unknown" as const }
+          : { status: "connected" as const, accountId: first.id };
+      },
     },
-  },
-});
+  };
+};
 
 /** The real app over the empty answers; with no database key or an unopenable file they stay empty. */
 const realHandlers = async (): Promise<Handlers> => {
@@ -148,6 +162,9 @@ const realHandlers = async (): Promise<Handlers> => {
 };
 
 const scale = demoScale(process.env.POCHIMAIL_DEMO);
+const pageDelayMs = demoScanPaceMs(process.env.POCHIMAIL_DEMO_SCAN_PACE_MS);
+const paceOptions =
+  pageDelayMs === undefined ? {} : { pageDelayMs, pageSize: DEMO_PACED_PAGE_SIZE };
 const handlers: Promise<Handlers> =
   scale === undefined
     ? realHandlers()
@@ -160,9 +177,15 @@ const handlers: Promise<Handlers> =
             deviceName: () => platform.deviceName(),
             classifier: modelHost.classifier,
             newJobId: () => crypto.randomUUID(),
+            ...paceOptions,
           }),
         )
-        .then((adapters) => withDemoConnect(createWorkerApp(adapters).handlers))
+        .then((adapters) =>
+          withDemoConnect(
+            createWorkerApp(adapters).handlers,
+            demoFirstRun(process.env.POCHIMAIL_DEMO_FIRST_RUN),
+          ),
+        )
         .catch(() => {
           logger.error("demo data failed to load", { operation: "start" });
           return emptyHandlers;

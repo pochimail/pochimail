@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6.45.1/schema.json",
-  "entry": ["src/renderer/src/main.tsx", "src/**/*.stories.tsx", "electron-builder.config.ts"],
+  "entry": [
+    "src/renderer/src/main.tsx",
+    "src/**/*.stories.tsx",
+    "electron-builder.config.ts",
+    "e2e/**/*.e2e.ts"
+  ],
   "ignoreBinaries": ["biome", "knip"],
   "ignoreDependencies": ["tailwindcss", "tw-animate-css"]
 }
