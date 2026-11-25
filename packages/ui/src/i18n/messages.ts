@@ -1,6 +1,7 @@
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -52,11 +53,7 @@ export const messages = {
   "review.counts.deadlines": entry("With deadlines", []),
   "review.counts.important": entry("From important people", []),
   "review.cleanable.title": entry("Safe to clean up", []),
-  "review.noAccount.title": entry("Connect an account", []),
-  "review.noAccount.body": entry(
-    "These counts are all Pochimail keeps. To list emails, delete or unsubscribe, it needs a connected account: it fetches them from your provider when you ask.",
-    [],
-  ),
+  ...reviewMessages.en,
   "review.loading": entry("Loading your review", []),
   "review.error.title": entry("I could not load your review.", []),
   "overview.pause": entry("Pause", []),

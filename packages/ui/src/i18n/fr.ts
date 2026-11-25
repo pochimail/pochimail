@@ -2,6 +2,7 @@ import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { reviewMessages } from "./review-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
 
@@ -34,11 +35,7 @@ export const fr = {
   "review.counts.deadlines": entry("Avec une échéance", []),
   "review.counts.important": entry("De personnes importantes", []),
   "review.cleanable.title": entry("À nettoyer sans risque", []),
-  "review.noAccount.title": entry("Connectez un compte", []),
-  "review.noAccount.body": entry(
-    "Ces chiffres sont tout ce que Pochimail conserve. Pour lister des emails, supprimer ou vous désabonner, un compte connecté est nécessaire : Pochimail les récupère chez votre fournisseur à votre demande.",
-    [],
-  ),
+  ...reviewMessages.fr,
   "review.loading": entry("Chargement de votre examen", []),
   "review.error.title": entry("Je n’ai pas pu charger votre examen.", []),
   "overview.pause": entry("Pause", []),
