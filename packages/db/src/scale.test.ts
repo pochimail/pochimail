@@ -36,10 +36,18 @@ describe("100,000 messages", () => {
       return ok(undefined);
     });
 
+    // One warm-up run (page cache, prepared statements, JIT), then the median of RUNS: a shared Windows runner stalls single runs by 50 ms or more, a missing index slows every run.
+    const RUNS = 5;
     const time = async <T>(run: () => T | Promise<T>) => {
-      const s = performance.now();
-      const value = await run();
-      return { ms: performance.now() - s, value };
+      let value = await run();
+      const samples: number[] = [];
+      for (let i = 0; i < RUNS; i++) {
+        const s = performance.now();
+        value = await run();
+        samples.push(performance.now() - s);
+      }
+      samples.sort((a, b) => a - b);
+      return { ms: samples[RUNS >> 1] as number, value };
     };
     const hash = h.storage.senderHasher.hash(ACCOUNT_1, sender(1));
     const top = await time(() =>
