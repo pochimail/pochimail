@@ -22,9 +22,12 @@
     "knip": "knip",
     "test": "vitest run",
     "e2e": "node e2e/build.ts && playwright test --config e2e/playwright.config.ts",
-    "package": "electron-vite build && electron-builder --config electron-builder.config.ts",
+    "package": "electron-vite build && electron-builder --config electron-builder.config.ts --publish never",
     "package:smoke": "node packaging/smoke.ts",
-    "package:size": "node packaging/report-size.ts"
+    "package:size": "node packaging/report-size.ts",
+    "package:signing": "node packaging/report-signing.ts",
+    "package:verify": "node packaging/verify-release.ts",
+    "package:finalize": "node packaging/finalize-release.ts"
   },
   "devDependencies": {
     "@electron/fuses": "2.1.3",

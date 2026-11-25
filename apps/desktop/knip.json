@@ -6,6 +6,6 @@
     "electron-builder.config.ts",
     "e2e/**/*.e2e.ts"
   ],
-  "ignoreBinaries": ["biome", "knip"],
+  "ignoreBinaries": ["biome", "knip", "hdiutil"],
   "ignoreDependencies": ["tailwindcss", "tw-animate-css"]
 }
