@@ -1,17 +1,21 @@
+import { EventEmitter } from "node:events";
 import { createCachingClassifier } from "@pochimail/ai/cache";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { createLogger } from "@pochimail/logger/logger";
+import type { PowerMonitor } from "@pochimail/pipeline/power-monitor";
 import { createFakePowerMonitor } from "@pochimail/testing/fake-power-monitor";
 import { createFakeTimer } from "@pochimail/testing/fake-timer";
 import { generateMailbox } from "@pochimail/testing/fixture-mailbox/generator";
 import { describe, expect, it, vi } from "vitest";
+import { bridgePowerToWorker, type PowerSource } from "../main/power-bridge.ts";
 import { DEMO_SEED } from "../shared/demo.ts";
 import { createRpcClient } from "../shared/ipc/client.ts";
 import { serveRpc } from "../shared/ipc/server.ts";
 import { fromDomPort } from "../shared/ipc/transport.ts";
 import { createWorkerApp } from "./app.ts";
 import { createFixtureAdapters } from "./fixture-adapters.ts";
+import { createMainPowerMonitor } from "./power-adapter.ts";
 
 const silent = createLogger({ sink: { write: () => {} } });
 const mailbox = generateMailbox({ seed: DEMO_SEED, scale: "small" });
@@ -50,7 +54,7 @@ const engine = () => {
   return { classifier, state, letGo };
 };
 
-const start = async (classifier: Classifier, power?: ReturnType<typeof createFakePowerMonitor>) => {
+const start = async (classifier: Classifier, power?: PowerMonitor) => {
   let jobs = 0;
   const adapters = await createFixtureAdapters({
     scale: "small",
@@ -230,6 +234,45 @@ describe("scan classification speed and power", () => {
     await run.app.idle();
 
     expect(await run.rpc.call("scan.status", { accountIds: [ACCOUNT] })).toEqual([]);
+    run.close();
+  });
+
+  it("power changes reported by main slow the scan on battery, pause it on suspend and finish it on resume (guards the bridge and the worker disagreeing)", async () => {
+    const expected = await uninterrupted();
+    const electron = new EventEmitter();
+    const reading = { onBattery: false };
+    const source: PowerSource = {
+      isOnBatteryPower: () => reading.onBattery,
+      getCurrentThermalState: () => "nominal",
+      on: (event, listener) => electron.on(event, listener),
+      off: (event, listener) => electron.off(event, listener),
+    };
+    const worker = createMainPowerMonitor();
+    bridgePowerToWorker(source, { postMessage: (message) => worker.receive(message) });
+    const fake = engine();
+    fake.state.hold = true;
+    const run = await start(fake.classifier, worker.monitor);
+    await run.scan();
+    await vi.waitFor(() => expect(fake.state.inFlight).toBeGreaterThan(1));
+
+    reading.onBattery = true;
+    electron.emit("on-battery");
+    electron.emit("suspend");
+    fake.state.hold = false;
+    const before = fake.state.startedWith.length;
+    fake.letGo();
+    await run.app.idle();
+    expect(await run.rpc.call("scan.status", { accountIds: [ACCOUNT] })).toMatchObject([
+      { status: "paused" },
+    ]);
+
+    electron.emit("resume");
+    await vi.waitFor(() => expect(run.events).toContain("ScanCompleted"));
+    await run.app.idle();
+
+    expect(fake.state.startedWith.slice(before).every((n) => n === 1)).toBe(true);
+    expect(fake.state.inferred).toBe(ACCOUNT_SIZE);
+    expect(await run.state()).toEqual(expected);
     run.close();
   });
 });

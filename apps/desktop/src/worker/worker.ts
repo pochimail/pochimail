@@ -9,6 +9,7 @@ import { createAccountsRuntime } from "./accounts-runtime.ts";
 import { createWorkerApp } from "./app.ts";
 import { createModelHostClient } from "./model-host-client.ts";
 import { acceptPorts } from "./ports.ts";
+import { createMainPowerMonitor } from "./power-adapter.ts";
 import { acceptStart, type WorkerStart } from "./start.ts";
 
 // Runs inside Electron's utilityProcess: the composition root of the app (M4-02).
@@ -40,10 +41,13 @@ const requestShutdown = (): void => {
 
 // Models run in their own process; main hands this worker a new port every time that process (re)starts.
 const modelHost = createModelHostClient({ timer });
+// Main reports the machine's power state; scans slow down or pause from it.
+const power = createMainPowerMonitor();
 process.parentPort.on("message", (event) => {
   const type = (event.data as { type?: unknown } | null | undefined)?.type;
   if (type === "shutdown") requestShutdown();
   if (type === "model-host-unavailable") modelHost.markUnavailable();
+  if (type === "power") power.receive(event.data);
   if (type !== "model-port") return;
   const port = event.ports[0];
   if (port === undefined) return;
@@ -164,6 +168,7 @@ const realHandlers = async (): Promise<Handlers> => {
     logger,
     deviceName: () => platform.deviceName(),
     classifier: modelHost.classifier,
+    power: power.monitor,
     clearClassifierCache: () => void modelHost.clearCache(),
   });
   if (app === undefined) return unavailableHandlers;
@@ -196,7 +201,7 @@ const handlers: Promise<Handlers> =
         )
         .then((adapters) =>
           withDemoConnect(
-            createWorkerApp(adapters).handlers,
+            createWorkerApp({ ...adapters, power: power.monitor }).handlers,
             demoFirstRun(process.env.POCHIMAIL_DEMO_FIRST_RUN),
           ),
         )

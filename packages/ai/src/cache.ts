@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
-import type { Classification, Classifier } from "@pochimail/classification/ports/classifier";
-import { ok } from "@pochimail/kernel/result";
+import type {
+  AiError,
+  Classification,
+  Classifier,
+} from "@pochimail/classification/ports/classifier";
+import { ok, type Result } from "@pochimail/kernel/result";
 
 /** Distinct mail contents kept per model host process; the oldest answer leaves first. */
 export const DEFAULT_CACHE_ENTRIES = 50_000;
@@ -28,14 +32,18 @@ export interface CachingClassifier extends Classifier {
 
 /**
  * Runs the inner classifier once per distinct content: a template seen twice, a re-scan or a retry
- * is answered from memory. The cache is dropped with the process and never written anywhere.
- * A message the inner classifier gave no answer for, and any failure, is not remembered.
+ * is answered from memory, and concurrent batches with the same content share one inference.
+ * The cache is dropped with the process and never written anywhere. A message the inner classifier gave
+ * no answer for, and any failure, is not remembered; a failed shared inference fails every batch waiting on it.
  */
 export const createCachingClassifier = (
   inner: Classifier,
   maxEntries: number = DEFAULT_CACHE_ENTRIES,
 ): CachingClassifier => {
   const answers = new Map<string, Answer>();
+  const inFlight = new Map<string, Promise<Result<Answer | undefined, AiError>>>();
+  // Bumped by clear(): an inference that started before it must not put its answers back.
+  let epoch = 0;
   const remember = (key: string, answer: Answer): void => {
     answers.delete(key);
     answers.set(key, answer);
@@ -46,29 +54,49 @@ export const createCachingClassifier = (
   };
 
   return {
-    clear: () => answers.clear(),
+    clear: () => {
+      answers.clear();
+      inFlight.clear();
+      epoch += 1;
+    },
     async classify(messages, signal) {
       const keys = messages.map(contentHash);
       const known = new Map<string, Answer>();
+      const pending = new Map<string, Promise<Result<Answer | undefined, AiError>>>();
       const missing = new Map<string, (typeof messages)[number]>();
       messages.forEach((message, i) => {
         const key = keys[i] as string;
         const hit = answers.get(key);
+        const shared = inFlight.get(key);
         if (hit) known.set(key, hit);
+        else if (shared) pending.set(key, shared);
         else if (!missing.has(key)) missing.set(key, message);
       });
 
       if (missing.size > 0) {
-        const done = await inner.classify([...missing.values()], signal);
-        if (!done.ok) return done;
-        const byId = new Map(done.value.map((c) => [c.messageId, c] as const));
+        const startedIn = epoch;
+        const run = inner.classify([...missing.values()], signal);
         for (const [key, message] of missing) {
-          const found = byId.get(message.id);
-          if (!found) continue;
-          const { messageId: _messageId, ...answer } = found;
-          known.set(key, answer);
-          remember(key, answer);
+          const answer = run.then((done): Result<Answer | undefined, AiError> => {
+            if (!done.ok) return done;
+            const found = done.value.find((c) => c.messageId === message.id);
+            if (!found) return ok(undefined);
+            const { messageId: _messageId, ...rest } = found;
+            if (epoch === startedIn) remember(key, rest);
+            return ok(rest);
+          });
+          const settled = answer.finally(() => {
+            if (inFlight.get(key) === settled) inFlight.delete(key);
+          });
+          inFlight.set(key, settled);
+          pending.set(key, settled);
         }
+      }
+
+      for (const [key, promise] of pending) {
+        const done = await promise;
+        if (!done.ok) return done;
+        if (done.value) known.set(key, done.value);
       }
 
       return ok(

@@ -11,6 +11,7 @@ import {
   MessageChannelMain,
   nativeImage,
   nativeTheme,
+  powerMonitor,
   safeStorage,
   session,
   shell,
@@ -21,6 +22,7 @@ import { demoScale, demoSwitches } from "../shared/demo.ts";
 import { databasePathFor } from "./database-path.ts";
 import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
+import { bridgePowerToWorker } from "./power-bridge.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
 import {
   hardenWebContents,
@@ -159,6 +161,7 @@ const connectWorker = (window: BrowserWindow): void => {
     },
     logger,
   });
+  const stopPowerBridge = bridgePowerToWorker(powerMonitor, worker);
   linkWorkerOnEveryLoad(window.webContents, worker, () => new MessageChannelMain());
   const userData = app.getPath("userData");
   const databasePath = databasePathFor(userData);
@@ -173,6 +176,7 @@ const connectWorker = (window: BrowserWindow): void => {
     logger,
   });
   window.once("closed", () => {
+    stopPowerBridge();
     modelHost.stop();
     worker.kill();
   });
