@@ -79,6 +79,7 @@ const setup = (
     /** The worker's live scan jobs; Pause and Resume change them like the real runner does. */
     jobs: [] as OutputOf<"scan.status">,
     failOverview: false,
+    statusAsked: 0,
     stopped: 0,
     emitters: new Map<string, ((e: EventOf<"scan.progress">) => void)[]>(),
     /** Sends progress once the screen has subscribed for that account. */
@@ -104,7 +105,10 @@ const setup = (
         newsletters: 0,
         promotions: 0,
       }),
-      "scan.status": ({ accountIds }) => state.jobs.filter((j) => accountIds.includes(j.accountId)),
+      "scan.status": ({ accountIds }) => {
+        state.statusAsked++;
+        return state.jobs.filter((j) => accountIds.includes(j.accountId));
+      },
       "overview.get": ({ accountId }) => {
         state.asked.push(accountId);
         if (state.failOverview) throw new Error("down");
@@ -253,6 +257,40 @@ describe("overview", () => {
     const strip = await screen.findByText("500 of 2,000 emails sorted");
     expect(strip).toBeTruthy();
     expect(screen.getByText("25%")).toBeTruthy();
+  });
+
+  // Guards: the sorted count falling when one account finishes and leaves the worker's live jobs while another still scans.
+  it("never lowers the sorted count when an account finishes during a scan", async () => {
+    const state = setup({ all: sorted });
+    state.jobs = [
+      { accountId: "a1", jobId: "j1", status: "running", processed: 0 },
+      { accountId: "a2", jobId: "j2", status: "running", processed: 0 },
+    ];
+    await screen.findByText("people are waiting on you");
+    await state.progress({ accountId: "a1", phase: "classifying", processed: 200, total: null });
+    await state.progress({ accountId: "a2", phase: "classifying", processed: 160, total: null });
+    await screen.findByText("360 emails sorted so far");
+
+    const counts: number[] = [];
+    const read = () => {
+      const text = document.querySelector('[data-slot="status-finding"]')?.textContent;
+      if (text) counts.push(Number.parseInt(text.replace(",", ""), 10));
+    };
+    new MutationObserver(read).observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    const asked = state.statusAsked;
+    state.jobs = [state.jobs[1] as (typeof state.jobs)[number]];
+    await state.progress({ accountId: "a1", phase: "done", processed: 200, total: 200 });
+    await waitFor(() => expect(state.statusAsked).toBeGreaterThan(asked));
+    await state.progress({ accountId: "a2", phase: "classifying", processed: 180, total: null });
+    await screen.findByText("380 emails sorted so far");
+
+    expect(counts.length).toBeGreaterThan(0);
+    expect(Math.min(...counts)).toBeGreaterThanOrEqual(360);
   });
 
   it("pauses and resumes only live jobs through the worker, never starting a scan (guards Pause that restarts finished scans or a lookup that resumes)", async () => {

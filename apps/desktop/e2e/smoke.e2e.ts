@@ -22,6 +22,16 @@ test("a new user gets from Welcome to the first summary, and can pause and resum
     await test.step("Connect the fixture account, then Setup", () => walkToSetup(page));
     await test.step("Overview while sorting: the numbers move", async () => {
       await startSorting(page);
+      // Every count the status line shows from here on, in order: it must never go down.
+      await page.evaluate(() => {
+        const seen: number[] = [];
+        Object.assign(window, { sortedCounts: seen });
+        new MutationObserver(() => {
+          const text = document.querySelector('[data-slot="status-finding"]')?.textContent ?? "";
+          const count = /^[\d,]+/.exec(text)?.[0];
+          if (count !== undefined) seen.push(Number.parseInt(count.replace(/,/g, ""), 10));
+        }).observe(document.body, { childList: true, characterData: true, subtree: true });
+      });
       const line = page.locator('[data-slot="status-finding"]');
       await expect(line).toHaveText(COUNT_LINE);
       const first = (await line.textContent()) ?? "";
@@ -39,6 +49,11 @@ test("a new user gets from Welcome to the first summary, and can pause and resum
       await expect(sheet).toBeVisible({ timeout: 30_000 });
       // Radix locks the page scroll with a runtime stylesheet that the strict CSP must still let through.
       await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
+      const counts = await page.evaluate(
+        () => (window as unknown as { sortedCounts: number[] }).sortedCounts,
+      );
+      expect(counts.length).toBeGreaterThan(1);
+      expect(counts).toEqual([...counts].sort((a, b) => a - b));
       await sheet.getByRole("button", { name: copy("action.close") }).click();
       await expect(sheet).toBeHidden();
       await expect(page.getByRole("button", { name: copy("overview.viewSummary") })).toBeVisible();
