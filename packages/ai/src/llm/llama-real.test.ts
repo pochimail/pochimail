@@ -50,4 +50,31 @@ describe.skipIf(modelFile === undefined)("real model", () => {
     );
     expect(out).toEqual({ ok: true, value: expected });
   });
+
+  // Guards: a long email overflowing the 2048-token context (the provider would answer unavailable).
+  it("extracts the deadline from a 10,000-character email", async () => {
+    const text = `Your invoice is due on 3 March. ${"Thank you for being a customer. ".repeat(320)}`;
+    expect(text.length).toBeGreaterThan(10_000);
+    const out = await extractDeadline(
+      llm,
+      { type: "purchases-travel", signals: [], received: "2027-02-20", text },
+      live(),
+    );
+    expect(out).toEqual({ ok: true, value: "2027-03-03" });
+  });
+
+  // Guards: "January 5" in a December mail read as a date in the past.
+  it("reads a date without a year as the next one", async () => {
+    const out = await extractDeadline(
+      llm,
+      {
+        type: "purchases-travel",
+        signals: [],
+        received: "2027-12-20",
+        text: "Offer ends January 5.",
+      },
+      live(),
+    );
+    expect(out).toEqual({ ok: true, value: "2028-01-05" });
+  });
 });
