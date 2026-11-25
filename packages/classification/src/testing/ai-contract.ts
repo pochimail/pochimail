@@ -1,8 +1,10 @@
 import { unwrap } from "@pochimail/kernel/result";
 import { type Check, check, registerContract } from "@pochimail/kernel/testing/contract";
 import { expect } from "vitest";
+import { z } from "zod";
 import { CATEGORIES } from "../model/category.ts";
 import type { Classifier, Embedder, LlmProvider } from "../ports/classifier.ts";
+import type { JsonLlmProvider } from "../ports/json-llm.ts";
 import { aborted, live, makeMessage } from "./samples.ts";
 
 const cancelled = (r: { ok: boolean; error?: { code: string } }) => {
@@ -74,9 +76,43 @@ export const llmProviderChecks: readonly Check<LlmProvider>[] = [
   ),
 ];
 
+const yesNo = z.object({ answer: z.enum(["yes", "no"]) });
+
+/**
+ * The harness answers `{"answer":"yes"}` to the prompt below (a fake queues it; a real model is asked for it).
+ */
+export const JSON_CONTRACT_PROMPT =
+  'Is the sky blue? Answer with JSON: {"answer":"yes"} or {"answer":"no"}.';
+
+export const jsonLlmProviderChecks: readonly Check<JsonLlmProvider>[] = [
+  check("completeJson returns a value the schema accepts (guards unparsed output)", async (llm) => {
+    const out = unwrap(
+      await llm.completeJson({ prompt: JSON_CONTRACT_PROMPT, schema: yesNo }, live()),
+    );
+    expect(out).toEqual({ answer: "yes" });
+  }),
+  check(
+    "an answer the schema refuses is invalid_output, not a guess (guards trusting model output)",
+    async (llm) => {
+      const never = yesNo.refine(() => false);
+      const r = await llm.completeJson({ prompt: JSON_CONTRACT_PROMPT, schema: never }, live());
+      expect(r.ok).toBe(false);
+      expect(r.ok ? undefined : r.error.code).toBe("ai.invalid_output");
+    },
+  ),
+  check(
+    "completeJson with an aborted signal is Cancelled (guards generation after cancel)",
+    async (llm) => {
+      cancelled(await llm.completeJson({ prompt: JSON_CONTRACT_PROMPT, schema: yesNo }, aborted()));
+    },
+  ),
+];
+
 export const classifierContract = (make: () => Classifier | Promise<Classifier>) =>
   registerContract("Classifier contract", classifierChecks, make);
 export const embedderContract = (make: () => Embedder | Promise<Embedder>) =>
   registerContract("Embedder contract", embedderChecks, make);
 export const llmProviderContract = (make: () => LlmProvider | Promise<LlmProvider>) =>
   registerContract("LlmProvider contract", llmProviderChecks, make);
+export const jsonLlmProviderContract = (make: () => JsonLlmProvider | Promise<JsonLlmProvider>) =>
+  registerContract("JsonLlmProvider contract", jsonLlmProviderChecks, make);

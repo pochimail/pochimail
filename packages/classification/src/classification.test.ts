@@ -9,6 +9,7 @@ import { suspiciousDomainFlag, suspiciousRules } from "./policies/suspicious-rul
 import {
   classifierContract,
   embedderContract,
+  jsonLlmProviderContract,
   llmProviderContract,
 } from "./testing/ai-contract.ts";
 import { derivedContract } from "./testing/derived-contract.ts";
@@ -52,6 +53,11 @@ signalsSafetyContract(signalsHarness);
 classifierContract(createFakeClassifier);
 embedderContract(() => createFakeEmbedder(8));
 llmProviderContract(createFakeLlmProvider);
+jsonLlmProviderContract(() => {
+  const llm = createFakeLlmProvider();
+  llm.reply('{"answer":"yes"}');
+  return llm;
+});
 
 describe("classification", () => {
   it("the fake classifier reports AiUnavailable on demand (guards untested model-missing handling)", async () => {

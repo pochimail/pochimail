@@ -31,6 +31,7 @@
     "@playwright/test": "1.65.1",
     "@pochimail/accounts": "workspace:*",
     "@pochimail/actions": "workspace:*",
+    "@pochimail/ai": "workspace:*",
     "@pochimail/classification": "workspace:*",
     "@pochimail/cleanup": "workspace:*",
     "@pochimail/db": "workspace:*",
@@ -70,7 +71,8 @@
     "zod": "4.6.7"
   },
   "dependencies": {
-    "better-sqlite3-multiple-ciphers": "13.1.1"
+    "better-sqlite3-multiple-ciphers": "13.1.1",
+    "node-llama-cpp": "3.22.3"
   },
   "main": "./out/main/index.js"
 }

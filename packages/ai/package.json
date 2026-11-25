@@ -4,20 +4,30 @@
   "version": "0.0.0",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "exports": {},
+  "exports": {
+    "./llm/deadline-extraction": "./src/llm/deadline-extraction.ts",
+    "./llm/json-schema": "./src/llm/json-schema.ts",
+    "./llm/llama-runtime": "./src/llm/llama-runtime.ts",
+    "./llm/llm-provider": "./src/llm/llm-provider.ts",
+    "./test-support/fake-llm-runtime": "./src/test-support/fake-llm-runtime.ts"
+  },
   "scripts": {
     "typecheck": "tsc",
     "lint": "biome check .",
     "knip": "knip",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@pochimail/classification": "workspace:*",
+    "@pochimail/kernel": "workspace:*",
+    "node-llama-cpp": "3.22.3",
+    "zod": "4.6.7"
+  },
   "devDependencies": {
     "@huggingface/transformers": "4.3.2",
     "@pochimail/typescript-config": "workspace:*",
     "@types/node": "26.6.6",
-    "node-llama-cpp": "3.22.3",
     "typescript": "7.0.2",
-    "vitest": "5.1.0",
-    "zod": "4.6.7"
+    "vitest": "5.1.0"
   }
 }

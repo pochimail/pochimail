@@ -7,5 +7,5 @@
     "e2e/**/*.e2e.ts"
   ],
   "ignoreBinaries": ["biome", "knip"],
-  "ignoreDependencies": ["tailwindcss", "tw-animate-css"]
+  "ignoreDependencies": ["node-llama-cpp", "tailwindcss", "tw-animate-css"]
 }
