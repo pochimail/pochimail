@@ -9,10 +9,15 @@ import type { RunScan } from "./run-scan.ts";
 
 export type ScanJobStatus = "running" | "paused" | "completed" | "cancelled" | "failed";
 
+/** Who paused a scan: the user, or the power state (sleep, battery saver). Only the user's pause is final. */
+export type PauseSource = "user" | "power";
+
 interface Job {
   readonly id: string;
   readonly accountId: AccountId;
   status: ScanJobStatus;
+  /** Set while paused; a user pause always replaces a power pause. */
+  pausedBy: PauseSource | undefined;
   processed: number;
   /** Set once a run reached the end of the mailbox, even if a pause was requested at the same moment. */
   finished: boolean;
@@ -64,12 +69,15 @@ export class ScanRunner {
     return created;
   }
 
-  pause(jobId: string): Result<void, NotFound> {
+  pause(jobId: string, by: PauseSource = "user"): Result<void, NotFound> {
     const job = this.jobs.get(jobId);
     if (!job) return err(new NotFound("Scan"));
     if (job.status === "running") {
       job.status = "paused";
+      job.pausedBy = by;
       job.stop?.();
+    } else if (job.status === "paused" && by === "user") {
+      job.pausedBy = "user";
     }
     return ok(undefined);
   }
@@ -99,6 +107,7 @@ export class ScanRunner {
     jobId: string;
     accountId: AccountId;
     status: "running" | "paused";
+    pausedBy: PauseSource | undefined;
     processed: number;
   }[] {
     return [...this.jobs.values()].flatMap((job) =>
@@ -109,6 +118,7 @@ export class ScanRunner {
               jobId: job.id,
               accountId: job.accountId,
               status: job.status,
+              pausedBy: job.pausedBy,
               processed: job.processed,
             },
           ]
@@ -130,6 +140,7 @@ export class ScanRunner {
       id: this.deps.newJobId(),
       accountId,
       status: "running",
+      pausedBy: undefined,
       processed: 0,
       finished: false,
       generation: 0,
@@ -146,6 +157,7 @@ export class ScanRunner {
     const generation = job.generation + 1;
     job.generation = generation;
     job.status = "running";
+    job.pausedBy = undefined;
     job.stop = stop.abort;
     const previous = job.run;
     const current = (async () => {

@@ -6,6 +6,8 @@
   "type": "module",
   "exports": {
     "./events": "./src/events.ts",
+    "./jobs/limit-classifier": "./src/jobs/limit-classifier.ts",
+    "./jobs/pause-scans-on-low-power": "./src/jobs/pause-scans-on-low-power.ts",
     "./jobs/scan-pipeline": "./src/jobs/scan-pipeline.ts",
     "./ports/mail-provider": "./src/ports/mail-provider.ts",
     "./ports/notifier": "./src/ports/notifier.ts",

@@ -22,6 +22,8 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
     maxTokens: z.number().int().positive().optional(),
   }),
   z.object({ id, method: z.literal("embed"), texts: z.array(z.string().max(100_000)).max(500) }),
+  /** Drops what the host remembers of mail (the classification cache); sent on account removal and lock. */
+  z.object({ id, method: z.literal("clear-cache") }),
 ]);
 export type HostRequest = z.infer<typeof hostRequestSchema>;
 

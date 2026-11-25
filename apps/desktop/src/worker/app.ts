@@ -13,7 +13,11 @@ import { createInMemoryEventBus } from "@pochimail/pipeline/in-memory-event-bus"
 import type { JobQueue } from "@pochimail/pipeline/job-queue";
 import type { OutboxStore } from "@pochimail/pipeline/outbox";
 import { createOutboxRelay } from "@pochimail/pipeline/outbox-relay";
+import { createPowerLimiter } from "@pochimail/pipeline/power-limiter";
+import type { PowerMonitor } from "@pochimail/pipeline/power-monitor";
 import { parseDomainEvent } from "@pochimail/workflows/events";
+import { CLASSIFY_LIMITS, limitClassifier } from "@pochimail/workflows/jobs/limit-classifier";
+import { pauseScansOnLowPower } from "@pochimail/workflows/jobs/pause-scans-on-low-power";
 import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
 import type { WorkflowUnitOfWork as UnitOfWork } from "@pochimail/workflows/ports/unit-of-work";
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
@@ -43,6 +47,10 @@ export interface WorkerAdapters {
   readonly queue: JobQueue;
   readonly settings: SettingsStore;
   readonly classifier: Classifier;
+  /** Without it scans keep one classify batch at a time and never pause for power. */
+  readonly power?: PowerMonitor;
+  /** Drops what the model host remembers of mail; called when an account is removed. */
+  readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
   readonly providerFor: (account: Account) => MailProvider;
   readonly deviceName: () => DeviceName;
@@ -81,6 +89,11 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
   const recordDigest = new RecordDigestReady({ tally });
   bus.subscribe("DigestReady", (event) => recordDigest.execute(event));
 
+  bus.subscribe("AccountStateChanged", (event) => {
+    if (event.payload.state === "disconnected") adapters.clearClassifierCache?.();
+  });
+
+  const limiter = adapters.power && createPowerLimiter(adapters.power, CLASSIFY_LIMITS);
   const scans = new ScanRunner({
     uow,
     workspaceId,
@@ -89,7 +102,13 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
       new RunScan({
         uow,
         provider: adapters.providerFor(account),
-        classifier: adapters.classifier,
+        classifier: limiter ? limitClassifier(adapters.classifier, limiter) : adapters.classifier,
+        ...(limiter
+          ? {
+              maxInFlightBatches: CLASSIFY_LIMITS.plugged,
+              classifyConcurrency: CLASSIFY_LIMITS.plugged,
+            }
+          : {}),
         clock,
         queue: adapters.queue,
         random: adapters.random,
@@ -98,6 +117,8 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
         flush,
       }),
   });
+
+  if (adapters.power) pauseScansOnLowPower(scans, adapters.power);
 
   const handlers = createHandlers({
     workspaceId,

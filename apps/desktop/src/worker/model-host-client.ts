@@ -6,7 +6,7 @@ import type {
   Embedder,
   LlmProvider,
 } from "@pochimail/classification/ports/classifier";
-import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
+import { type AsyncResult, type CancelSignal, createCancelSource } from "@pochimail/kernel/common";
 import { Cancelled } from "@pochimail/kernel/errors";
 import type { MessageId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
@@ -43,6 +43,8 @@ export interface ModelHostClient {
    * previous port are sent again on this one, so a host crash is invisible to the scan (ADR 0002).
    */
   attach(transport: Transport): void;
+  /** Tells the host to forget what it remembers of mail; resolves once it did, or at once if there is no host. */
+  clearCache(): Promise<void>;
   /** Main stopped restarting the host: fail what waits, and every request until a new port arrives. */
   markUnavailable(): void;
 }
@@ -117,7 +119,11 @@ export const createModelHostClient = (options: {
     return picked.success ? ok(picked.data) : err(new AiUnavailable());
   };
 
+  const never = createCancelSource().signal;
   return {
+    clearCache: async () => {
+      await call("clear-cache", {}, never);
+    },
     markUnavailable() {
       unavailable = true;
       for (const [id, entry] of pending) {

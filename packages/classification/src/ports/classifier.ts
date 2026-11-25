@@ -18,6 +18,11 @@ export interface Classification {
   readonly embeddingRef?: string;
 }
 
+/**
+ * Answers must be a pure function of `from`, `subject`, `snippet` and `hasListUnsubscribe`: the
+ * classification cache (`@pochimail/ai/cache`) reuses an answer for any message with the same four,
+ * so an implementation that also reads the id, date, recipients or time would return stale answers.
+ */
 export interface Classifier {
   classify(
     messages: readonly ClassifiableMessage[],

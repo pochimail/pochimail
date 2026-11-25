@@ -162,6 +162,7 @@ const realHandlers = async (): Promise<Handlers> => {
     logger,
     deviceName: () => platform.deviceName(),
     classifier: modelHost.classifier,
+    clearClassifierCache: () => void modelHost.clearCache(),
   });
   if (app === undefined) return unavailableHandlers;
   closeDatabase = app.close;
