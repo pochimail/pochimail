@@ -6,6 +6,7 @@ Runs the work: delivers events, processes the job queue with batching, backpress
 
 ## Owns
 - Event bus, job queue runner, outbox relay, retry policy, scheduler and power awareness.
+- Adaptive polling from window activity (focused/visible/hidden) and power state, including battery saver (src/adaptive-polling.ts, src/window-activity.ts, new package exports).
 
 ## May import
 `@pochimail/kernel`, `@pochimail/logger`.

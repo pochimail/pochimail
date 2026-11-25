@@ -74,6 +74,7 @@ const momentEntry: Record<string, string> = {
   "Storage settles": "StorageSettles",
   "Clean up, then undo": "CleanUpThenUndo",
   "Pochi at rest": "PochiAtRest",
+  "Pochi idle flourish": "PochiIdleFlourish",
   "Pochi finds something": "PochiFindsSomething",
   "Summary arrives": "SummarySheet",
   "Choices respond": "ChoicesRespond",

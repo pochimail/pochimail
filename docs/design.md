@@ -52,7 +52,7 @@ Real `button`, `a`, `input`, switch, checkbox and radio, reachable by keyboard w
 No cards inside cards, icon-tile stacks, numbered section labels, eyebrow chips, thin borders with wide shadows, beige "AI" palettes, pulsing dots, generic spinners (use skeletons and real progress), gradients, emoji.
 
 ## Motion
-150ms press and hover, 220ms panels and toasts, easing `cubic-bezier(0.22, 1, 0.36, 1)`, pressed buttons scale to 0.98. No looping animation except Pochi's breathing. Timings live in `packages/ui/src/lib/motion.ts`, pinned by a test to `screens/source/Motion.dc.html`, the source of truth. Reduced motion and Settings › Animations off share one rule: instant opacity cross-fades, final values shown, mascot still. The system setting always wins.
+150ms press and hover, 220ms panels and toasts, easing `cubic-bezier(0.22, 1, 0.36, 1)`, pressed buttons scale to 0.98. Only Pochi's breathing and blink loop; glance/nod/tilt are one-shot (800ms). Timings live in `packages/ui/src/lib/motion.ts`, pinned by a test to `screens/source/Motion.dc.html`, the source of truth. Reduced motion and Settings › Animations off share one rule: instant opacity cross-fades, final values shown, mascot still. The system setting always wins.
 
 ## Motion catalog
 | Moment | Motion |
@@ -62,6 +62,7 @@ No cards inside cards, icon-tile stacks, numbered section labels, eyebrow chips,
 | Storage settles | The bar shows what stays against what can be deleted ([ADR 0012](adr/0012-delete-moves-to-trash-with-approval.md)) |
 | Clean up, then undo | Row folds away (260ms); dark Undo toast for 5s; Undo unfolds the row |
 | Pochi at rest | Breathing 1 → 1.012 wide / 1.025 tall (4.2s), blink (5.3s) |
+| Pochi idle flourish | glance/nod/tilt, 800ms one-shot, randomized 9-18s gap; JS-triggered, not in the board |
 | Pochi finds something | Squish, bounce up 14px, settle (620ms) |
 | Summary arrives | Scrim fades, sheet slides in (about 250ms); no stamp, overshoot or rotation |
 | Choices respond | Checkmark draws itself; switch thumb glides (150–220ms) |
@@ -75,8 +76,8 @@ No cards inside cards, icon-tile stacks, numbered section labels, eyebrow chips,
 - Every empty, error, offline and update state, and every motion, is a feature with its own tests. Required states: sign-in cancelled, offline (a status line, never a pop-up), account needs reconnecting, model download failed (rules fallback), rate limit (auto-resume), empty list, update ready.
 
 ## Pochi
-A soft plush felt envelope: puffy body, stitched flap seam, two glossy bead eyes, no mouth. Cream by default; charcoal for dark mode; stone and sage exist. Poses: default, happy, reading (glasses), saving (paperclip), sleepy, oops, night. Final art is a 3D render; the PNGs are placeholders behind a `Mascot` component with a `pose` prop.
+A soft plush felt envelope: puffy body, stitched flap seam, two glossy bead eyes, no mouth. Cream by default; charcoal for dark mode; stone and sage exist. Poses: default, happy, reading (glasses), saving (paperclip), sleepy, oops, night, selected through `Mascot`'s `pose` prop.
 
 Pochi mirrors the real app state through events, one pose at a time: curious at Welcome, patient while the browser sign-in runs, happy on success, calm when cancelled ("I didn't get access to anything"), reading while sorting, found on discoveries, happy at the summary and after a cleanup ("You can undo it anytime"), sleepy when paused or offline, oops on errors with one small shrink.
 
-Animation is Rive (a state machine over layered renders) with a static PNG fallback. It plays only when visible, pauses on battery saver and when the window is hidden, and is static under reduced motion. Settings lets people turn Animations off or hide Pochi everywhere.
+Mascot uses PNG placeholders with CSS keyframes (breathing, blink, found, one-shot glance/nod/tilt); final art stays a 3D render. It plays only when visible, pauses when the window is hidden, and is static under reduced motion. Settings lets people turn Animations off or hide Pochi everywhere.
