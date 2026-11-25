@@ -50,6 +50,17 @@ const freeBytesOf = async (dir: string): Promise<number> => {
   return info.bavail * info.bsize;
 };
 
+/** Free space to leave on the disk after the models are in. */
+const FREE_SPACE_MARGIN_BYTES = 500 * 1024 ** 2;
+
+type Report = (state: FileState, bytes: number) => void;
+
+/** The one running download of a file; `listeners` are the callers following its progress. */
+interface Job {
+  readonly done: Promise<Result<void, DownloadFailure>>;
+  readonly listeners: Set<Report>;
+}
+
 interface Context {
   readonly dir: string;
   readonly partialDir: string;
@@ -58,6 +69,7 @@ interface Context {
   readonly wait: (ms: number, signal: AbortSignal) => Promise<void>;
   readonly freeBytes: (dir: string) => Promise<number>;
   readonly lastFailure: Map<string, UnavailableReason>;
+  readonly jobs: Map<string, Job>;
 }
 
 const pathOf = (ctx: Context, model: ModelEntry, file: ModelFile) =>
@@ -84,6 +96,49 @@ const reasonOf = (error: DownloadFailure, state: FileState): UnavailableReason |
   return error === "hash-mismatch" || error === "disk-full" ? error : undefined;
 };
 
+const cancelledBy = (signal: AbortSignal): Promise<"cancelled"> =>
+  new Promise((resolve) => {
+    if (signal.aborted) resolve("cancelled");
+    else signal.addEventListener("abort", () => resolve("cancelled"), { once: true });
+  });
+
+/**
+ * One job per file hash: a call that arrives while the file is downloading follows that job instead
+ * of writing the same partial file. If the job is cancelled by its owner, the follower takes over.
+ */
+const fetchFile = async (
+  ctx: Context,
+  file: ModelFile,
+  finalPath: string,
+  report: Report,
+  signal: AbortSignal,
+): Promise<Result<void, DownloadFailure>> => {
+  for (let running = ctx.jobs.get(file.sha256); running !== undefined; ) {
+    running.listeners.add(report);
+    const outcome = await Promise.race([running.done, cancelledBy(signal)]);
+    running.listeners.delete(report);
+    if (outcome === "cancelled") return err("cancelled");
+    if (outcome.ok || outcome.error !== "cancelled") return outcome;
+    running = ctx.jobs.get(file.sha256);
+  }
+  const listeners = new Set<Report>([report]);
+  const done = downloadFile(
+    file,
+    finalPath,
+    {
+      transport: ctx.transport,
+      partialDir: ctx.partialDir,
+      wait: ctx.wait,
+      report: (state, bytes) => {
+        for (const listener of listeners) listener(state, bytes);
+      },
+    },
+    signal,
+  ).finally(() => ctx.jobs.delete(file.sha256));
+  ctx.jobs.set(file.sha256, { done, listeners });
+  return done;
+};
+
 const fetchModel = async (
   ctx: Context,
   model: ModelEntry,
@@ -95,22 +150,13 @@ const fetchModel = async (
   let doneBytes = 0;
   for (const file of model.files) {
     if (!(await isInstalled(ctx, model, file))) {
-      const done = await downloadFile(
+      const done = await fetchFile(
+        ctx,
         file,
         pathOf(ctx, model, file),
-        {
-          transport: ctx.transport,
-          partialDir: ctx.partialDir,
-          wait: ctx.wait,
-          report: (next, bytes) => {
-            state = next;
-            onProgress?.({
-              modelId: model.id,
-              state,
-              receivedBytes: doneBytes + bytes,
-              totalBytes,
-            });
-          },
+        (next, bytes) => {
+          state = next;
+          onProgress?.({ modelId: model.id, state, receivedBytes: doneBytes + bytes, totalBytes });
         },
         signal,
       );
@@ -142,6 +188,7 @@ export const createModelStore = (options: {
     wait: options.wait ?? sleep,
     freeBytes: options.freeBytes ?? freeBytesOf,
     lastFailure: new Map(),
+    jobs: new Map(),
   };
 
   return {
@@ -168,7 +215,8 @@ export const createModelStore = (options: {
       const wanted = modelsForTier(ctx.manifest, tier);
       try {
         await mkdir(ctx.partialDir, { recursive: true });
-        if ((await bytesToFetch(ctx, wanted)) > (await ctx.freeBytes(ctx.dir))) {
+        const missing = await bytesToFetch(ctx, wanted);
+        if (missing > 0 && missing + FREE_SPACE_MARGIN_BYTES > (await ctx.freeBytes(ctx.dir))) {
           for (const model of wanted) ctx.lastFailure.set(model.id, "disk-full");
           return err("disk-full");
         }

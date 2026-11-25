@@ -22,6 +22,11 @@ export const STATIC_EGRESS_HOSTS: readonly string[] = [
 const MODEL_DOWNLOAD_HOSTS: readonly string[] = [
   "huggingface.co", // the pinned `resolve` URL
   "us.aws.cdn.hf.co", // where `huggingface.co` redirects file downloads
+  "us.gcp.cdn.hf.co",
+  "cdn-lfs-us-1.hf.co",
+  "cdn-lfs-eu-1.hf.co",
+  "transfer.xethub.hf.co",
+  "transfer.xethub-eu.hf.co",
 ];
 
 /**

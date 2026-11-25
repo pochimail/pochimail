@@ -43,35 +43,53 @@ const noBody = async function* (): AsyncGenerator<Uint8Array> {};
 const allowedUrl = (url: URL, allowlist: HostAllowlist): boolean =>
   url.protocol === "https:" && url.username === "" && url.password === "" && allowlist.allows(url);
 
-const watchIdle = async function* (
+/**
+ * Guards a body: a stalled read aborts the request and fails after `idleMs`, and `release` runs once
+ * when the body ends, fails or is closed, even if it was never read.
+ */
+const guardBody = (
   body: AsyncIterable<Uint8Array>,
   idleMs: number,
   abort: () => void,
-): AsyncGenerator<Uint8Array> {
-  const iterator = body[Symbol.asyncIterator]();
-  try {
-    for (;;) {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const stalled = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => {
-          abort();
-          reject(new Error("Download stalled"));
-        }, idleMs);
-      });
-      try {
-        const next = await Promise.race([iterator.next(), stalled]);
-        if (next.done === true) return;
-        yield next.value;
-      } finally {
-        if (timer !== undefined) clearTimeout(timer);
-      }
-    }
-  } finally {
-    void iterator.return?.();
-  }
-};
+  release: () => void,
+): AsyncIterable<Uint8Array> => ({
+  [Symbol.asyncIterator]: () => {
+    const iterator = body[Symbol.asyncIterator]();
+    return {
+      async next() {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const stalled = new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => {
+            abort();
+            reject(new Error("Download stalled"));
+          }, idleMs);
+        });
+        try {
+          const next = await Promise.race([iterator.next(), stalled]);
+          if (next.done === true) release();
+          return next;
+        } catch (error) {
+          release();
+          throw error;
+        } finally {
+          if (timer !== undefined) clearTimeout(timer);
+        }
+      },
+      async return() {
+        release();
+        void Promise.resolve(iterator.return?.()).catch(() => undefined);
+        return { done: true, value: undefined };
+      },
+    };
+  },
+});
 
 type Hop = Awaited<ReturnType<StreamFetch>>;
+
+const discard = (body: Hop["body"]): void => {
+  if (body !== null)
+    void Promise.resolve(body[Symbol.asyncIterator]().return?.()).catch(() => undefined);
+};
 
 const redirectTarget = (response: Hop, from: URL): URL | undefined => {
   try {
@@ -82,7 +100,7 @@ const redirectTarget = (response: Hop, from: URL): URL | undefined => {
   }
 };
 
-/** Follows redirects by hand: every hop must pass the allow-list, so none can leave the two hosts. */
+/** Follows redirects by hand: every hop must pass the allow-list, so none can leave the model hosts. */
 const follow = async (
   start: URL,
   call: (url: URL) => Promise<Hop>,
@@ -92,11 +110,12 @@ const follow = async (
   let url = start;
   for (let hops = 0; hops <= MAX_REDIRECTS; hops += 1) {
     if (!allowedUrl(url, allowlist)) {
-      logger?.warn(`Model download blocked: ${canonicalHost(url.hostname)}`);
+      logger?.warn(`download blocked: ${canonicalHost(url.hostname)}`);
       return err("blocked");
     }
     const response = await call(url);
     if (response.status < 300 || response.status >= 400) return ok(response);
+    discard(response.body);
     const next = redirectTarget(response, url);
     if (next === undefined) return err("blocked");
     url = next;
@@ -118,17 +137,6 @@ const linkAbort = (signal: AbortSignal | undefined) => {
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort, { once: true });
   return { controller, release: () => signal?.removeEventListener("abort", onAbort) };
-};
-
-const releasing = async function* (
-  chunks: AsyncIterable<Uint8Array>,
-  release: () => void,
-): AsyncGenerator<Uint8Array> {
-  try {
-    yield* chunks;
-  } finally {
-    release();
-  }
 };
 
 /**
@@ -161,12 +169,11 @@ export const createModelDownloader = (options: {
       );
       if (!followed.ok) return followed;
       const { status, headers: received, body } = followed.value;
-      const chunks = watchIdle(body ?? noBody(), idleMs, () => controller.abort());
       const contentRange = received.get("content-range") ?? undefined;
       return ok({
         status,
         ...(contentRange === undefined ? {} : { contentRange }),
-        body: releasing(chunks, release),
+        body: guardBody(body ?? noBody(), idleMs, () => controller.abort(), release),
       });
     };
 

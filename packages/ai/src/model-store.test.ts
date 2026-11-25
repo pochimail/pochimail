@@ -178,7 +178,16 @@ describe("model store", () => {
   });
 
   // Guards: starting a 5 GB download on a disk that cannot hold it.
-  it("checks free space before any request", async () => {
+  it("checks free space, with a 500 MB margin, before any request", async () => {
+    const margin = 500 * 1024 ** 2;
+    const tight = setup({}, { freeBytes: 305_000 + margin - 1 });
+    expect(await tight.store.download("T1")).toEqual({ ok: false, error: "disk-full" });
+    expect(tight.fake.requests()).toEqual([]);
+    await rm(dir, { recursive: true, force: true });
+    const exact = setup({}, { freeBytes: 305_000 + margin });
+    expect((await exact.store.download("T1")).ok).toBe(true);
+    await rm(dir, { recursive: true, force: true });
+
     const { store, fake } = setup({}, { freeBytes: 1_000 });
     expect(await store.download("T1")).toEqual({ ok: false, error: "disk-full" });
     expect(fake.requests()).toEqual([]);
@@ -196,6 +205,39 @@ describe("model store", () => {
     const missing = setup({ files: {} });
     expect(await missing.store.download("T1")).toEqual({ ok: false, error: "failed" });
     expect(await modelFolder()).toEqual([]);
+  });
+
+  // Guards: two overlapping download calls writing the same partial file and corrupting it.
+  it("shares one job between overlapping downloads of the same files", async () => {
+    const { store, fake } = setup();
+    const progress: DownloadProgress[] = [];
+    const [first, second] = await Promise.all([
+      store.download("T1"),
+      store.download("T1", { onProgress: (event) => progress.push(event) }),
+    ]);
+    expect(first).toEqual({ ok: true, value: undefined });
+    expect(second).toEqual({ ok: true, value: undefined });
+    expect(fake.requests().map((request) => request.rangeStart)).toEqual([0, 0]);
+    expect(progress.length).toBeGreaterThan(0);
+    expect((await store.resolve("T1")).status).toBe("ready");
+  });
+
+  // Guards: a cancelled owner dragging an overlapping call down with it, or a cancelled joiner hanging.
+  it("lets an overlapping call take over when the first is cancelled, and cancel on its own", async () => {
+    const { store } = setup();
+    const owner = new AbortController();
+    const first = store.download("T1", {
+      signal: owner.signal,
+      onProgress: () => owner.abort(),
+    });
+    const second = store.download("T1");
+    const joiner = new AbortController();
+    const third = store.download("T1", { signal: joiner.signal });
+    joiner.abort();
+    expect(await first).toEqual({ ok: false, error: "cancelled" });
+    expect(await third).toEqual({ ok: false, error: "cancelled" });
+    expect(await second).toEqual({ ok: true, value: undefined });
+    expect((await store.resolve("T1")).status).toBe("ready");
   });
 
   // Guards: a URL, path or file name leaking through progress events (ADR 0014).

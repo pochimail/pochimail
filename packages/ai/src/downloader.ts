@@ -40,6 +40,10 @@ const MAX_DELAY_MS = 60_000;
 
 export const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
   new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
     const done = () => {
       clearTimeout(timer);
       signal.removeEventListener("abort", done);
@@ -68,17 +72,29 @@ const rangeStartOf = (contentRange: string | undefined): number | undefined => {
   return match?.[1] === undefined ? undefined : Number(match[1]);
 };
 
-const failureOf = (error: unknown): DownloadFailure =>
-  (error as NodeJS.ErrnoException | undefined)?.code === "ENOSPC" ? "disk-full" : "failed";
+const failureOf = (error: unknown): DownloadFailure => {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return code === "ENOSPC" || code === "EDQUOT" ? "disk-full" : "failed";
+};
 
-type Pull = Result<"progressed" | "interrupted" | "restart", DownloadFailure>;
+/** Statuses that mean "try again later", not "this file cannot be had". */
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+
+/** Lets go of a body we will not read, so its connection is closed. */
+const discard = (body: AsyncIterable<Uint8Array>): void => {
+  void Promise.resolve(body[Symbol.asyncIterator]().return?.()).catch(() => undefined);
+};
+
+type Outcome = "progressed" | "interrupted" | "restart";
+type Pull = Result<Outcome, DownloadFailure>;
 
 /** Where the response body lands in the partial file, or what to do instead. */
 const bodyStart = async (
   response: ModelTransportResponse,
   have: number,
   partial: string,
-): Promise<Result<number | "restart", DownloadFailure>> => {
+): Promise<Result<number | "restart" | "interrupted", DownloadFailure>> => {
+  if (RETRYABLE_STATUSES.has(response.status)) return ok("interrupted");
   if (response.status === 206)
     return rangeStartOf(response.contentRange) === have ? ok(have) : err("failed");
   if (response.status === 200) return ok(0); // The server ignored the range: start over.
@@ -89,7 +105,10 @@ const bodyStart = async (
   return err("failed");
 };
 
-/** Appends the body up to `file.bytes`. A cut stream ends quietly; the caller resumes from the file size. */
+/**
+ * Appends the body up to `file.bytes`. A cut or stalled stream ends quietly, so the caller resumes
+ * from the file size; only the body's own errors mean that. A failed write is a real failure.
+ */
 const writeBody = async (
   file: ModelFile,
   handle: FileHandle,
@@ -98,19 +117,29 @@ const writeBody = async (
   ports: FileDownloadPorts,
   signal: AbortSignal,
 ): Promise<Result<number, DownloadFailure>> => {
+  const iterator = body[Symbol.asyncIterator]();
   let offset = from;
-  try {
-    for await (const chunk of body) {
-      const slice = chunk.subarray(0, file.bytes - offset);
-      if (slice.length > 0) await handle.writeFile(slice);
-      offset += slice.length;
-      ports.report("downloading", offset);
-      if (offset >= file.bytes) break;
+  while (offset < file.bytes) {
+    let next: IteratorResult<Uint8Array>;
+    try {
+      next = await iterator.next();
+    } catch {
+      return signal.aborted ? err("cancelled") : ok(offset);
     }
-  } catch (error) {
-    if (signal.aborted) return err("cancelled");
-    if (failureOf(error) === "disk-full") return err("disk-full");
+    if (next.done === true) return ok(offset);
+    const slice = next.value.subarray(0, file.bytes - offset);
+    if (slice.length > 0) {
+      try {
+        await handle.writeFile(slice);
+      } catch (error) {
+        discard(body);
+        return err(failureOf(error));
+      }
+    }
+    offset += slice.length;
+    ports.report("downloading", offset);
   }
+  discard(body);
   return ok(offset);
 };
 
@@ -128,13 +157,14 @@ const pull = async (
     return err(response.error === "blocked" ? "refused" : "cancelled");
   }
   const start = await bodyStart(response.value, have, partial);
+  if (!start.ok || typeof start.value === "string") discard(response.value.body);
   if (!start.ok) return start;
-  if (start.value === "restart") return ok("restart");
+  if (typeof start.value === "string") return ok(start.value);
   const handle = await open(partial, start.value === 0 ? "w" : "a");
   try {
     const written = await writeBody(file, handle, response.value.body, start.value, ports, signal);
     if (!written.ok) return written;
-    return ok(written.value > start.value ? "progressed" : "interrupted");
+    return ok(written.value > have ? "progressed" : "interrupted");
   } finally {
     await handle.close();
   }
@@ -151,6 +181,12 @@ const verifyAndMove = async (
   if ((await sha256Of(partial)) !== file.sha256) {
     await rm(partial, { force: true });
     return err("hash-mismatch");
+  }
+  const handle = await open(partial, "r+");
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
   }
   await mkdir(dirname(finalPath), { recursive: true });
   await rename(partial, finalPath);

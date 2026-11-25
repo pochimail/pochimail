@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { egressPolicy } from "./allowlist.ts";
 import { createModelDownloader, type StreamFetch } from "./model-download.ts";
 
@@ -20,6 +20,16 @@ const download = (url: string, answers: Record<string, ReturnType<typeof respond
   return { asked, result: run({ url, rangeStart: 0 }) };
 };
 
+const CDN_HOSTS = [
+  "us.aws.cdn.hf.co",
+  "us.gcp.cdn.hf.co",
+  "cdn-lfs-us-1.hf.co",
+  "cdn-lfs-eu-1.hf.co",
+  "transfer.xethub.hf.co",
+  "transfer.xethub-eu.hf.co",
+];
+const START = "https://huggingface.co/owner/repo/resolve/abc/model.gguf";
+
 describe("model download egress", () => {
   // Guards: a model URL on any other host, scheme or port, or with credentials, leaving the machine.
   it.each([
@@ -36,7 +46,7 @@ describe("model download egress", () => {
     expect(asked).toEqual([]);
   });
 
-  // Guards: a redirect that carries the request (and the Range) off the two model hosts.
+  // Guards: a redirect that carries the request (and the Range) off the model hosts.
   it.each([
     ["a non-listed host", "https://evil.example/model.gguf"],
     ["plain http", "http://us.aws.cdn.hf.co/model.gguf"],
@@ -50,7 +60,7 @@ describe("model download egress", () => {
   });
 
   // Guards: breaking the real huggingface.co → CDN hop, or following redirects forever.
-  it("follows a redirect between the two hosts and streams the body", async () => {
+  it("follows a redirect between model hosts and streams the body", async () => {
     const start = "https://huggingface.co/owner/repo/resolve/abc/model.gguf";
     const cdn = "https://us.aws.cdn.hf.co/blob/1?signature=fake";
     const { asked, result } = download(start, { [start]: respond(302, cdn) });
@@ -113,10 +123,71 @@ describe("model download egress", () => {
   // Guards: the model hosts leaking into the mail allow-list or the session filter.
   it("keeps the model hosts out of the static policy", () => {
     const models = egressPolicy.createForModelDownloads();
-    expect(models.hosts()).toEqual(["huggingface.co", "us.aws.cdn.hf.co"]);
+    expect(models.hosts()).toEqual(["huggingface.co", ...CDN_HOSTS]);
     const mail = egressPolicy.create();
-    expect(mail.allows("https://huggingface.co/x")).toBe(false);
-    expect(mail.allows("https://us.aws.cdn.hf.co/x")).toBe(false);
+    for (const host of models.hosts()) expect(mail.allows(`https://${host}/x`)).toBe(false);
     expect(models.allows("https://gmail.googleapis.com/x")).toBe(false);
+  });
+
+  // Guards: a host Hugging Face really redirects to being refused, or its look-alikes being let in.
+  it.each(CDN_HOSTS)("follows a redirect to %s and only to that exact host", async (host) => {
+    const target = `https://${host}/blob/1?signature=fake`;
+    const allowed = download(START, { [START]: respond(302, target) });
+    expect((await allowed.result).ok).toBe(true);
+    expect(allowed.asked).toEqual([START, target]);
+
+    for (const lookalike of [`https://x.${host}/b`, `https://${host}.evil.example/b`]) {
+      const refused = download(START, { [START]: respond(302, lookalike) });
+      expect(await refused.result).toEqual({ ok: false, error: "blocked" });
+    }
+  });
+
+  // Guards: Hugging Face's relative 307 for small files being refused as a redirect off the hosts.
+  it("follows a relative redirect on the same host", async () => {
+    const { asked, result } = download(START, { [START]: respond(307, "/owner/repo/blob/small") });
+    expect((await result).ok).toBe(true);
+    expect(asked).toEqual([START, "https://huggingface.co/owner/repo/blob/small"]);
+  });
+
+  // Guards: a refused host failing without saying which host, so the allow-list gap cannot be found.
+  it("logs the refused host and nothing else", async () => {
+    const warn = vi.fn();
+    const logger = { warn, debug: vi.fn(), info: vi.fn(), error: vi.fn(), child: vi.fn() };
+    const run = createModelDownloader({
+      allowlist: egressPolicy.createForModelDownloads(),
+      fetch: async () => respond(200),
+      logger,
+    });
+    await run({ url: "https://cdn.example.org/model.gguf?token=secret", rangeStart: 0 });
+    expect(warn).toHaveBeenCalledExactlyOnceWith("download blocked: cdn.example.org");
+  });
+
+  // Guards: redirect bodies and an unread body keeping connections and the abort link alive.
+  it("closes redirect bodies and releases the abort link when an unread body is closed", async () => {
+    const closed = vi.fn();
+    const redirect = {
+      ...respond(302, "https://us.aws.cdn.hf.co/blob/1"),
+      body: {
+        [Symbol.asyncIterator]: () => ({
+          next: async () => ({ done: true as const, value: undefined }),
+          return: async () => {
+            closed();
+            return { done: true as const, value: undefined };
+          },
+        }),
+      },
+    };
+    const run = createModelDownloader({
+      allowlist: egressPolicy.createForModelDownloads(),
+      fetch: async (url) => (url === START ? redirect : respond(200)),
+    });
+    const controller = new AbortController();
+    const removed = vi.spyOn(controller.signal, "removeEventListener");
+    const result = await run({ url: START, rangeStart: 0, signal: controller.signal });
+    expect(closed).toHaveBeenCalledTimes(1);
+    if (!result.ok) throw new Error("expected a response");
+    expect(removed).not.toHaveBeenCalled();
+    await result.value.body[Symbol.asyncIterator]().return?.();
+    expect(removed).toHaveBeenCalledTimes(1);
   });
 });
