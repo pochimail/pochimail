@@ -1,7 +1,7 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -188,7 +188,7 @@ export const messages = {
   "activity.title": entry("Activity", []),
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
-  ...appearanceMessages.en,
+  ...settingsMessages.en,
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),

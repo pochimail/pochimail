@@ -52,7 +52,7 @@ Enforced by `session.webRequest` in every session and by the worker HTTP client,
 | `oauth2.googleapis.com` | Google token exchange, refresh, revoke |
 | `graph.microsoft.com` | Microsoft Graph mail (v1.1; unreleased) |
 | `login.microsoftonline.com` | Microsoft token calls (v1.1; no public revocation endpoint) |
-| `github.com`, `release-assets.githubusercontent.com` | Updates and model manifest (confirm the exact list in the release work) |
+| `github.com`, `release-assets.githubusercontent.com` | Update notice only: a plain GET of `latest.json` from the latest GitHub Release, and the host it redirects to. No headers or identifiers; a redirect to any other host is refused |
 | `huggingface.co`, `us.aws.cdn.hf.co`, `us.gcp.cdn.hf.co`, `cdn-lfs-us-1.hf.co`, `cdn-lfs-eu-1.hf.co`, `transfer.xethub.hf.co`, `transfer.xethub-eu.hf.co` | Model downloads: the pinned file URL and the CDN hosts it redirects to |
 
 Sign-in pages load in the user's browser, so they are not listed. The loopback redirect and IPC ports are local. Not used: telemetry, crash reporting, a relay, cloud AI, remote images or fonts, link following, MX or autoconfig lookups.

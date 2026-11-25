@@ -21,7 +21,7 @@ export const SIGNING_SECRETS: Readonly<Record<SigningOs, readonly string[]>> = {
 type Env = Readonly<Record<string, string | undefined>>;
 
 /** Only the release workflow sets this; PR, merge-queue, smoke and dev builds never sign or check for updates. */
-const isReleaseBuild = (env: Env): boolean => env["POCHIMAIL_RELEASE_BUILD"] === "1";
+export const isReleaseBuild = (env: Env): boolean => env["POCHIMAIL_RELEASE_BUILD"] === "1";
 
 /** An empty value counts as missing: Actions maps an absent secret to an empty string. */
 export const signingStatus = (os: SigningOs, env: Env): SigningStatus => {

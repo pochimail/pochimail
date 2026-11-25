@@ -21,6 +21,7 @@ import { demoScale, demoSwitches } from "../shared/demo.ts";
 import { databasePathFor } from "./database-path.ts";
 import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
+import { isReleaseBuild } from "./release-build.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
 import {
   hardenWebContents,
@@ -33,6 +34,7 @@ import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
+import { startUpdates } from "./updater/start-updates.ts";
 import { linkWorkerOnEveryLoad } from "./worker-link.ts";
 import { bootWorker } from "./worker-start.ts";
 
@@ -239,6 +241,18 @@ void app.whenReady().then(() => {
     gate: processStorageGate(),
     isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
   });
+  const stopUpdates = startUpdates({
+    ipc: ipcMain,
+    openExternal: (url) => shell.openExternal(url),
+    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
+    releaseBuild: isReleaseBuild(),
+    env: process.env,
+    currentVersion: app.getVersion(),
+    preferencesFile: join(app.getPath("userData"), "update-preferences.json"),
+    windows: () => BrowserWindow.getAllWindows(),
+    logger,
+  });
+  app.on("will-quit", stopUpdates);
   createWindow();
   const locale = localeFromLanguages(app.getPreferredSystemLanguages());
   // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
