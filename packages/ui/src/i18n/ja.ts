@@ -32,9 +32,9 @@ export const ja = {
   "review.counts.deadlines": entry("期限のあるもの", []),
   "review.counts.important": entry("大切な人からのもの", []),
   "review.cleanable.title": entry("整理できるもの", []),
-  "review.online.title": entry("オンライン接続が必要です", []),
-  "review.online.body": entry(
-    "削除や配信停止には接続が必要です。あなたの選択は保存され、一覧を見続けることができます。",
+  "review.noAccount.title": entry("アカウントを接続してください", []),
+  "review.noAccount.body": entry(
+    "Pochimailが保存しているのはこの件数だけです。メールの一覧表示、削除、配信停止にはアカウントの接続が必要です。必要なときにプロバイダーから取得します。",
     [],
   ),
   "review.loading": entry("確認する内容を読み込んでいます", []),

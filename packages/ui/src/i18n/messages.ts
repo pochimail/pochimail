@@ -51,9 +51,9 @@ export const messages = {
   "review.counts.deadlines": entry("With deadlines", []),
   "review.counts.important": entry("From important people", []),
   "review.cleanable.title": entry("Safe to clean up", []),
-  "review.online.title": entry("Online needed", []),
-  "review.online.body": entry(
-    "Deleting and unsubscribing need a connection. Your choices are kept, and you can keep looking through the list.",
+  "review.noAccount.title": entry("Connect an account", []),
+  "review.noAccount.body": entry(
+    "These counts are all Pochimail keeps. To list emails, delete or unsubscribe, it needs a connected account: it fetches them from your provider when you ask.",
     [],
   ),
   "review.loading": entry("Loading your review", []),

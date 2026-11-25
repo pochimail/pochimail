@@ -62,8 +62,12 @@ export function createMessageRepository(db: Database, context: RepositoryContext
     `UPDATE sender_stats SET opened_count = opened_count + ? WHERE workspace_id = ? AND account_id = ? AND sender_hash = ?`,
   );
 
-  /** Recounts one sender from its messages (rare: a message moved sender, account or date). */
+  /**
+   * Recounts one sender from its messages (rare: a message moved sender, account or date).
+   * Rows migrated to v6 carry the empty hash: they have no sender, so no stats bucket exists for them.
+   */
   function recountSender(ws: string, account: string, hash: string) {
+    if (hash === "") return;
     const agg = one(
       `SELECT count(*) AS n, coalesce(sum(opened), 0) AS opened, max(received_at) AS last
        FROM message WHERE workspace_id = ? AND account_id = ? AND sender_hash = ?`,

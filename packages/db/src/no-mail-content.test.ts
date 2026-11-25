@@ -39,6 +39,58 @@ const MARKERS = [
   "MARKER_SENDER_STATS_7f3a@example.com",
 ] as const;
 
+// Invented v5 values: each sits in a column that v6 drops or blanks.
+const OLD = {
+  subject: "Old subject",
+  snippet: "Old snippet",
+  address: "sender@example.com",
+  owner: "owner@example.com",
+  reason: "Old reason",
+  thread: "Old thread",
+  derived: "Old derived reason",
+  signal: "Old signal reason",
+  suggestion: "Old suggestion reason",
+} as const;
+
+function seedV5(db: Database.Database) {
+  unwrap(migrate(db, MIGRATIONS.slice(0, 5)));
+  db.exec(`
+    INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
+      received_at, has_list_unsubscribe, opened, size, topic_ids, suspicious_reasons, suspicious_confidence, category, ingest_seq)
+    VALUES ('${WS_A}', 'm-old', 'a', 't', '${OLD.address}', '["${OLD.owner}"]', '${OLD.subject}',
+      '${OLD.snippet}', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["${OLD.reason}"]', 0.5, 'records', 1);
+    INSERT INTO thread (workspace_id, id, account_id, subject, message_ids, last_message_at)
+      VALUES ('${WS_A}', 't', 'a', '${OLD.thread}', '["m-old"]', '2026-01-01T00:00:00.000Z');
+    INSERT INTO derived (workspace_id, message_id, account_id, category, reason, confidence, model_version, snippet, derived_at)
+      VALUES ('${WS_A}', 'm-old', 'a', 'records', '${OLD.derived}', 0.9, 'rules-1', '${OLD.snippet}', '2026-01-01T00:00:00.000Z');
+    INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason)
+      VALUES ('${WS_A}', 'm-old', 'has-document', 0.9, '2026-01-01T00:00:00.000Z', '${OLD.signal}');
+    INSERT INTO sender_stats (workspace_id, account_id, address, message_count, opened_count, replied_count, last_message_at, vip)
+      VALUES ('${WS_A}', 'a', '${OLD.address}', 1, 0, 0, '2026-01-01T00:00:00.000Z', 0);
+    INSERT INTO suggestion (workspace_id, id, account_id, state, confidence, created_at, command, reasons)
+      VALUES ('${WS_A}', 's-old', 'a', 'pending', 0.9, '2026-01-01T00:00:00.000Z', '{"kind":"archive","messageIds":["m-old"]}', '["${OLD.suggestion}"]');
+  `);
+}
+
+/** Bytes of the main file and its WAL, read while the database is still open. */
+function fileBytes(path: string): string {
+  const wal = `${path}-wal`;
+  return (
+    readFileSync(path).toString("latin1") +
+    (existsSync(wal) ? readFileSync(wal).toString("latin1") : "")
+  );
+}
+
+function plainWalV5(): { path: string; db: Database.Database } {
+  const path = freshPath();
+  const db = new Database(path, { timeout: 50 });
+  db.pragma("journal_mode = wal");
+  seedV5(db);
+  // Frames move into the main file but stay in the WAL: both hold the clear text before v6.
+  db.pragma("wal_checkpoint(FULL)");
+  return { path, db };
+}
+
 describe("ADR 0014: nothing private reaches SQLite", () => {
   // Guards: a column outside the allow-list being added to the schema.
   it("the schema guard refuses an added non-allow-listed column", () => {
@@ -130,40 +182,55 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     expect(signal?.reason).toBeUndefined();
   });
 
-  // Guards: an upgrade leaving FTS5, clear-text senders or free-text reasons in a row, a freed page or the WAL.
-  it("a v5 database upgrades to v6 with FTS5 gone and clear-text values scrubbed from the file", () => {
-    const OLD = {
-      subject: "Old subject",
-      snippet: "Old snippet",
-      address: "sender@example.com",
-      owner: "owner@example.com",
-      reason: "Old reason",
-      thread: "Old thread",
-      derived: "Old derived reason",
-      signal: "Old signal reason",
-      suggestion: "Old suggestion reason",
-    } as const;
+  // Guards: v6 leaving clear text in a freed page or a WAL frame. The file is plain SQLite so the byte scan can fail.
+  it("the v6 scrub removes pre-v6 clear text from the main file and the WAL", () => {
+    const { path, db } = plainWalV5();
+    const before = fileBytes(path);
+    for (const marker of Object.values(OLD)) expect(before).toContain(marker);
+    unwrap(migrate(db));
+    const after = fileBytes(path);
+    for (const marker of Object.values(OLD)) expect(after).not.toContain(marker);
+    db.close();
+  });
+
+  // Guards: the byte scan above passing because it cannot see anything.
+  it("the same scan finds the clear text when the migration has no scrub", () => {
+    const { path, db } = plainWalV5();
+    unwrap(
+      migrate(
+        db,
+        MIGRATIONS.map(({ scrub: _scrub, ...m }) => m),
+      ),
+    );
+    const after = fileBytes(path);
+    expect(Object.values(OLD).some((marker) => after.includes(marker))).toBe(true);
+    db.close();
+  });
+
+  // Guards: a scrub that failed after v6 committed never being retried, or reported as a failed migration.
+  it("retries the scrub on the next open and reports its failure as a cleanup failure", () => {
+    const { path, db } = plainWalV5();
+    const reader = new Database(path);
+    reader.exec("BEGIN");
+    reader.prepare("SELECT count(*) FROM message").get(); // a read snapshot blocks the WAL truncation
+    const failed = migrate(db);
+    expect(failed.ok).toBe(false);
+    if (!failed.ok) expect(failed.error.message).toBe("Database cleanup after migration failed");
+    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    reader.close();
+
+    expect(unwrap(migrate(db))).toEqual({ from: 6, to: 6 });
+    for (const marker of Object.values(OLD)) expect(fileBytes(path)).not.toContain(marker);
+    db.close();
+  });
+
+  // Guards: an upgrade leaving FTS5, clear-text senders or free-text reasons in a row.
+  it("a v5 database upgrades to v6 with FTS5 gone and clear-text values blanked", () => {
     const path = freshPath();
     const old = new Database(path);
     old.pragma("cipher='sqlcipher'");
     old.pragma(`key="x'${key(1).toString("hex")}'"`);
-    unwrap(migrate(old, MIGRATIONS.slice(0, 5)));
-    old.exec(`
-      INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
-        received_at, has_list_unsubscribe, opened, size, topic_ids, suspicious_reasons, suspicious_confidence, category, ingest_seq)
-      VALUES ('${WS_A}', 'm-old', 'a', 't', '${OLD.address}', '["${OLD.owner}"]', '${OLD.subject}',
-        '${OLD.snippet}', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["${OLD.reason}"]', 0.5, 'records', 1);
-      INSERT INTO thread (workspace_id, id, account_id, subject, message_ids, last_message_at)
-        VALUES ('${WS_A}', 't', 'a', '${OLD.thread}', '["m-old"]', '2026-01-01T00:00:00.000Z');
-      INSERT INTO derived (workspace_id, message_id, account_id, category, reason, confidence, model_version, snippet, derived_at)
-        VALUES ('${WS_A}', 'm-old', 'a', 'records', '${OLD.derived}', 0.9, 'rules-1', '${OLD.snippet}', '2026-01-01T00:00:00.000Z');
-      INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason)
-        VALUES ('${WS_A}', 'm-old', 'has-document', 0.9, '2026-01-01T00:00:00.000Z', '${OLD.signal}');
-      INSERT INTO sender_stats (workspace_id, account_id, address, message_count, opened_count, replied_count, last_message_at, vip)
-        VALUES ('${WS_A}', 'a', '${OLD.address}', 1, 0, 0, '2026-01-01T00:00:00.000Z', 0);
-      INSERT INTO suggestion (workspace_id, id, account_id, state, confidence, created_at, command, reasons)
-        VALUES ('${WS_A}', 's-old', 'a', 'pending', 0.9, '2026-01-01T00:00:00.000Z', '{"kind":"archive","messageIds":["m-old"]}', '["${OLD.suggestion}"]');
-    `);
+    seedV5(old);
     old.close();
 
     const storage = open(path);
@@ -193,14 +260,7 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     });
 
     const rows = JSON.stringify(storage.reader.prepare("SELECT * FROM message").all());
-    const wal = `${path}-wal`;
-    const bytes =
-      readFileSync(path).toString("latin1") +
-      (existsSync(wal) ? readFileSync(wal).toString("latin1") : "");
-    for (const marker of Object.values(OLD)) {
-      expect(rows).not.toContain(marker);
-      expect(bytes).not.toContain(marker);
-    }
+    for (const marker of Object.values(OLD)) expect(rows).not.toContain(marker);
 
     // A restart has no private-field cache: an empty reason_code must not become a fake reason.
     const fresh = createSqliteCore(storage.reader, {

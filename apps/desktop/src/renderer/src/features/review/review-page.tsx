@@ -20,15 +20,17 @@ const COUNT_ROWS = [
   { count: "important", label: "review.counts.important" },
 ] as const;
 
-function OnlineNote({ t }: { readonly t: T }) {
+function NoAccountNote({ t }: { readonly t: T }) {
   return (
     <section
       role="status"
       aria-live="polite"
       className="flex flex-col gap-2 rounded-xl bg-card p-5 shadow-sm"
     >
-      <h2 className={SECTION_TITLE_CLASS}>{t("review.online.title")}</h2>
-      <p className="m-0 text-ui leading-normal text-muted-foreground">{t("review.online.body")}</p>
+      <h2 className={SECTION_TITLE_CLASS}>{t("review.noAccount.title")}</h2>
+      <p className="m-0 text-ui leading-normal text-muted-foreground">
+        {t("review.noAccount.body")}
+      </p>
     </section>
   );
 }
@@ -94,7 +96,7 @@ function CleanableCounts({
 }
 
 /**
- * The offline Review screen: the counts the worker stored, plus the design's connection note when
+ * The offline Review screen: the counts the worker stored, plus the connect-an-account note when
  * no account is stored for the selection. It never reads or renders mail content (ADR 0014).
  */
 export function ReviewPage() {
@@ -125,7 +127,7 @@ export function ReviewPage() {
       )}
       {data !== undefined && (
         <div className="flex flex-col gap-8">
-          {data.noAccount ? <OnlineNote t={t} /> : null}
+          {data.noAccount ? <NoAccountNote t={t} /> : null}
           <Counts data={data} locale={locale} t={t} />
           <CleanableCounts data={data} locale={locale} t={t} />
         </div>

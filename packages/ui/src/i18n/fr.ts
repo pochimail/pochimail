@@ -33,9 +33,9 @@ export const fr = {
   "review.counts.deadlines": entry("Avec une échéance", []),
   "review.counts.important": entry("De personnes importantes", []),
   "review.cleanable.title": entry("À nettoyer sans risque", []),
-  "review.online.title": entry("Connexion nécessaire", []),
-  "review.online.body": entry(
-    "La suppression et le désabonnement nécessitent une connexion. Vos choix sont conservés et vous pouvez continuer à parcourir la liste.",
+  "review.noAccount.title": entry("Connectez un compte", []),
+  "review.noAccount.body": entry(
+    "Ces chiffres sont tout ce que Pochimail conserve. Pour lister des emails, supprimer ou vous désabonner, un compte connecté est nécessaire : Pochimail les récupère chez votre fournisseur à votre demande.",
     [],
   ),
   "review.loading": entry("Chargement de votre examen", []),

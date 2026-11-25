@@ -12,10 +12,9 @@ export interface Migration {
   /** 1, 2, 3…: the value `PRAGMA user_version` holds once it has run. */
   readonly version: number;
   readonly sql: string;
+  /** The migration drops clear-text data: the freed pages and WAL frames must be scrubbed too (ADR 0014). */
+  readonly scrub?: true;
 }
-
-/** The reports-only migration drops clear-text columns; its freed pages and WAL frames need scrubbing (ADR 0014). */
-const REPORTS_ONLY_VERSION = 6;
 
 /**
  * The SQL files are imported into the bundle: the worker runs from a built file with no `migrations/` next to it,
@@ -27,7 +26,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { version: 3, sql: scopesSql },
   { version: 4, sql: sizeSql },
   { version: 5, sql: figuresSql },
-  { version: 6, sql: reportsSql },
+  { version: 6, sql: reportsSql, scrub: true },
 ];
 
 /**
@@ -40,29 +39,44 @@ export function migrate(
   migrations: readonly Migration[] = MIGRATIONS,
 ): Result<{ from: number; to: number }, StorageError> {
   const latest = migrations.at(-1)?.version ?? 0;
+  let from: number;
   try {
-    const from = Number(db.pragma("user_version", { simple: true }));
+    from = Number(db.pragma("user_version", { simple: true }));
     if (from > latest) {
       return err(
         new StorageError(`Database version ${from} is newer than this app supports (${latest})`),
       );
     }
-    const pending = migrations.filter((x) => x.version > from);
-    for (const m of pending) {
+    for (const m of migrations.filter((x) => x.version > from)) {
       db.transaction(() => {
         db.exec(m.sql);
         db.pragma(`user_version = ${m.version}`);
       })();
     }
-    if (pending.some((m) => m.version === REPORTS_ONLY_VERSION)) {
-      // Outside the transaction: VACUUM cannot run inside one. This also truncates the WAL frames
-      // that still held the pre-v6 rows, so no clear-text subject or address survives on disk.
-      db.pragma("secure_delete = ON");
-      db.exec("VACUUM");
-      db.pragma("wal_checkpoint(TRUNCATE)");
-    }
-    return ok({ from, to: latest });
   } catch (cause) {
     return err(new StorageError("Database migration failed", { cause }));
   }
+  try {
+    scrubFreedData(db, migrations);
+  } catch (cause) {
+    return err(new StorageError("Database cleanup after migration failed", { cause }));
+  }
+  return ok({ from, to: latest });
+}
+
+/**
+ * Runs on every open until it has succeeded once for the newest `scrub` migration, so a crash or
+ * failure after that migration committed is retried instead of leaving clear-text on disk. The
+ * marker is `application_id` (a header integer nothing else here uses), set only after success.
+ * VACUUM cannot run inside a transaction; the TRUNCATE checkpoint drops the WAL frames that
+ * still hold the pre-migration rows.
+ */
+function scrubFreedData(db: Database, migrations: readonly Migration[]): void {
+  const target = migrations.filter((m) => m.scrub).at(-1)?.version ?? 0;
+  if (target === 0 || Number(db.pragma("application_id", { simple: true })) >= target) return;
+  db.pragma("secure_delete = ON");
+  db.exec("VACUUM");
+  const [checkpoint] = db.pragma("wal_checkpoint(TRUNCATE)") as { busy: number }[];
+  if (checkpoint?.busy) throw new Error("The WAL could not be truncated");
+  db.pragma(`application_id = ${target}`);
 }

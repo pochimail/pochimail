@@ -72,8 +72,8 @@ const setup = () => {
 };
 
 describe("review screen (issue #98)", () => {
-  // Guards: a Review screen asking for stored mail content, or hiding the design's connection note.
-  it("shows stored counts and the exact Online needed note when no account is stored", async () => {
+  // Guards: a Review screen asking for stored mail content, or hiding the connect-an-account note.
+  it("shows stored counts and the connect-an-account note when no account is stored", async () => {
     const { asked, router } = setup();
     expect(await screen.findByRole("heading", { level: 1, name: "Review" })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/review");
@@ -81,10 +81,10 @@ describe("review screen (issue #98)", () => {
     expect(await screen.findByText("12")).toBeTruthy();
     for (const count of ["7", "1", "4", "300", "120"]) expect(screen.getByText(count)).toBeTruthy();
     expect(screen.getByRole("status")).toBeTruthy();
-    expect(await screen.findByRole("heading", { name: "Online needed" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Connect an account" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Deleting and unsubscribing need a connection. Your choices are kept, and you can keep looking through the list.",
+        "These counts are all Pochimail keeps. To list emails, delete or unsubscribe, it needs a connected account: it fetches them from your provider when you ask.",
       ),
     ).toBeTruthy();
 
