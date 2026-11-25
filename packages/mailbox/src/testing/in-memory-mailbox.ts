@@ -88,6 +88,13 @@ export function createInMemoryMailbox(): InMemoryMailbox {
             counts[m.category] = (counts[m.category] ?? 0) + 1;
         return ok(counts);
       },
+      countByTopic: async (ws: string, accountIds: readonly string[]) => {
+        const counts: Record<string, number> = {};
+        for (const m of data().messages.values())
+          if (m.workspaceId === ws && accountIds.includes(m.accountId))
+            for (const id of m.topicIds) counts[id] = (counts[id] ?? 0) + 1;
+        return ok(counts);
+      },
     },
     threads: {
       get: async (ws: string, id: string) => {

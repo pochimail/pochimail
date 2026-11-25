@@ -26,6 +26,7 @@
     "./ports/topic-repository": "./src/ports/topic-repository.ts",
     "./ports/unit-of-work": "./src/ports/unit-of-work.ts",
     "./use-cases/classify-batch": "./src/use-cases/classify-batch.ts",
+    "./use-cases/count-topics": "./src/use-cases/count-topics.ts",
     "./use-cases/count-types": "./src/use-cases/count-types.ts",
     "./use-cases/detect-signals": "./src/use-cases/detect-signals.ts",
     "./use-cases/discover-topics": "./src/use-cases/discover-topics.ts",

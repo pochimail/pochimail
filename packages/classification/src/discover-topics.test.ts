@@ -7,7 +7,8 @@ import { AiUnavailable } from "./errors.ts";
 import type { TopicDiscoverer } from "./ports/topic-discoverer.ts";
 import { createFakeTopicDiscoverer } from "./testing/fake-ai.ts";
 import { createInMemoryClassification } from "./testing/in-memory-classification.ts";
-import { live, WS_A } from "./testing/samples.ts";
+import { ACCOUNT_1, live, WS_A } from "./testing/samples.ts";
+import { CountTopics } from "./use-cases/count-topics.ts";
 import { DiscoverTopics } from "./use-cases/discover-topics.ts";
 
 const SHOP = { from: "orders@shop.example.com" };
@@ -102,5 +103,18 @@ describe("DiscoverTopics", () => {
     expect(!r.ok && r.error).toBeInstanceOf(AiUnavailable);
     expect(c.topicAssignments()).toEqual({});
     expect(unwrap(await c.uow.reads.topics.list(WS_A))).toEqual([]);
+  });
+
+  it("the sidebar counts list only topics that hold email, by name (guards an empty topic shown)", async () => {
+    const { c, discover } = await mailbox();
+    unwrap(await discover());
+    const empty = { schemaVersion: 1 as const, id: "top_empty", workspaceId: WS_A, name: "Alpha" };
+    unwrap(await c.uow.run(async (tx) => tx.repositories.topics.save(empty as never), live()));
+    const counts = unwrap(await new CountTopics({ uow: c.uow }).execute(WS_A, [ACCOUNT_1]));
+    expect(counts.map((t) => [t.name, t.count])).toEqual([
+      ["Club", 2],
+      ["Shop", 2],
+    ]);
+    expect(unwrap(await new CountTopics({ uow: c.uow }).execute(WS_A, []))).toEqual([]);
   });
 });

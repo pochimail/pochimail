@@ -20,7 +20,7 @@ import {
 import { applyActionEffects, storeMessage } from "./read-models/action-effects.ts";
 import { derivedReads } from "./read-models/derived-reads.ts";
 import { inSequenceRange, oldestFirst } from "./read-models/in-memory-paging.ts";
-import { inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
+import { countMessages, inMemoryReads, senderOfMessage } from "./read-models/in-memory-reads.ts";
 import type { ReadRepositories, Transaction, UnitOfWork, WriteRepositories } from "./uow-types.ts";
 
 export interface InMemoryUnitOfWork {
@@ -80,15 +80,11 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
             return ok(paginate(rows, q));
           }) as never,
         countByCategory: (ws, accountIds) =>
-          guarded(() => {
-            const counts: Record<string, number> = Object.fromEntries(
-              EMAIL_TYPES.map((c) => [c, 0]),
-            );
-            for (const m of data().messages.values())
-              if (m.workspaceId === ws && accountIds.includes(m.accountId))
-                counts[m.category] = (counts[m.category] ?? 0) + 1;
-            return ok(counts);
-          }) as never,
+          guarded(() =>
+            ok(countMessages(data(), ws, accountIds, (m) => [m.category], EMAIL_TYPES)),
+          ) as never,
+        countByTopic: (ws, accountIds) =>
+          guarded(() => ok(countMessages(data(), ws, accountIds, (m) => m.topicIds))) as never,
         latestSequence: (ws, acc) =>
           guarded(() => {
             const d = data();

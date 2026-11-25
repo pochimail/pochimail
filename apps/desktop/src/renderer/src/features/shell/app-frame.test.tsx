@@ -22,6 +22,11 @@ const zero: Counts = {
   newsletter: 0,
   promotion: 0,
 };
+/** Topics each account holds, by name; a topic with no email is never listed by the worker. */
+const topicsByAccount: Record<string, Record<string, number>> = {
+  a1: { "Job search": 214, Kindergarten: 3 },
+  a2: { "Job search": 6 },
+};
 const mailboxes: Record<string, Counts> = {
   a1: { ...zero, personal: 10, newsletter: 5 },
   a2: { ...zero, personal: 2, transactional: 3 },
@@ -53,6 +58,13 @@ const setup = (initialPath = "/overview", theme: "system" | "light" | "dark" = "
           for (const [key, n] of Object.entries(state.mailboxes[id] ?? zero))
             sum[key as keyof Counts] += n;
         return sum;
+      },
+      "mailbox.topics": ({ accountIds }) => {
+        const sum: Record<string, number> = {};
+        for (const id of accountIds)
+          for (const [name, n] of Object.entries(topicsByAccount[id] ?? {}))
+            sum[name] = (sum[name] ?? 0) + n;
+        return Object.entries(sum).map(([name, count]) => ({ id: `top_${name}`, name, count }));
       },
       "overview.get": () => ({
         scanned: 0,
@@ -220,6 +232,31 @@ describe("app frame", () => {
     expect(nav.queryByRole("link", { name: /Newsletters/ })).toBeNull();
     expect(nav.getByRole("link", { name: /Transactional/ }).textContent).toContain("3");
     expect(screen.getByRole("main")).toBe(main);
+  });
+
+  it("lists the topics that hold email under their own heading and follows the account switch (guards an empty or stale topic list)", async () => {
+    setup();
+    const nav = await sidebar();
+    await waitFor(() => expect(nav.getByRole("link", { name: /Job search/ })).toBeTruthy());
+    expect(nav.getByText("Topics")).toBeTruthy();
+    expect(nav.getByRole("link", { name: /Job search/ }).textContent).toContain("220");
+    expect(nav.getByRole("link", { name: /Kindergarten/ })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: /Account: All accounts/ }));
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "ann@work.example.test" }),
+    );
+    await waitFor(() =>
+      expect(nav.getByRole("link", { name: /Job search/ }).textContent).toContain("6"),
+    );
+    expect(nav.queryByRole("link", { name: /Kindergarten/ })).toBeNull();
+  });
+
+  it("opens a topic with its name as the title (guards a topic link that lands on a nameless screen)", async () => {
+    setup();
+    const nav = await sidebar();
+    await userEvent.click(await nav.findByRole("link", { name: /Kindergarten/ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Kindergarten" })).toBeTruthy();
   });
 
   it("shows each account's provider icon beside its email, leaving All accounts unchanged (guards missing source marks)", async () => {

@@ -1,4 +1,3 @@
-import type { EmailType } from "@pochimail/classification/model/email-type";
 import {
   AccountSwitcher,
   AccountSwitcherContent,
@@ -32,39 +31,27 @@ import {
   SidebarProvider,
 } from "@pochimail/ui/components/sidebar";
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
-import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  AtSignIcon,
   ChevronDownIcon,
-  FileTextIcon,
   LayoutGridIcon,
-  NewspaperIcon,
   PaperclipIcon,
   PlusIcon,
   SettingsIcon,
-  TagIcon,
   Undo2Icon,
-  UserIcon,
   UsersIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
 import { isMacDesktop } from "../../lib/platform.ts";
 import { ProviderIcon } from "../../lib/provider-icon.tsx";
 import { queryKeys } from "../../lib/query/keys.ts";
-import { TYPE_LABELS } from "../../lib/type-labels.ts";
+import { useSelectedAccounts } from "../../lib/use-selected-accounts.ts";
+import { useTopics } from "../../lib/use-topics.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
+import { TopicsGroup, TypeItems } from "./mail-nav.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
 import { visibleTypes } from "./visible-types.ts";
-
-const TYPE_NAV: Record<EmailType, { label: MessageKey; icon: ComponentType }> = {
-  personal: { label: TYPE_LABELS.personal, icon: UserIcon },
-  transactional: { label: TYPE_LABELS.transactional, icon: FileTextIcon },
-  notification: { label: TYPE_LABELS.notification, icon: AtSignIcon },
-  newsletter: { label: TYPE_LABELS.newsletter, icon: NewspaperIcon },
-  promotion: { label: TYPE_LABELS.promotion, icon: TagIcon },
-};
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";
 
@@ -131,26 +118,20 @@ function useRefreshCountsWhileScanning(accounts: readonly { id: string }[]) {
 /** The signed-in shell: sidebar/tabs, account switcher (`?account=`) and counts. */
 export function AppFrame({ pose }: { readonly pose: MascotPose }) {
   const t = useT();
-  const locale = useLocale();
+  const _locale = useLocale();
   const client = useWorkerClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { account } = useSearch({ strict: false });
-  const accounts = useQuery({
-    queryKey: queryKeys.accounts(),
-    queryFn: () => client.call("accounts.list"),
-  });
-  const accountList = accounts.data ?? [];
+  const { list: accountList, selected, accountIds, loaded } = useSelectedAccounts();
   const allAccountIds = accountList.map((a) => a.id);
-  const selected = accountList.some((a) => a.id === account) ? (account ?? null) : null;
-  const accountIds = selected === null ? allAccountIds : [selected];
 
   const counts = useQuery({
     queryKey: queryKeys.typeCounts(accountIds),
     queryFn: () => client.call("mailbox.types", { accountIds }),
-    enabled: accounts.isSuccess,
+    enabled: loaded,
   });
   const types = visibleTypes(counts.data);
+  const topics = useTopics(accountIds, loaded).data ?? [];
   const current = accountList.find((a) => a.id === selected);
   const currentLabel = current?.displayName ?? t("switcher.all");
   const selectAccount = (next: string) =>
@@ -221,29 +202,10 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
                   icon={LayoutGridIcon}
                   active={pathname}
                 />
-                {types.map(({ id, count }) => {
-                  const nav = TYPE_NAV[id];
-                  const Icon = nav.icon;
-                  const target = `/type/${id}`;
-                  return (
-                    <SidebarMenuItem key={id} reach="wide">
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === target}
-                        tone="muted"
-                        tooltip={t(nav.label)}
-                      >
-                        <Link to="/type/$typeId" params={{ typeId: id }} search={(prev) => prev}>
-                          <Icon />
-                          <SidebarMenuLabel>{t(nav.label)}</SidebarMenuLabel>
-                          <SidebarMenuBadge>{count.toLocaleString(locale)}</SidebarMenuBadge>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
+                <TypeItems types={types} pathname={pathname} />
               </SidebarMenu>
             </SidebarGroup>
+            <TopicsGroup topics={topics} pathname={pathname} />
             <SidebarGroup>
               <SidebarGroupLabel>{t("nav.tools")}</SidebarGroupLabel>
               <SidebarMenu>

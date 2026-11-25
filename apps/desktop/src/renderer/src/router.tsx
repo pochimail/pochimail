@@ -23,6 +23,7 @@ import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
 import { ReconnectGate } from "./features/states/reconnect-gate.tsx";
+import { TopicPage } from "./features/topic/topic-page.tsx";
 import { TypePage } from "./features/type/type-page.tsx";
 import { UpdatesSection } from "./features/updates/updates-section.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
@@ -148,6 +149,12 @@ const typeRoute = createRoute({
   component: TypePage,
 });
 
+const topicRoute = createRoute({
+  getParentRoute: () => gateRoute,
+  path: "/topic/$topicId",
+  component: TopicPage,
+});
+
 const documentsRoute = createRoute({
   getParentRoute: () => gateRoute,
   path: "/documents",
@@ -188,7 +195,14 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   onboardingRoute.addChildren([welcomeRoute, connectRoute, setupRoute]),
   shellRoute.addChildren([
-    gateRoute.addChildren([overviewRoute, reviewRoute, typeRoute, documentsRoute, activityRoute]),
+    gateRoute.addChildren([
+      overviewRoute,
+      reviewRoute,
+      typeRoute,
+      topicRoute,
+      documentsRoute,
+      activityRoute,
+    ]),
     settingsRoute,
   ]),
   ...galleryRoutes,

@@ -18,6 +18,7 @@ import { MESSAGE_COLUMNS, messageOf } from "./message-row.ts";
 import { encodeReasons } from "./suspicious-reasons.ts";
 
 const categoryCountRow = z.object({ category: emailTypeSchema, value: z.number() });
+const topicCountRow = z.object({ topic_id: z.string(), value: z.number() });
 
 /** Repository over one connection. */
 export function createMessageRepository(db: Database, context: RepositoryContext) {
@@ -226,6 +227,24 @@ export function createMessageRepository(db: Database, context: RepositoryContext
         for (const r of rows) {
           const { category, value } = categoryCountRow.parse(r);
           counts[category] = value;
+        }
+        return counts;
+      }),
+    countByTopic: (ws: string, accountIds: readonly string[]) =>
+      guard(() => {
+        const counts: Record<string, number> = {};
+        if (accountIds.length === 0) return counts;
+        const marks = accountIds.map(() => "?").join(", ");
+        const rows = all(
+          `SELECT j.value AS topic_id, count(*) AS value
+           FROM message m, json_each(m.topic_ids) j
+           WHERE m.workspace_id = ? AND m.account_id IN (${marks}) GROUP BY j.value`,
+          ws,
+          ...accountIds,
+        );
+        for (const r of rows) {
+          const { topic_id, value } = topicCountRow.parse(r);
+          counts[topic_id] = value;
         }
         return counts;
       }),

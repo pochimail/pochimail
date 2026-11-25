@@ -149,6 +149,13 @@ export function createInMemoryClassification(): InMemoryClassification {
             counts[m.category] = (counts[m.category] ?? 0) + 1;
         return ok(counts);
       },
+      countByTopic: async (ws, accountIds) => {
+        const counts: Record<string, number> = {};
+        for (const [key, m] of data().messages)
+          if (key.startsWith(`${ws}/`) && accountIds.includes(m.accountId))
+            for (const id of m.topicIds ?? []) counts[id] = (counts[id] ?? 0) + 1;
+        return ok(counts);
+      },
     },
     signalFacts: {
       forMessages: async (ws, accountId, ids) => {
