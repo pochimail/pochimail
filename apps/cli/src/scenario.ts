@@ -4,13 +4,11 @@ import type { Action } from "@pochimail/actions/model/action";
 import { ApplyAction, type ApplyOutcome } from "@pochimail/actions/use-cases/apply-action";
 import { UndoAction, type UndoOutcome } from "@pochimail/actions/use-cases/undo-action";
 import {
-  CATEGORIES,
-  type Category,
-  categoryOf,
-  PROTECTED_CATEGORIES,
-  SIGNAL_KINDS,
-  type SignalKind,
-} from "@pochimail/classification/model/category";
+  EMAIL_TYPES,
+  type EmailType,
+  emailTypeOf,
+} from "@pochimail/classification/model/email-type";
+import { SIGNAL_KINDS, type SignalKind } from "@pochimail/classification/model/signal";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { ProposeSuggestions } from "@pochimail/cleanup/use-cases/propose-suggestions";
@@ -54,7 +52,7 @@ export interface ScenarioOptions {
 
 /** The cleanup summary with every category and signal kind present (0 when none), as the report prints it. */
 type ScenarioSummary = Omit<MailboxSummary, "categories" | "signals"> & {
-  readonly categories: Readonly<Record<Category, number>>;
+  readonly categories: Readonly<Record<EmailType, number>>;
   readonly signals: Readonly<Record<SignalKind, number>>;
 };
 
@@ -86,7 +84,7 @@ const live = () => new AbortController().signal;
  */
 export async function runScenario(options: ScenarioOptions): Promise<ScenarioResult> {
   const mailbox = generateMailbox({ seed: SEED, scale: options.scale });
-  const labels = new Map<string, Category>(
+  const labels = new Map<string, EmailType>(
     mailbox.labels.messages.map((l) => [l.messageId, l.category]),
   );
   const truth = createGroundTruthClassifier(labels);
@@ -171,8 +169,8 @@ export async function runScenario(options: ScenarioOptions): Promise<ScenarioRes
   const summary: ScenarioSummary = {
     ...counted,
     categories: Object.fromEntries(
-      CATEGORIES.map((c) => [c, counted.categories[c] ?? 0]),
-    ) as Record<Category, number>,
+      EMAIL_TYPES.map((c) => [c, counted.categories[c] ?? 0]),
+    ) as Record<EmailType, number>,
     signals: Object.fromEntries(SIGNAL_KINDS.map((k) => [k, counted.signals[k] ?? 0])) as Record<
       SignalKind,
       number
@@ -180,23 +178,23 @@ export async function runScenario(options: ScenarioOptions): Promise<ScenarioRes
   };
 
   // 2. suggestions, then apply the reversible ones with the user's approval, then undo.
-  const propose = new ProposeSuggestions({ uow, clock, protectedLabels: PROTECTED_CATEGORIES });
+  const propose = new ProposeSuggestions({ uow, clock });
   const archive = new Map<
     AccountId,
-    { action: Action; categories: Category[]; confidence: number }[]
+    { action: Action; categories: EmailType[]; confidence: number }[]
   >();
   let archiveCount = 0;
   let unsubscribe = 0;
   for (const accountId of accountIds) {
-    const items: { action: Action; categories: Category[]; confidence: number }[] = [];
+    const items: { action: Action; categories: EmailType[]; confidence: number }[] = [];
     for (const s of unwrap(await propose.execute({ workspaceId, accountId }, live()))) {
       // The demo user approves every suggestion as an archive of its messages. Unsubscribe is
       // never sent: it cannot be undone, so it stays a suggestion for the user (brief §2).
       if (s.recommendation.kind === "unsubscribe") unsubscribe += 1;
       else archiveCount += 1;
-      const categories: Category[] = [];
+      const categories: EmailType[] = [];
       for (const id of s.recommendation.messageIds)
-        categories.push(categoryOf(unwrap(await uow.reads.messages.get(workspaceId, id))));
+        categories.push(emailTypeOf(unwrap(await uow.reads.messages.get(workspaceId, id))));
       items.push({
         categories,
         confidence: s.confidence,
@@ -233,7 +231,8 @@ export async function runScenario(options: ScenarioOptions): Promise<ScenarioRes
           authorization: {
             autonomy: "suggest" as const,
             categories,
-            protectedCategories: PROTECTED_CATEGORIES,
+            // Protection is decided from signals when suggestions are proposed (ADR 0012).
+            protectedCategories: [],
             confidence,
             userConfirmed: true,
           },

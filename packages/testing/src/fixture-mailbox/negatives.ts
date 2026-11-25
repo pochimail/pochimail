@@ -1,5 +1,6 @@
-import type { Category } from "@pochimail/classification/model/category";
-import type { Language, Sender } from "./content.ts";
+import type { EmailType } from "@pochimail/classification/model/email-type";
+import type { Sender } from "./content.ts";
+import type { Language } from "./content-types.ts";
 import { DAY } from "./fixture-draws.ts";
 import type { SignalPlan } from "./signal-labels.ts";
 
@@ -49,7 +50,7 @@ const LEGIT_DIGITS: readonly Sender[] = [
   { name: "Inbox 1st", address: "team@inbox1st.example.net" },
 ];
 
-const byThread = (plans: readonly Plan[], category: Category) => {
+const byThread = (plans: readonly Plan[], category: EmailType) => {
   const threads = new Map<number, Plan[]>();
   for (const plan of plans)
     if (plan.category === category)
@@ -73,19 +74,21 @@ export function plantNegatives(
   enabled: boolean,
 ): ReadonlySet<number> {
   if (!enabled) return new Set();
-  const recordsAge = [1, 3, 5];
-  byThread(plans, "records")
+  const noticeAge = [1, 3, 5];
+  const planted = new Set<number>();
+  byThread(plans, "transactional")
     .filter((t) => t.length === 1 && t[0]?.signals.size === 0 && now - (t[0]?.at ?? now) > 7 * DAY)
     .slice(0, CASES)
     .forEach(([plan], i) => {
       if (plan === undefined) return;
-      plan.at = now - (recordsAge[i] ?? 1) * DAY;
+      planted.add(plan.threadKey);
+      plan.at = now - (noticeAge[i] ?? 1) * DAY;
       plan.opened = false;
       Object.assign(plan, NOTICE[plan.language]);
     });
 
   const noReply = new Set<number>();
-  for (const thread of byThread(plans, "people")) {
+  for (const thread of byThread(plans, "personal")) {
     if (noReply.size >= CASES) break;
     const last = lastOf(thread);
     const quiet = thread.every((p) => p.signals.size === 0);
@@ -96,8 +99,10 @@ export function plantNegatives(
     noReply.add(last.threadKey);
   }
 
-  byThread(plans, "sign-ins-security")
-    .filter((t) => t.every((p) => !p.suspicious))
+  byThread(plans, "transactional")
+    .filter((t) =>
+      t.every((p) => !p.suspicious && p.signals.size === 0 && !planted.has(p.threadKey)),
+    )
     .slice(0, SPOOFED.length + LEGIT_DIGITS.length)
     .forEach((thread, i) => {
       const spoofed = i < SPOOFED.length;

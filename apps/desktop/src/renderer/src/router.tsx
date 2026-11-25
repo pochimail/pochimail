@@ -11,7 +11,6 @@ import {
 } from "@tanstack/react-router";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { ActivityPage } from "./features/activity/activity-page.tsx";
-import { CategoryPage } from "./features/category/category-page.tsx";
 import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
@@ -23,6 +22,7 @@ import { AppearanceControls } from "./features/settings/appearance-controls.tsx"
 import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
+import { TypePage } from "./features/type/type-page.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
 import { ScanStatusProvider } from "./lib/scan-status.tsx";
 
@@ -133,10 +133,10 @@ const reviewRoute = createRoute({
   component: ReviewPage,
 });
 
-const categoryRoute = createRoute({
+const typeRoute = createRoute({
   getParentRoute: () => shellRoute,
-  path: "/category/$categoryId",
-  component: CategoryPage,
+  path: "/type/$typeId",
+  component: TypePage,
 });
 
 const documentsRoute = createRoute({
@@ -177,7 +177,7 @@ const routeTree = rootRoute.addChildren([
   shellRoute.addChildren([
     overviewRoute,
     reviewRoute,
-    categoryRoute,
+    typeRoute,
     documentsRoute,
     activityRoute,
     settingsRoute,

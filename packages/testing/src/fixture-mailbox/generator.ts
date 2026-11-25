@@ -1,14 +1,8 @@
-import { CATEGORIES, type Category } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES, type EmailType } from "@pochimail/classification/model/email-type";
 import { DEFAULT_SIGNAL_SETTINGS } from "@pochimail/classification/model/signal-settings";
-import { BULK_CATEGORIES, OLD_AFTER_DAYS } from "@pochimail/classification/policies/signal-rules";
-import {
-  CORRESPONDENTS,
-  type Language,
-  SENDERS,
-  SPOOFED_SENDER,
-  TEMPLATES,
-  VIP_COUNT,
-} from "./content.ts";
+import { BULK_TYPES, OLD_AFTER_DAYS } from "@pochimail/classification/policies/signal-rules";
+import { CORRESPONDENTS, SENDERS, SPOOFED_SENDER, TEMPLATES, VIP_COUNT } from "./content.ts";
+import type { Language } from "./content-types.ts";
 import { DAY, fill, pickLanguage, threadLength } from "./fixture-draws.ts";
 import { type LabelsFile, labelsFileSchema, type MessageLabel } from "./labels.ts";
 import {
@@ -20,10 +14,10 @@ import {
 } from "./mbox.ts";
 import { plantNegatives } from "./negatives.ts";
 import { apportion, createRng, type Rng } from "./prng.ts";
-import { assignThreadSignals, markRecentRecordsRead } from "./signal-labels.ts";
+import { assignThreadSignals, markRecentTransactionalRead } from "./signal-labels.ts";
 
 // FAKE DATA ONLY. The mock dataset of brief §6, reproduced with a seeded generator:
-// 2 accounts, 7 categories, 7 people waiting (oldest 9 days), 3 deadlines this week,
+// 2 accounts, 5 types, 7 people waiting (oldest 9 days), 3 deadlines this week,
 // 12 new from important people, 412 documents. `small` is the same shape at about 1 %.
 
 export const FIXTURE_WORKSPACE_ID = "ws-fixture";
@@ -41,14 +35,12 @@ export const MOCK_DATASET = {
   deadlinesThisWeek: 3,
   newFromImportant: 12,
   categories: {
-    people: 6_820,
-    records: 2_104,
-    "purchases-travel": 3_580,
-    "sign-ins-security": 1_962,
-    notifications: 14_230,
-    newsletters: 10_410,
-    promotions: 9_206,
-  } satisfies Record<Category, number>,
+    personal: 6_820,
+    transactional: 7_646,
+    notification: 14_230,
+    newsletter: 10_410,
+    promotion: 9_206,
+  } satisfies Record<EmailType, number>,
 } as const;
 
 export const MAILBOX_SCALES = { small: 483, full: MOCK_DATASET.totalMessages } as const;
@@ -94,14 +86,12 @@ const WAITING_AGES_DAYS = [9, 6, 5, 4, 3, 2, 1];
 /** Threads the owner answered last, with no reply since: they wait on the other person. */
 const AWAITING_AGES_DAYS = [4, 6, 10];
 
-const OPENED_RATE: Record<Category, number> = {
-  people: 0.95,
-  records: 0.85,
-  "purchases-travel": 0.8,
-  "sign-ins-security": 0.5,
-  notifications: 0.2,
-  newsletters: 0.25,
-  promotions: 0.1,
+const OPENED_RATE: Record<EmailType, number> = {
+  personal: 0.95,
+  transactional: 0.74,
+  notification: 0.2,
+  newsletter: 0.25,
+  promotion: 0.1,
 };
 
 const REPLIES: Record<Language, readonly string[]> = {
@@ -127,7 +117,7 @@ const DEADLINE: Record<Language, { subject: string; body: string }> = {
 
 interface Plan {
   seq: number;
-  category: Category;
+  category: EmailType;
   language: Language;
   accountIdx: number;
   threadKey: number;
@@ -160,24 +150,24 @@ function ageOf(
 function planAll(rng: Rng, total: number): Plan[] {
   const counts = apportion(
     total,
-    CATEGORIES.map((c) => MOCK_DATASET.categories[c]),
+    EMAIL_TYPES.map((c) => MOCK_DATASET.categories[c]),
   );
   const plans: Plan[] = [];
   let threadKey = 0;
   let seq = 0;
 
-  for (const [index, category] of CATEGORIES.entries()) {
+  for (const [index, category] of EMAIL_TYPES.entries()) {
     let remaining = counts[index] ?? 0;
     let threadInCategory = 0;
     while (remaining > 0) {
       const t = threadInCategory++;
-      const waiting = category === "people" && t < MOCK_DATASET.peopleWaiting;
+      const waiting = category === "personal" && t < MOCK_DATASET.peopleWaiting;
       const important =
-        category === "people" &&
+        category === "personal" &&
         t >= MOCK_DATASET.peopleWaiting &&
         t < MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant;
       const awaiting =
-        category === "people" &&
+        category === "personal" &&
         t >= MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant &&
         t < MOCK_DATASET.peopleWaiting + MOCK_DATASET.newFromImportant + AWAITING_AGES_DAYS.length;
       const length = Math.min(
@@ -190,7 +180,8 @@ function planAll(rng: Rng, total: number): Plan[] {
 
       let peer: { name: string; address: string };
       let language: Language;
-      if (category === "people") {
+      let dormant = false;
+      if (category === "personal") {
         const pool = important
           ? CORRESPONDENTS.slice(0, VIP_COUNT)
           : CORRESPONDENTS.slice(VIP_COUNT);
@@ -199,9 +190,11 @@ function planAll(rng: Rng, total: number): Plan[] {
         language = person.language;
       } else {
         peer = rng.pick(SENDERS[category]);
+        // The last sender of each bulk type is one nobody ever opens: what clean-up proposals are for.
+        dormant = BULK_TYPES.includes(category) && peer === SENDERS[category].at(-1);
         language = pickLanguage(rng);
       }
-      const suspicious = category === "sign-ins-security" && rng.chance(0.04);
+      const suspicious = category === "transactional" && rng.chance(0.04);
       if (suspicious) peer = SPOOFED_SENDER;
 
       const age = ageOf({ waiting, important, awaiting, t }, rng);
@@ -209,11 +202,15 @@ function planAll(rng: Rng, total: number): Plan[] {
       // was answered, so the mock dataset keeps its numbers.
       const recent = age < DEFAULT_SIGNAL_SETTINGS.recentDays * DAY;
       const lastInbound =
-        waiting || important || category !== "people" || (rng.chance(0.7) && !recent && !awaiting);
+        waiting ||
+        important ||
+        category !== "personal" ||
+        (rng.chance(0.7) && !recent && !awaiting);
       const gap = rng.int(1, 48) * HOUR;
       const template = TEMPLATES[category][language];
-      const baseSubject = rng.pick(template.subjects);
-      const baseBody = rng.pick(template.bodies);
+      const wording = rng.int(0, template.subjects.length - 1);
+      const baseSubject = template.subjects[wording] ?? "";
+      const baseBody = template.bodies[wording] ?? "";
       const peerFirst = peer.name.split(" ")[0] ?? peer.name;
       let previousBody = "";
       for (let pos = 0; pos < length; pos++) {
@@ -244,12 +241,12 @@ function planAll(rng: Rng, total: number): Plan[] {
           at,
           subject: pos === 0 ? subject : `Re: ${subject}`,
           body,
-          opened: !inbound || rng.chance(OPENED_RATE[category]),
+          opened: !inbound || (rng.chance(OPENED_RATE[category]) && !dormant),
           listUnsubscribe:
             inbound &&
-            (category === "newsletters" ||
-              (category === "promotions" && rng.chance(0.9)) ||
-              (category === "notifications" && rng.chance(0.1))),
+            (category === "newsletter" ||
+              (category === "promotion" && rng.chance(0.9)) ||
+              (category === "notification" && rng.chance(0.1))),
           attachmentSize: 0,
           suspicious,
           signals: new Set(),
@@ -262,10 +259,10 @@ function planAll(rng: Rng, total: number): Plan[] {
 }
 
 function assignSignals(rng: Rng, plans: Plan[], total: number, hardCases: boolean): void {
-  // Deadlines this week: the first 3 records messages become recent notices.
+  // Deadlines this week: the first 3 transactional messages become recent notices.
   let deadlines = 0;
   for (const plan of plans) {
-    if (plan.category !== "records" || deadlines >= MOCK_DATASET.deadlinesThisWeek) continue;
+    if (plan.category !== "transactional" || deadlines >= MOCK_DATASET.deadlinesThisWeek) continue;
     deadlines++;
     plan.at = FIXTURE_NOW - rng.int(1, 3) * DAY - rng.int(0, 12) * HOUR;
     plan.subject = fill(DEADLINE[plan.language].subject, rng, plan.language, plan.at, "");
@@ -273,12 +270,10 @@ function assignSignals(rng: Rng, plans: Plan[], total: number, hardCases: boolea
     plan.signals.add("time-sensitive");
     plan.opened = false;
   }
-  markRecentRecordsRead(plans, FIXTURE_NOW);
-  // Documents: a seeded share of records and purchases carry a PDF.
+  markRecentTransactionalRead(plans, FIXTURE_NOW);
+  // Documents: a seeded share of transactional mail carries a PDF.
   const documents = Math.round((MOCK_DATASET.documents * total) / MOCK_DATASET.totalMessages);
-  const eligible = plans.filter(
-    (p) => p.category === "records" || p.category === "purchases-travel",
-  );
+  const eligible = plans.filter((p) => p.category === "transactional");
   for (const plan of rng.shuffle(eligible).slice(0, documents)) {
     plan.attachmentSize = rng.int(150_000, 2_500_000); // Declared size; the PDF body stays a stub (#114).
     plan.signals.add("has-document");
@@ -291,11 +286,11 @@ function assignSignals(rng: Rng, plans: Plan[], total: number, hardCases: boolea
   assignThreadSignals(plans, FIXTURE_NOW, DEFAULT_SIGNAL_SETTINGS, noReply);
 }
 
-const isBulk = (plan: Plan) => BULK_CATEGORIES.includes(plan.category);
+const isBulk = (plan: Plan) => BULK_TYPES.includes(plan.category);
 
 function suggestionFor(plan: Plan): MessageLabel["expectedSuggestion"] {
   if (!isBulk(plan)) return null;
-  if (plan.listUnsubscribe && !plan.opened && plan.category !== "notifications")
+  if (plan.listUnsubscribe && !plan.opened && plan.category !== "notification")
     return "unsubscribe";
   return !plan.opened && FIXTURE_NOW - plan.at > STALE_AFTER_DAYS * DAY ? "archive" : null;
 }
@@ -367,7 +362,7 @@ function renderMessage(
     return [separator, ...headers, ...textHeaders, "", encodedBody, "", ""].join("\n");
 
   const boundary = `fixture-${ids.messageId.split("@")[0]}`;
-  const filename = `${plan.category === "records" ? "statement" : "receipt"}-${ids.messageId.split("-").pop()?.split("@")[0]}.pdf`;
+  const filename = `document-${ids.messageId.split("-").pop()?.split("@")[0]}.pdf`;
   const pdf = new TextEncoder().encode(
     `%PDF-1.4\n% fixture document for ${ids.messageId}\n%%EOF\n`,
   );
@@ -449,7 +444,7 @@ export function generateMailbox(options: {
   }
 
   const byCategory = Object.fromEntries(
-    CATEGORIES.map((c) => [c, labels.filter((l) => l.category === c).length]),
+    EMAIL_TYPES.map((c) => [c, labels.filter((l) => l.category === c).length]),
   ) as LabelsFile["totals"]["byCategory"];
   const file: LabelsFile = {
     schemaVersion: 1,

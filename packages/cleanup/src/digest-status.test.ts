@@ -39,10 +39,10 @@ describe("digest status", () => {
   it("carries the new items of each action from BuildDigest to the tally", async () => {
     const h = createInMemoryCleanup();
     await h.seed({
-      1: { category: "notifications" },
-      2: { category: "records" },
-      3: { category: "newsletters" },
-      4: { category: "promotions" },
+      1: { category: "notification" },
+      2: { category: "transactional" },
+      3: { category: "newsletter" },
+      4: { category: "promotion" },
     });
     const clock = fakeClock();
     const digest = unwrap(
@@ -137,8 +137,8 @@ describe("digest status", () => {
   it("resets the Summary when the newest digest has no new items", async () => {
     const h = createInMemoryCleanup();
     await h.seed({
-      1: { category: "notifications" },
-      2: { category: "records" },
+      1: { category: "notification" },
+      2: { category: "transactional" },
     });
     const clock = fakeClock();
     const build = new BuildDigest({ uow: h.uow, clock });

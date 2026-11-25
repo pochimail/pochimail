@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
 import { describe, expect, it } from "vitest";
 import { generateMailbox, type MailboxScale } from "../fixture-mailbox/generator.ts";
@@ -29,7 +29,7 @@ describe(`eval gate (${scale})`, () => {
       scale: scale as MailboxScale,
       hardCases: true,
     });
-    const labels = new Map<string, Category>(
+    const labels = new Map<string, EmailType>(
       mailbox.labels.messages.map((l) => [l.messageId, l.category]),
     );
     const truth = createGroundTruthClassifier(labels);

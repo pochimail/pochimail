@@ -1,4 +1,4 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { Button } from "@pochimail/ui/components/button";
 import { PillRadioGroup, PillRadioGroupItem } from "@pochimail/ui/components/pill-radio-group";
 import {
@@ -14,7 +14,7 @@ import {
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { TIDY_CADENCES, type TidyCadence } from "#shared/settings.ts";
-import { categoryLabelKey } from "../../lib/category-labels.ts";
+import { typeLabelKey } from "../../lib/type-labels.ts";
 import { type Digest, summaryView } from "./summary-view-model.ts";
 import { SUMMARY_FOCUS_TARGET_ID } from "./use-summary-sheet.ts";
 
@@ -32,7 +32,7 @@ export type SummarySheetProps = {
   readonly device: string;
   readonly cadence: TidyCadence;
   readonly onCadenceChange: (cadence: TidyCadence) => void;
-  readonly onReview: (category: Category) => void;
+  readonly onReview: (category: EmailType) => void;
 };
 
 /** The summary sheet over the Overview: new figures, one Review route and the cadence choice. */
@@ -49,8 +49,8 @@ export function SummarySheet({
   const locale = useLocale();
   const view = summaryView(digest);
   const review = view.review;
-  const reviewCategoryKey = review === undefined ? undefined : categoryLabelKey(review.category);
-  const reviewCategory = reviewCategoryKey === undefined ? review?.category : t(reviewCategoryKey);
+  const reviewTypeKey = review === undefined ? undefined : typeLabelKey(review.category);
+  const reviewType = reviewTypeKey === undefined ? review?.category : t(reviewTypeKey);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -100,7 +100,7 @@ export function SummarySheet({
                 {t("summary.whereStart.title")}
               </h2>
               <p className="text-ui">
-                {t("summary.whereStart.detail", { category: reviewCategory ?? review.category })}
+                {t("summary.whereStart.detail", { category: reviewType ?? review.category })}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

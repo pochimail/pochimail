@@ -35,7 +35,7 @@ export function mailboxRepositoryContract(make: () => { uow: MailboxUnitOfWork }
     it("upserting the same message again changes nothing and keeps its label (guards lost classification on re-sync)", async () => {
       const { uow } = make();
       await put(uow, [makeIncoming(1)]);
-      const label = "newsletters";
+      const label = "newsletter";
       unwrap(
         await uow.run(async (tx) =>
           tx.repositories.messages.setCategory(WS_A, makeIncoming(1).id, label),
@@ -43,6 +43,17 @@ export function mailboxRepositoryContract(make: () => { uow: MailboxUnitOfWork }
       );
       await put(uow, [makeIncoming(1)]);
       expect(unwrap(await uow.reads.messages.get(WS_A, makeIncoming(1).id)).category).toBe(label);
+    });
+    it("topics set by classification survive a re-sync and are replaced on the next set (guards lost topics on every scan)", async () => {
+      const { uow } = make();
+      const id = makeIncoming(1).id;
+      const topics = ["top_1" as TopicId, "top_2" as TopicId];
+      await put(uow, [makeIncoming(1)]);
+      unwrap(await uow.run(async (tx) => tx.repositories.messages.setTopics(WS_A, id, topics)));
+      await put(uow, [makeIncoming(1)]);
+      expect(unwrap(await uow.reads.messages.get(WS_A, id)).topicIds).toEqual(topics);
+      unwrap(await uow.run(async (tx) => tx.repositories.messages.setTopics(WS_A, id, [])));
+      expect(unwrap(await uow.reads.messages.get(WS_A, id)).topicIds).toEqual([]);
     });
     it("the ingest sequence only grows on a first insert (guards 'stored since' missing late mail)", async () => {
       const { uow } = make();

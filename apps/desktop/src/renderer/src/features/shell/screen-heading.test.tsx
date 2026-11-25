@@ -22,14 +22,12 @@ const open = async (path: string) => {
       "accounts.list": () => [
         { id: "a1", provider: "google" as const, displayName: "a@example.test" },
       ],
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "scan.status": () => [],
       "overview.get": () => ({
@@ -76,7 +74,7 @@ const PAGES = [
   ["/activity", "Activity"],
   ["/documents", "Documents"],
   ["/settings", "Settings"],
-  ["/category/notifications", "Alert emails"],
+  ["/type/notification", "Alert emails"],
 ] as const;
 
 describe("screen titles", () => {
@@ -98,12 +96,12 @@ describe("screen titles", () => {
   });
 
   it.each([
-    ["/category/sign-ins-security", "Sign-ins & security"],
-    ["/category/purchases-travel", "Purchases & travel"],
+    ["/type/transactional", "Transactional"],
+    ["/type/newsletter", "Newsletters"],
   ])("titles %s with the translated sidebar label", async (path, title) => {
     await open(path);
     expect(await screen.findByRole("heading", { level: 1, name: title })).toBeTruthy();
-    expect(screen.queryByRole("heading", { level: 1, name: /sign ins security/iu })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: /^newsletter$/u })).toBeNull();
   });
 
   it.each([

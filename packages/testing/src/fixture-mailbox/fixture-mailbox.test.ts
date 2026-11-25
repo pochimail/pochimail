@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 import { describe, expect, it } from "vitest";
 import { mailProviderContract } from "../mail-provider-contract.ts";
 import { createFixtureMailProvider } from "./fixture-mail-provider.ts";
@@ -57,9 +57,9 @@ describe("generateMailbox", () => {
     expect(count("important-sender")).toBe(MOCK_DATASET.newFromImportant);
   }, 60_000);
 
-  it("the small scale keeps every category and keeps the category shares within 1 point (guards a skewed demo mailbox)", () => {
+  it("the small scale keeps every type and keeps the type shares within 1 point (guards a skewed demo mailbox)", () => {
     const { totals } = small.labels;
-    for (const category of CATEGORIES) {
+    for (const category of EMAIL_TYPES) {
       const share = totals.byCategory[category] / totals.messages;
       expect(
         Math.abs(share - MOCK_DATASET.categories[category] / MOCK_DATASET.totalMessages),
@@ -108,9 +108,9 @@ describe("generateMailbox", () => {
     expect(performance.now() - started).toBeLessThan(3_000);
   });
 
-  it("people mail never gets a clean-up suggestion (guards proposing to touch People, brief §2)", () => {
+  it("personal and transactional mail never gets a clean-up suggestion (guards proposing to touch people or receipts, brief §2)", () => {
     for (const label of small.labels.messages)
-      if (["people", "records", "purchases-travel", "sign-ins-security"].includes(label.category))
+      if (["personal", "transactional"].includes(label.category))
         expect(label.expectedSuggestion).toBeNull();
   });
 });

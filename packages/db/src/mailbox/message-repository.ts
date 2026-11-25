@@ -1,9 +1,9 @@
 import {
-  CATEGORIES,
-  type Category,
-  categorySchema,
-  DEFAULT_CATEGORY,
-} from "@pochimail/classification/model/category";
+  DEFAULT_EMAIL_TYPE,
+  EMAIL_TYPES,
+  type EmailType,
+  emailTypeSchema,
+} from "@pochimail/classification/model/email-type";
 import { NotFound } from "@pochimail/kernel/errors";
 import { err, ok } from "@pochimail/kernel/result";
 import type { IncomingMessage } from "@pochimail/mailbox/model/message";
@@ -17,7 +17,7 @@ import { CHUNK, find, guard, sqlHelpers } from "../shared/sql.ts";
 import { countRow, text } from "../shared/values.ts";
 import { MESSAGE_COLUMNS, messageOf } from "./message-row.ts";
 
-const categoryCountRow = z.object({ category: categorySchema, value: z.number() });
+const categoryCountRow = z.object({ category: emailTypeSchema, value: z.number() });
 
 /** Repository over one connection. */
 export function createMessageRepository(db: Database, context: RepositoryContext) {
@@ -34,19 +34,18 @@ export function createMessageRepository(db: Database, context: RepositoryContext
        @has_list_unsubscribe, @opened, @size, @saved_count, @saved_size, @topic_ids,
        @suspicious_reason_code, @suspicious_confidence, @category, @ingest_seq)`,
   );
-  // A replay changes nothing; category and ingest_seq are never overwritten.
+  // A replay changes nothing; category, topic_ids and ingest_seq are never overwritten.
   const updateMessage = db.prepare(
     `UPDATE message SET account_id = @account_id, thread_id = @thread_id, sender_hash = @sender_hash,
        received_at = @received_at, has_list_unsubscribe = @has_list_unsubscribe, opened = @opened,
        size = @size, saved_count = @saved_count, saved_size = @saved_size,
-       topic_ids = @topic_ids, suspicious_reason_code = @suspicious_reason_code,
+       suspicious_reason_code = @suspicious_reason_code,
        suspicious_confidence = @suspicious_confidence
      WHERE workspace_id = @workspace_id AND id = @id
        AND (account_id IS NOT @account_id OR thread_id IS NOT @thread_id
          OR sender_hash IS NOT @sender_hash OR received_at IS NOT @received_at
          OR has_list_unsubscribe IS NOT @has_list_unsubscribe OR opened IS NOT @opened
          OR size IS NOT @size OR saved_count IS NOT @saved_count OR saved_size IS NOT @saved_size
-         OR topic_ids IS NOT @topic_ids
          OR suspicious_reason_code IS NOT @suspicious_reason_code
          OR suspicious_confidence IS NOT @suspicious_confidence)`,
   );
@@ -135,7 +134,7 @@ export function createMessageRepository(db: Database, context: RepositoryContext
       );
       if (before === undefined) {
         const seq = countRow.parse(nextSequence.get()).value;
-        insertMessage.run({ ...bound, category: DEFAULT_CATEGORY, ingest_seq: seq });
+        insertMessage.run({ ...bound, category: DEFAULT_EMAIL_TYPE, ingest_seq: seq });
         bumpSender.run(m.workspaceId, m.accountId, hash, bound.opened, m.receivedAt);
         cache.rememberSender(m.workspaceId, m.accountId, hash, m.from);
         continue;
@@ -213,8 +212,8 @@ export function createMessageRepository(db: Database, context: RepositoryContext
       }),
     countByCategory: (ws: string, accountIds: readonly string[]) =>
       guard(() => {
-        const counts = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<
-          Category,
+        const counts = Object.fromEntries(EMAIL_TYPES.map((c) => [c, 0])) as Record<
+          EmailType,
           number
         >;
         if (accountIds.length === 0) return counts;
@@ -237,11 +236,24 @@ export function createMessageRepository(db: Database, context: RepositoryContext
           upsertBatch(batch.slice(i, i + CHUNK));
         }
       }),
-    setCategory: (ws: string, id: string, category: Category) => {
+    setCategory: (ws: string, id: string, category: EmailType) => {
       const r = guard(
         () =>
           run("UPDATE message SET category = ? WHERE workspace_id = ? AND id = ?", category, ws, id)
             .changes,
+      );
+      if (!r.ok) return r;
+      return r.value === 0 ? err(new NotFound("Message")) : ok(undefined);
+    },
+    setTopics: (ws: string, id: string, topicIds: readonly string[]) => {
+      const r = guard(
+        () =>
+          run(
+            "UPDATE message SET topic_ids = ? WHERE workspace_id = ? AND id = ?",
+            JSON.stringify(topicIds),
+            ws,
+            id,
+          ).changes,
       );
       if (!r.ok) return r;
       return r.value === 0 ? err(new NotFound("Message")) : ok(undefined);

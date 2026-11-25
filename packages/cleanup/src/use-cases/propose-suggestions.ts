@@ -8,7 +8,7 @@ import type {
   NotFound,
   StorageError,
 } from "@pochimail/kernel/errors";
-import type { AccountId, WorkspaceId } from "@pochimail/kernel/ids";
+import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
 import type { SuggestionCreated } from "../events.ts";
 import {
@@ -17,8 +17,13 @@ import {
   type Suggestion,
   SuggestionId,
 } from "../model/suggestion.ts";
-import { PROPOSABLE_LABELS } from "../policies/labels.ts";
-import type { DecisionFact, MailboxFacts, MessageFact } from "../ports/mailbox-facts.ts";
+import { CLEANABLE_LABELS, PROTECTING_SIGNALS } from "../policies/labels.ts";
+import type {
+  DecisionFact,
+  MailboxFacts,
+  MessageFact,
+  SignalFact,
+} from "../ports/mailbox-facts.ts";
 import type { CleanupUnitOfWork } from "../ports/unit-of-work.ts";
 
 const PAGE = 200;
@@ -28,8 +33,6 @@ export const MIN_SENDER_MESSAGES = 3;
 export interface ProposeSuggestionsDeps {
   readonly uow: CleanupUnitOfWork;
   readonly clock: Clock;
-  /** Labels whose mail is never proposed for cleanup (brief §2, ADR 0012); the composition names them, classification owns the labels. */
-  readonly protectedLabels: readonly string[];
 }
 
 export interface ProposeSuggestionsRequest {
@@ -47,9 +50,10 @@ export type ProposeSuggestionsError =
 /**
  * Proposes sender-level clean-ups, each with a human-readable reason and a confidence (brief §3).
  *
- * Only archive and unsubscribe are ever proposed (delete moves to Trash with approval, ADR 0012) and never for a sender who has
- * People mail, a protected category (brief §2). The reason and confidence come from what the
- * classifier recorded for the sender's messages. Re-running creates nothing twice and never
+ * Only archive and unsubscribe are ever proposed (delete moves to Trash with approval, ADR 0012),
+ * and only for senders whose every email is of a cleanable type and carries no protecting signal
+ * (ADR 0012): protection reads signals, never a type name. The reason and confidence come from
+ * what the classifier recorded for the sender's messages. Re-running creates nothing twice and never
  * resets a suggestion the user already approved or dismissed.
  */
 export class ProposeSuggestions {
@@ -60,13 +64,13 @@ export class ProposeSuggestions {
     signal: CancelSignal,
   ): AsyncResult<readonly Suggestion[], ProposeSuggestionsError> {
     const { uow, clock } = this.deps;
-    const collected = await collect(uow.reads.mailboxFacts, request);
+    const collected = await collect(uow.reads.mailboxFacts, request, clock.now());
     if (!collected.ok) return collected;
 
     const createdAt = clock.now().toISOString();
     const proposals: Suggestion[] = [];
     for (const [sender, rows] of [...collected.value].sort(([a], [b]) => (a < b ? -1 : 1))) {
-      if (!mayPropose(rows, this.deps.protectedLabels)) continue;
+      if (!mayPropose(rows)) continue;
       const proposal = propose(rows);
       if (!proposal) continue;
       const id = SuggestionId(`sug:${request.accountId}:${sender}:${proposal.kind}`);
@@ -125,11 +129,38 @@ export class ProposeSuggestions {
 interface Row {
   readonly message: MessageFact;
   readonly decision: DecisionFact | null;
+  readonly signals: readonly SignalFact[];
+}
+
+/** Each message of a page with its recorded decision and signals. */
+async function rowsOf(
+  facts: MailboxFacts,
+  request: ProposeSuggestionsRequest,
+  messages: readonly MessageFact[],
+  now: Date,
+): AsyncResult<Row[], StorageError | NotFound> {
+  const ids = messages.map((m) => m.id);
+  const decisions = await facts.decisions(request.workspaceId, ids);
+  if (!decisions.ok) return decisions;
+  const signals = await facts.signals(request.workspaceId, request.accountId, ids, now);
+  if (!signals.ok) return signals;
+  const decisionOf = new Map(decisions.value.map((d) => [d.messageId, d]));
+  const signalsOf = new Map<MessageId, SignalFact[]>();
+  for (const s of signals.value)
+    signalsOf.set(s.messageId, [...(signalsOf.get(s.messageId) ?? []), s]);
+  return ok(
+    messages.map((message) => ({
+      message,
+      decision: decisionOf.get(message.id) ?? null,
+      signals: signalsOf.get(message.id) ?? [],
+    })),
+  );
 }
 
 async function collect(
   facts: MailboxFacts,
   request: ProposeSuggestionsRequest,
+  now: Date,
 ): AsyncResult<Map<string, Row[]>, StorageError | NotFound> {
   const bySender = new Map<string, Row[]>();
   let cursor: string | undefined;
@@ -140,26 +171,20 @@ async function collect(
       ...(cursor === undefined ? {} : { cursor }),
     });
     if (!page.ok) return page;
-    const decisions = await facts.decisions(
-      request.workspaceId,
-      page.value.items.map((m) => m.id),
-    );
-    if (!decisions.ok) return decisions;
-    const byId = new Map(decisions.value.map((d) => [d.messageId, d]));
-    for (const message of page.value.items) {
-      const rows = bySender.get(message.from) ?? [];
-      rows.push({ message, decision: byId.get(message.id) ?? null });
-      bySender.set(message.from, rows);
-    }
+    const rows = await rowsOf(facts, request, page.value.items, now);
+    if (!rows.ok) return rows;
+    for (const row of rows.value)
+      bySender.set(row.message.from, [...(bySender.get(row.message.from) ?? []), row]);
     cursor = page.value.nextCursor ?? undefined;
   } while (cursor !== undefined);
   return ok(bySender);
 }
 
-function mayPropose(rows: readonly Row[], protectedLabels: readonly string[]): boolean {
+function mayPropose(rows: readonly Row[]): boolean {
   if (rows.length < MIN_SENDER_MESSAGES) return false;
-  if (rows.some((r) => protectedLabels.includes(r.message.category))) return false;
-  if (!rows.every((r) => PROPOSABLE_LABELS.includes(r.message.category))) return false;
+  if (rows.some((r) => r.signals.some((s) => PROTECTING_SIGNALS.includes(s.kind)))) return false;
+  if (!rows.every((r) => CLEANABLE_LABELS.some((label) => label === r.message.category)))
+    return false;
   // ADR 0012: an unsure or undecided email is protected, whatever label it was filed under.
   return rows.every((r) => r.decision !== null && r.decision.confidence >= UNSURE_BELOW);
 }

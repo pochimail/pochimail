@@ -1,6 +1,7 @@
 import { PROVIDER_KINDS } from "@pochimail/accounts/model/account";
 import { ACTION_KINDS } from "@pochimail/actions/model/action";
-import { CATEGORIES, SIGNAL_KINDS } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
+import { SIGNAL_KINDS } from "@pochimail/classification/model/signal";
 import { RECOMMENDATION_KINDS } from "@pochimail/cleanup/model/suggestion";
 
 // Fake data only: every address is on example.com, every text is invented.
@@ -62,7 +63,7 @@ export const sampleBuilders = {
     topicIds: Array.from({ length: r.int(3) }, () => id(r, "topic")),
     ...(r.bool() ? { suspicious: { reasons: reasons(r), confidence: confidence(r) } } : {}),
   }),
-  message: (r: Rng) => ({ ...sampleBuilders.incomingMessage(r), category: r.pick(CATEGORIES) }),
+  message: (r: Rng) => ({ ...sampleBuilders.incomingMessage(r), category: r.pick(EMAIL_TYPES) }),
   thread: (r: Rng) => ({
     ...base(r),
     id: id(r, "t"),

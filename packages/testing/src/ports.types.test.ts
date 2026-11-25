@@ -30,7 +30,15 @@ describe("port type tests", () => {
     expectTypeOf<UnitOfWork>().toHaveProperty("outbox");
     // Every read repository, whatever its name, exposes no mutating method.
     type Reads = UnitOfWork["reads"];
-    type Mutating = "save" | "upsert" | "upsertMany" | "append" | "set" | "setCategory" | "delete";
+    type Mutating =
+      | "save"
+      | "upsert"
+      | "upsertMany"
+      | "append"
+      | "set"
+      | "setCategory"
+      | "setTopics"
+      | "delete";
     type MutatingOnReads = { [K in keyof Reads]: Extract<keyof Reads[K], Mutating> }[keyof Reads];
     expectTypeOf<MutatingOnReads>().toBeNever();
     // And the read side covers exactly the repositories the write side has, plus the composed read models.

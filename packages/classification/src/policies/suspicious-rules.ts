@@ -1,4 +1,4 @@
-import type { SuspiciousFlag } from "../model/category.ts";
+import type { SuspiciousFlag } from "../model/suspicious-flag.ts";
 
 export interface TrustInput {
   /** The domain flag stored at ingest, if any. */

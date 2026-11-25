@@ -1,5 +1,5 @@
 import type { ActionLog } from "@pochimail/actions/model/action";
-import { DEFAULT_CATEGORY } from "@pochimail/classification/model/category";
+import { DEFAULT_EMAIL_TYPE } from "@pochimail/classification/model/email-type";
 import type { IncomingMessage, Message } from "@pochimail/mailbox/model/message";
 import { copy, type Data, key } from "../in-memory-store-data.ts";
 
@@ -32,7 +32,8 @@ export function applyActionEffects(data: Data, k: string, entry: ActionLog): voi
 export function storeMessage(m: IncomingMessage, existing: Message | undefined): Message {
   return copy({
     ...m,
-    category: existing?.category ?? DEFAULT_CATEGORY,
+    category: existing?.category ?? DEFAULT_EMAIL_TYPE,
+    topicIds: existing?.topicIds ?? m.topicIds,
     ...(existing?.archived === undefined ? {} : { archived: existing.archived }),
   });
 }

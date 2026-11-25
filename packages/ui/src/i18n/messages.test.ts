@@ -128,21 +128,21 @@ describe("catalog copy (brief §6 › Voice, design › Writing)", () => {
   it("explains what Alert emails holds, where the mail stays and what appears later", () => {
     const placeholders = [
       {
-        text: messages["category.notifications.placeholder"].text,
+        text: messages["type.notification.placeholder"].text,
         source: /alert emails from apps and social networks/iu,
         approval: /after you approve/iu,
         label: /only label them/iu,
         inbox: /in your inbox/iu,
       },
       {
-        text: fr["category.notifications.placeholder"].text,
+        text: fr["type.notification.placeholder"].text,
         source: /emails d’alerte d’applications et de réseaux sociaux/u,
         approval: /après votre accord/u,
         label: /je les étiquette/u,
         inbox: /boîte de réception/u,
       },
       {
-        text: ja["category.notifications.placeholder"].text,
+        text: ja["type.notification.placeholder"].text,
         source: /アプリやSNSからの通知メール/u,
         approval: /承認/u,
         label: /ラベルを付けるだけ/u,

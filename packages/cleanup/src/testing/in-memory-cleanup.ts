@@ -179,7 +179,7 @@ export function createInMemoryCleanup(): InMemoryCleanup {
         facts.set(`${WS_A}/${id}`, {
           id,
           from: "sender@example.com",
-          category: row.category ?? "notifications",
+          category: row.category ?? "notification",
           receivedAt: new Date(Date.UTC(2026, 0, 1) + n * 60_000).toISOString(),
           opened: false,
           hasListUnsubscribe: false,

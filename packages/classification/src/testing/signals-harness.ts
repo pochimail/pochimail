@@ -2,8 +2,8 @@ import type { Clock } from "@pochimail/kernel/clock";
 import type { MessageId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import { expect } from "vitest";
-import type { Category, SignalKind } from "../model/category.ts";
-import type { StoredSignal } from "../model/signal.ts";
+import type { EmailType } from "../model/email-type.ts";
+import type { SignalKind, StoredSignal } from "../model/signal.ts";
 import type { SignalSettings } from "../model/signal-settings.ts";
 import type { Classifier } from "../ports/classifier.ts";
 import type { ClassificationUnitOfWork } from "../ports/unit-of-work.ts";
@@ -16,7 +16,7 @@ export interface SignalsHarness extends Seeder {
   readonly clock: Clock & { advance(ms: number): void };
   readonly classifier: Classifier;
   /** Ground-truth labels the classifier answers from. */
-  readonly labels: Map<string, Category>;
+  readonly labels: Map<string, EmailType>;
   snapshot(): Promise<unknown>;
 }
 
