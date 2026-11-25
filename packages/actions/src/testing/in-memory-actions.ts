@@ -1,7 +1,7 @@
 import { NotFound, StorageError } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
 import { err, ok } from "@pochimail/kernel/result";
-import type { ActionLog } from "../model/action.ts";
+import { type ActionLog, unresolvedPending } from "../model/action.ts";
 import type { ActionsUnitOfWork } from "../ports/unit-of-work.ts";
 
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -27,6 +27,13 @@ export function createInMemoryActions(): InMemoryActions {
       ok(logs.filter((e) => e.workspaceId === ws && e.idempotencyKey === key).map(copy)),
     listForBatch: async (ws, id) =>
       ok(logs.filter((e) => e.workspaceId === ws && e.batchId === id).map(copy)),
+    listPending: async (ws, before) =>
+      ok(
+        unresolvedPending(
+          logs.filter((e) => e.workspaceId === ws),
+          before,
+        ).map(copy),
+      ),
     list: async (ws) =>
       ok({ items: logs.filter((e) => e.workspaceId === ws).map(copy), nextCursor: null }),
   };

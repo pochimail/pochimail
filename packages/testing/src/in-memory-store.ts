@@ -1,4 +1,4 @@
-import type { ActionLog } from "@pochimail/actions/model/action";
+import { type ActionLog, unresolvedPending } from "@pochimail/actions/model/action";
 import { CATEGORIES } from "@pochimail/classification/model/category";
 import type { AsyncResult, CancelSignal, Page, PageRequest } from "@pochimail/kernel/common";
 import { Cancelled, NotFound, StorageError } from "@pochimail/kernel/errors";
@@ -22,11 +22,11 @@ function paginate<T>(sorted: readonly T[], page: PageRequest): Page<T> {
 const oldestFirst = (
   log: Map<string, ActionLog>,
   ws: WorkspaceId,
-  match: (l: ActionLog) => boolean,
+  match: (l: ActionLog) => boolean = () => true,
 ) =>
   [...log.values()]
     .filter((l) => l.workspaceId === ws && match(l))
-    .sort((a, b) => byText(a.at, b.at) || byText(a.id, b.id))
+    .sort((a, b) => byText(a.at, b.at))
     .map(copy);
 function inSequenceRange(
   data: Data,
@@ -153,11 +153,7 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
         get: (ws, id) => found(data().actionLog, key(ws, id), "Action log entry"),
         listForAction: (ws, actionId) =>
           guarded(() =>
-            ok(
-              [...data().actionLog.values()]
-                .filter((l) => l.workspaceId === ws && l.actionId === actionId)
-                .map(copy),
-            ),
+            ok(oldestFirst(data().actionLog, ws, (l) => l.actionId === actionId)),
           ) as never,
         listForKey: (ws, idempotencyKey) =>
           guarded(() =>
@@ -167,6 +163,8 @@ export function createInMemoryUnitOfWork(): InMemoryUnitOfWork {
           guarded(() =>
             ok(oldestFirst(data().actionLog, ws, (l) => l.batchId === batchId)),
           ) as never,
+        listPending: (ws, before) =>
+          guarded(() => ok(unresolvedPending(oldestFirst(data().actionLog, ws), before))) as never,
         list: (ws, page) =>
           guarded(() => {
             const rows = [...data().actionLog.values()].filter((l) => l.workspaceId === ws);
