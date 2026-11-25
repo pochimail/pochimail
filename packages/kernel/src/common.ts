@@ -31,7 +31,13 @@ export function createCancelSource(): { signal: CancelSignal; abort: () => void 
     abort: () => {
       if (signal.aborted) return;
       signal.aborted = true;
-      for (const listener of [...listeners]) listener();
+      for (const listener of [...listeners]) {
+        try {
+          listener();
+        } catch {
+          // Deliberately swallowed: a broken listener must not stop the other listeners from being cancelled.
+        }
+      }
     },
   };
 }
