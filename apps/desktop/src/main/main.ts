@@ -9,17 +9,22 @@ import {
   ipcMain,
   Menu,
   MessageChannelMain,
+  Notification,
   nativeImage,
   nativeTheme,
+  powerMonitor,
   safeStorage,
   session,
   shell,
   Tray,
   utilityProcess,
 } from "electron";
-import { demoScale, demoSwitches } from "../shared/demo.ts";
+import { demoScale } from "../shared/demo.ts";
+import { type NotificationScreen, openScreenChannel } from "../shared/notifications.ts";
 import { databasePathFor } from "./database-path.ts";
+import { hostEnvironments } from "./host-env.ts";
 import { registerOsCalls } from "./os-calls.ts";
+import { bridgePowerToWorker } from "./power-bridge.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
 import {
   hardenWebContents,
@@ -36,6 +41,7 @@ import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
 import { startUpdates } from "./updater/start-updates.ts";
 import { createWorkerLifecycle, type WorkerLifecycle } from "./worker-lifecycle.ts";
+import { showWorkerNotifications } from "./worker-notifications.ts";
 
 // A packaged app never honours the dev-server variable, so an environment override cannot point the window elsewhere.
 const devServerUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
@@ -107,37 +113,7 @@ const processStorageGate = (): StorageGate => {
 
 // Demo mode (fixture mailbox, no real account) is for dev and E2E only: a packaged app never honours it.
 const demo = app.isPackaged ? undefined : demoScale(process.env.POCHIMAIL_DEMO);
-// Hosts get no copy of the parent environment: only what a process needs to start, plus the demo switch.
-const SYSTEM_ENV = [
-  "PATH",
-  "HOME",
-  "TMPDIR",
-  "TMP",
-  "TEMP",
-  "SystemRoot",
-  "LANG",
-  "LC_ALL",
-] as const;
-const demoEnv: Record<string, string> = {
-  ...Object.fromEntries(
-    SYSTEM_ENV.flatMap((name) => {
-      const value = process.env[name];
-      return value === undefined ? [] : [[name, value] as const];
-    }),
-  ),
-  ...demoSwitches(demo, process.env),
-};
-
-// The worker alone gets the sign-in configuration; the database path travels in its start message.
-const workerEnv = (): Record<string, string> => ({
-  ...demoEnv,
-  ...Object.fromEntries(
-    ["POCHIMAIL_GOOGLE_CLIENT_ID", "POCHIMAIL_GOOGLE_CLIENT_SECRET"].flatMap((name) => {
-      const value = process.env[name];
-      return value === undefined ? [] : [[name, value] as const];
-    }),
-  ),
-});
+const { demoEnv, workerEnv } = hostEnvironments(demo, process.env);
 
 // One lifecycle per process: it owns every window's worker and model host (restart, orderly shutdown).
 let workerLifecycle: WorkerLifecycle | undefined;
@@ -155,6 +131,16 @@ const processWorkerLifecycle = (): WorkerLifecycle => {
         env: demoEnv,
       }),
     createChannel: () => new MessageChannelMain(),
+    attachToWorker: (worker) => {
+      showWorkerNotifications({
+        worker,
+        create: (content) => (Notification.isSupported() ? new Notification(content) : undefined),
+        now: Date.now,
+        osLocale: localeFromLanguages(app.getPreferredSystemLanguages()),
+        open: openScreen,
+      });
+      return bridgePowerToWorker(powerMonitor, worker);
+    },
     timer: {
       set: (fn, ms) => {
         const handle = setTimeout(fn, ms);
@@ -171,7 +157,7 @@ const processWorkerLifecycle = (): WorkerLifecycle => {
   return workerLifecycle;
 };
 
-const createWindow = (): void => {
+const createWindow = (): BrowserWindow => {
   const window = new BrowserWindow({
     width: 1100,
     height: 760,
@@ -212,6 +198,7 @@ const createWindow = (): void => {
     });
   if (devServerUrl === undefined) void window.loadFile(rendererFile);
   else void window.loadURL(devServerUrl);
+  return window;
 };
 
 const appUrl = (url: string): boolean => isAppUrl(url, { devServerOrigin, rendererFile });
@@ -221,6 +208,16 @@ const windows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
 app.on("web-contents-created", (_event, contents) => hardenWebContents(contents, appUrl));
 
 const openOrFocus = (): void => focusOrCreateWindow(windows(), createWindow);
+
+/** A notification was clicked: show the window and tell the page which screen to open. */
+const openScreen = (screen: NotificationScreen): void => {
+  openOrFocus();
+  const [window] = windows();
+  if (window === undefined) return;
+  const send = (): void => window.webContents.send(openScreenChannel, screen);
+  if (window.webContents.isLoading()) window.webContents.once("did-finish-load", send);
+  else send();
+};
 // Before anything opens the database: a refused process starts nothing (#320).
 const holdsLock = holdSingleInstanceLock(app, openOrFocus);
 

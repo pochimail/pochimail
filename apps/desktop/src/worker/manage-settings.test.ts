@@ -1,4 +1,6 @@
 // Guards: a settings patch overwriting fields it does not name, and a legacy stored row breaking the screen.
+
+import { StorageError } from "@pochimail/kernel/errors";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { unwrap } from "@pochimail/kernel/result";
 import { USER_LOCALES } from "@pochimail/ui/i18n/messages.ts";
@@ -94,4 +96,56 @@ it("accepts exactly the shipped UI locales and falls back on anything else", asy
   expect(unwrap(await new ManageSettings({ store }).get(WS)).locale).toBe(
     DEFAULT_APP_SETTINGS.locale,
   );
+});
+
+// Guards: two overlapping patches reading the same stale settings, so the later save undoes the earlier one.
+it("overlapping patches both end up stored, whichever finishes first (guards a lost write)", async () => {
+  const inner = createInMemorySettingsStore();
+  let delayNextGet = true;
+  const store: SettingsStore = {
+    save: inner.save,
+    get: async (ws) => {
+      const read = await inner.get(ws);
+      if (delayNextGet) {
+        delayNextGet = false;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      return read;
+    },
+  };
+  const settings = new ManageSettings({ store });
+
+  await Promise.all([
+    settings.update(WS, { summaryShown: true }),
+    settings.update(WS, { autonomy: "autopilot" }),
+  ]);
+
+  expect(unwrap(await settings.get(WS))).toMatchObject({
+    summaryShown: true,
+    autonomy: "autopilot",
+  });
+});
+
+// Guards: one failed update leaving the queue stuck so no later save ever runs.
+it("a failed update does not block the next one", async () => {
+  const store = createInMemorySettingsStore();
+  const settings = new ManageSettings({ store });
+  store.faults.failWith(new StorageError(), { times: 1 });
+
+  const failed = await settings.update(WS, { theme: "dark" });
+  const next = await settings.update(WS, { theme: "light" });
+
+  expect(failed.ok).toBe(false);
+  expect(unwrap(next).theme).toBe("light");
+});
+
+// Guards: a read failure that is not a bad row (disk, lock) overwriting good settings with the defaults.
+it("a read failure that is not a bad row leaves the stored settings alone", async () => {
+  const store = createInMemorySettingsStore();
+  await store.save(WS, { ...DEFAULT_APP_SETTINGS, autonomy: "autopilot" });
+  const settings = new ManageSettings({ store });
+  store.faults.failWith(new StorageError(), { times: 1 });
+
+  expect((await settings.update(WS, { theme: "dark" })).ok).toBe(false);
+  expect(unwrap(await settings.get(WS)).autonomy).toBe("autopilot");
 });

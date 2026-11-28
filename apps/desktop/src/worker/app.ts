@@ -24,10 +24,12 @@ import type { WorkflowUnitOfWork as UnitOfWork } from "@pochimail/workflows/port
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
 import { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
 import type { Handlers } from "../shared/ipc/server.ts";
+import type { NotifyMessage } from "../shared/notifications.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { SettingsStore } from "../shared/settings.ts";
 import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers, type WorkerHandlers } from "./handlers.ts";
+import { createMainNotifier } from "./main-notifier.ts";
 import { ManageSettings } from "./manage-settings.ts";
 import { resolvePendingActions } from "./pending-actions.ts";
 
@@ -50,6 +52,8 @@ export interface WorkerAdapters {
   readonly classifier: Classifier;
   /** Without it scans keep one classify batch at a time and never pause for power. */
   readonly power?: PowerMonitor;
+  /** One way to main, which shows Pochimail's own notifications; without it nothing is announced. */
+  readonly sendNotification?: (message: NotifyMessage) => void;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
@@ -100,6 +104,20 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     if (event.payload.state === "disconnected") adapters.clearClassifierCache?.();
   });
 
+  const settings = new ManageSettings({ store: adapters.settings, logger: adapters.logger });
+  const { sendNotification } = adapters;
+  if (sendNotification) {
+    const notifier = createMainNotifier({ settings, workspaceId, send: sendNotification });
+    bus.subscribe("ScanCompleted", async (event) => {
+      if (event.payload.processed > 0)
+        await notifier.notify({ kind: "scan-complete", count: event.payload.processed });
+    });
+    bus.subscribe("DigestReady", async (event) => {
+      if (event.payload.itemCount > 0)
+        await notifier.notify({ kind: "digest-ready", count: event.payload.itemCount });
+    });
+  }
+
   const limiter = adapters.power && createPowerLimiter(adapters.power, CLASSIFY_LIMITS);
   const scans = new ScanRunner({
     uow,
@@ -134,7 +152,7 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     types: new CountTypes({ uow }),
     topics: new CountTopics({ uow }),
     digestStatus: new GetDigestStatus({ tally }),
-    settings: new ManageSettings({ store: adapters.settings }),
+    settings,
     scans,
     events: bus,
     deviceName: adapters.deviceName,

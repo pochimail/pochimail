@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
+  type NotificationScreen,
+  notificationScreenSchema,
+  openScreenChannel,
+} from "../shared/notifications.ts";
+import {
   chosenFolderSchema,
   folderPathSchema,
   mailAppLinkSchema,
@@ -40,10 +45,31 @@ ipcRenderer.once("worker-port", (event) => {
   deliver();
 });
 
+// A notification can be clicked before the page has subscribed (a window opened by the click), so the screen waits here.
+let screenListener: ((screen: NotificationScreen) => void) | undefined;
+let pendingScreen: NotificationScreen | undefined;
+
+ipcRenderer.on(openScreenChannel, (_event, screen: unknown) => {
+  const parsed = notificationScreenSchema.safeParse(screen);
+  if (!parsed.success) return;
+  if (screenListener === undefined) pendingScreen = parsed.data;
+  else screenListener(parsed.data);
+});
+
 const api = {
   requestWorkerPort: (): void => {
     requested = true;
     deliver();
+  },
+  onOpenScreen: (listener: (screen: NotificationScreen) => void): (() => void) => {
+    screenListener = listener;
+    if (pendingScreen !== undefined) {
+      listener(pendingScreen);
+      pendingScreen = undefined;
+    }
+    return () => {
+      if (screenListener === listener) screenListener = undefined;
+    };
   },
   openMailAppLink: (link: string): Promise<void> =>
     ipcRenderer.invoke(osChannels.openMailAppLink, mailAppLinkSchema.parse(link)),

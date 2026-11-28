@@ -31,6 +31,8 @@ export type WorkerLifecyclePorts = {
   /** The storage gate: waits for the person's choice, then hands a fresh copy of the key each time. */
   loadKey: () => Promise<Result<Buffer | undefined, DatabaseKeyError>>;
   openExternal: (url: string) => Promise<void>;
+  /** Wires per-worker main-side services (power state, notifications) to a freshly forked worker; returns how to unwire them. */
+  attachToWorker?: (worker: HostProcess) => () => void;
   logger: Logger;
 };
 
@@ -66,6 +68,7 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
         logger,
       });
       const unlink = linkWorkerOnEveryLoad(window.webContents, worker, ports.createChannel);
+      const detach = ports.attachToWorker?.(worker);
       let cancelStable = (): void => undefined;
       let stopped = false;
       let markExited = (): void => undefined;
@@ -75,6 +78,7 @@ export const createWorkerLifecycle = (ports: WorkerLifecyclePorts) => {
         stop: () => {
           modelHost.stop();
           unlink();
+          detach?.();
           stopped = true;
           cancelStable();
         },

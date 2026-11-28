@@ -35,8 +35,8 @@ Every workspace is `packages/<name>` or `apps/<name>`. Packages are of three kin
 | Process | Does |
 |---|---|
 | renderer | React UI, sandboxed; talks to the worker through `apps/desktop/src/shared` |
-| preload | 4 typed methods: `requestWorkerPort`, `openMailAppLink`, `showInFinder`, `chooseFolder` |
-| main | windows, OS, keychain, supervision |
+| preload | typed methods: `requestWorkerPort`, `openMailAppLink`, `showInFinder`, `chooseFolder`, `onOpenScreen` |
+| main | windows, OS, keychain, supervision; tells the worker the power state and shows its notifications (one-way messages) |
 | worker | runs domains, workflows, pipeline and adapters |
 | model host | local inference |
 

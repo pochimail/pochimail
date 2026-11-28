@@ -1,6 +1,7 @@
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
 import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
@@ -192,6 +193,7 @@ export const fr = {
   "settings.title": entry("Réglages", []),
   "settings.description": entry("Les préférences et les réglages du compte apparaîtront ici.", []),
   ...settingsMessages.fr,
+  ...pochimailNotificationMessages.fr,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Navigation principale", []),

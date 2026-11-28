@@ -1,6 +1,7 @@
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
 import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
@@ -172,6 +173,7 @@ export const ja = {
   "settings.title": entry("設定", []),
   "settings.description": entry("環境設定とアカウント設定がここに表示されます。", []),
   ...settingsMessages.ja,
+  ...pochimailNotificationMessages.ja,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("メインナビゲーション", []),

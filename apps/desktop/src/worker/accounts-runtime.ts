@@ -23,7 +23,9 @@ import { createOAuthRevoker } from "@pochimail/net/oauth/revoke";
 import { OAuthSignIn } from "@pochimail/net/oauth/sign-in";
 import { createAccessTokenSource } from "@pochimail/net/oauth/tokens";
 import type { Timer } from "@pochimail/pipeline/event-batching";
+import type { PowerMonitor } from "@pochimail/pipeline/power-monitor";
 import type { Handlers } from "../shared/ipc/server.ts";
+import type { NotifyMessage } from "../shared/notifications.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import { DEFAULT_APP_SETTINGS } from "../shared/settings.ts";
 import { createAccountProcedures } from "./account-procedures.ts";
@@ -40,6 +42,10 @@ export interface AccountsRuntimeOptions {
   readonly logger: Logger;
   readonly deviceName: () => DeviceName;
   readonly classifier: Classifier;
+  /** Lets scans slow down or pause on battery and sleep. */
+  readonly power?: PowerMonitor;
+  /** Sends a notification to main, which shows it (ADR 0008). */
+  readonly sendNotification?: (message: NotifyMessage) => void;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
   /** Tests point the providers at local fakes; the app leaves this out and uses the real hosts. */
@@ -110,6 +116,10 @@ export const createAccountsRuntime = (
     queue: createSqliteJobQueue(storage.value, clock),
     settings: createSqliteSettingsStore(storage.value),
     classifier: options.classifier,
+    ...(options.power === undefined ? {} : { power: options.power }),
+    ...(options.sendNotification === undefined
+      ? {}
+      : { sendNotification: options.sendNotification }),
     ...(options.clearClassifierCache === undefined
       ? {}
       : { clearClassifierCache: options.clearClassifierCache }),

@@ -4,6 +4,10 @@ interface Window {
   /** The preload's whole surface (src/preload/preload.ts). */
   pochimail: {
     requestWorkerPort: () => void;
+    /** A clicked notification asks for a screen (src/shared/notifications.ts); returns the unsubscribe. */
+    onOpenScreen: (
+      listener: (screen: import("#shared/notifications.ts").NotificationScreen) => void,
+    ) => () => void;
     openMailAppLink: (link: string) => Promise<void>;
     showInFinder: (path: string) => Promise<void>;
     chooseFolder: () => Promise<string | null>;

@@ -34,6 +34,15 @@ const settingsStoreChecks: readonly Check<SettingsStore>[] = [
       expect(unwrap(await s.get(WS_2))).toEqual(DEFAULT_APP_SETTINGS);
     },
   ),
+  check(
+    "saving twice for one workspace keeps the second value (guards a second save being lost or duplicated)",
+    async (s) => {
+      await s.save(WS_1, { ...DEFAULT_APP_SETTINGS, autonomy: "autopilot", theme: "dark" });
+      const second: AppSettings = { ...DEFAULT_APP_SETTINGS, theme: "light" };
+      unwrap(await s.save(WS_1, second));
+      expect(unwrap(await s.get(WS_1))).toEqual(second);
+    },
+  ),
 ];
 
 /** Contract for any `SettingsStore` (in-memory and SQLite). `make` returns a fresh, empty store. */

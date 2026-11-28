@@ -12,6 +12,7 @@ import { type UpdatesApi, UpdatesProvider } from "../features/updates/updates-co
 import { AppEventsBridge } from "../lib/app-events-bridge.tsx";
 import { AppErrorBoundary } from "../lib/error-boundary.tsx";
 import { useAppLocale } from "../lib/locale.ts";
+import { NotificationBridge } from "../lib/notification-bridge.tsx";
 import { OptimisticActionProvider } from "../lib/optimistic-context.tsx";
 import { createAppQueryClient } from "../lib/query/client.ts";
 import { createOptimisticActionRegistry } from "../lib/query/optimistic.ts";
@@ -23,6 +24,7 @@ function AppShell({ router }: { router: AppRouter }) {
   return (
     <>
       <AppEventsBridge client={client} />
+      <NotificationBridge router={router} />
       <RouterProvider router={router} />
     </>
   );
