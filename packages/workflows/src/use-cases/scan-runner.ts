@@ -34,7 +34,7 @@ export interface ScanRunnerDeps {
   /** A new, unique job id. */
   readonly newJobId: () => string;
   /** The scan for one account; the composition root wires its provider and classifier. */
-  readonly scanFor: (account: Account) => RunScan;
+  readonly scanFor: (account: Account) => Pick<RunScan, "execute">;
 }
 
 /**
@@ -177,10 +177,13 @@ export class ScanRunner {
       if (stop.signal.aborted) return;
       const found = await this.deps.uow.reads.accounts.get(this.deps.workspaceId, job.accountId);
       const outcome = found.ok
-        ? await this.deps
-            .scanFor(found.value)
-            .execute({ jobId: job.id, processedBefore: job.processed }, stop.signal)
-            .catch(() => undefined)
+        ? // Building the scan can throw (a missing client id): that fails the job, it never leaves it running.
+          await (async () =>
+            this.deps
+              .scanFor(found.value)
+              .execute({ jobId: job.id, processedBefore: job.processed }, stop.signal))().catch(
+            () => undefined,
+          )
         : undefined;
       if (outcome?.ok) {
         job.processed = outcome.value.processed;

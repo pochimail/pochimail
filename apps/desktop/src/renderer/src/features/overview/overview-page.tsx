@@ -10,7 +10,7 @@ import { type T, useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { cn } from "@pochimail/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
@@ -22,6 +22,7 @@ import {
   cleanRows,
   cleanSplit,
   type OverviewData,
+  type OverviewView,
   overviewView,
   type ReviewTarget,
   type RowView,
@@ -165,6 +166,44 @@ function CatchSection({ rows, t, locale, onReview }: SectionProps & { rows: RowV
   );
 }
 
+/** What replaces the figures: a failed read, no account to read, or an account whose mail has not arrived yet. */
+function NoFiguresState({
+  view,
+  t,
+  onRetry,
+  onConnect,
+  onSync,
+}: {
+  view: OverviewView;
+  t: T;
+  onRetry: () => void;
+  onConnect: () => void;
+  onSync: () => void;
+}) {
+  const copy = {
+    error: {
+      title: t("overview.worker.unavailable"),
+      label: t("overview.retry"),
+      onClick: onRetry,
+    },
+    empty: {
+      title: t("overview.empty.title"),
+      description: t("overview.empty.description"),
+      label: t("overview.empty.action"),
+      onClick: onConnect,
+    },
+    syncing: {
+      title: t("overview.syncing.title"),
+      description: t("overview.syncing.description"),
+      label: t("overview.retry"),
+      onClick: onSync,
+    },
+  } as const;
+  if (view !== "error" && view !== "empty" && view !== "syncing") return null;
+  const { label, onClick, title, ...rest } = copy[view];
+  return <EmptyState title={title} {...rest} action={{ label, onClick }} />;
+}
+
 export function OverviewPage() {
   const t = useT();
   const client = useWorkerClient();
@@ -188,6 +227,12 @@ export function OverviewPage() {
     (a) => account === undefined || a.id === account,
   );
   const scan = useScanStatus(scopedAccounts.map((a) => a.id));
+  // No scan runs and no mail is stored yet: starting again is the retry (a start while one runs shares that job).
+  const startSync = useMutation({
+    mutationFn: () =>
+      Promise.all(scopedAccounts.map((a) => client.call("scan.start", { accountId: a.id }))),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
+  });
 
   const locale = useLocale();
   const device = deviceLabel(deviceName.data ?? "device", locale);
@@ -200,7 +245,7 @@ export function OverviewPage() {
     });
   const review = (target: ReviewTarget) => goToType(target.category, target.review);
 
-  const view = overviewView(data, scan.active, overview.isError);
+  const view = overviewView(data, scan.active, overview.isError, scopedAccounts.length > 0);
   const rows = data === undefined ? [] : cleanRows(data, t);
   const signals = data === undefined ? [] : signalRows(data, t);
 
@@ -244,22 +289,13 @@ export function OverviewPage() {
           <Skeleton className="h-40" />
         </div>
       )}
-      {view === "error" && (
-        <EmptyState
-          title={t("overview.worker.unavailable")}
-          action={{ label: t("overview.retry"), onClick: () => void overview.refetch() }}
-        />
-      )}
-      {view === "empty" && (
-        <EmptyState
-          title={t("overview.empty.title")}
-          description={t("overview.empty.description")}
-          action={{
-            label: t("overview.empty.action"),
-            onClick: () => void navigate({ to: "/connect" }),
-          }}
-        />
-      )}
+      <NoFiguresState
+        view={view}
+        t={t}
+        onRetry={() => void overview.refetch()}
+        onConnect={() => void navigate({ to: "/connect" })}
+        onSync={() => startSync.mutate()}
+      />
       {view === "content" && data !== undefined && (
         <div className="flex flex-col gap-8">
           <CleanUpSection data={data} rows={rows} t={t} locale={locale} onReview={review} />

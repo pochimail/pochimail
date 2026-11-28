@@ -112,6 +112,11 @@ export const messages = {
     [],
   ),
   "overview.empty.action": entry("Connect an account", []),
+  "overview.syncing.title": entry("Syncing your first emails", []),
+  "overview.syncing.description": entry(
+    "Nothing is sorted yet. I read your mail on this device; if this stays empty, try again.",
+    [],
+  ),
   "overview.worker.unavailable": entry("I could not load your overview.", []),
   "overview.retry": entry("Try again", []),
   "overview.scan.paused": entry("Paused. Nothing was changed.", []),

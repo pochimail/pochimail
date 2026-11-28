@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { createRpcClient } from "#shared/ipc/client.ts";
@@ -68,6 +68,7 @@ const setup = (
   initial: Record<string, Overview>,
   path = "/overview",
   locale?: "en" | "fr" | "ja",
+  noAccounts = false,
 ) => {
   const { port1, port2 } = new MessageChannel();
   port1.start();
@@ -79,6 +80,7 @@ const setup = (
     /** The worker's live scan jobs; Pause and Resume change them like the real runner does. */
     jobs: [] as OutputOf<"scan.status">,
     failOverview: false,
+    noAccounts,
     statusAsked: 0,
     stopped: 0,
     emitters: new Map<string, ((e: EventOf<"scan.progress">) => void)[]>(),
@@ -92,10 +94,17 @@ const setup = (
     procedures: {
       "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
-      "accounts.list": () => [
-        { id: "a1", provider: "google" as const, displayName: "ann@example.test" },
-        { id: "a2", provider: "microsoft" as const, displayName: "ann@work.example.test" },
-      ],
+      "accounts.list": () =>
+        state.noAccounts
+          ? []
+          : [
+              { id: "a1", provider: "google" as const, displayName: "ann@example.test" },
+              { id: "a2", provider: "microsoft" as const, displayName: "ann@work.example.test" },
+            ],
+      "scan.start": ({ accountId }) => {
+        state.calls.push(`start:${accountId}`);
+        return { jobId: `job-${accountId}` };
+      },
       "mailbox.types": () => ({
         personal: 0,
         transactional: 0,
@@ -359,10 +368,20 @@ describe("overview", () => {
     expect(within(document.body).getByText("1 account")).toBeTruthy();
   });
 
-  it("shows the empty state, not a ledger of zeros, for an account with no emails (guards zeros on a fresh account)", async () => {
-    setup({ all: empty });
+  it("asks to connect only when no account exists (guards the connect prompt on a connected account)", async () => {
+    const state = setup({ all: empty }, "/overview", undefined, true);
     expect(await screen.findByRole("heading", { name: "No emails yet" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Connect an account" })).toBeTruthy();
+    expect(state.noAccounts).toBe(true);
     expect(screen.queryByText("Catch what matters")).toBeNull();
+  });
+
+  it("says it is syncing, with a retry that restarts the scan, for a connected account with no mail (guards 'Connect an account' after a connect)", async () => {
+    const state = setup({ all: empty });
+    expect(await screen.findByRole("heading", { name: "Syncing your first emails" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Connect an account" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(state.calls).toEqual(["start:a1", "start:a2"]));
   });
 
   it("says nothing needs attention when the mailbox is sorted and clean (guards an empty section with no sentence)", async () => {

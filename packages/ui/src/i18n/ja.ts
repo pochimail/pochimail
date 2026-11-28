@@ -87,6 +87,11 @@ export const ja = {
   "overview.empty.title": entry("まだメールがありません", []),
   "overview.empty.description": entry("アカウントを接続すると、この端末の中で整理を始めます。", []),
   "overview.empty.action": entry("アカウントを接続する", []),
+  "overview.syncing.title": entry("最初のメールを同期しています", []),
+  "overview.syncing.description": entry(
+    "まだ整理されたメールはありません。この端末の中でメールを読み込みます。空のままなら、もう一度お試しください。",
+    [],
+  ),
   "overview.worker.unavailable": entry("概要を読み込めませんでした。", []),
   "overview.retry": entry("もう一度試す", []),
   "overview.scan.paused": entry("一時停止中です。何も変更されていません。", []),
