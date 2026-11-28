@@ -1,6 +1,5 @@
 import type { EmailType } from "@pochimail/classification/model/email-type";
 import { Button } from "@pochimail/ui/components/button";
-import { EmptyState } from "@pochimail/ui/components/empty-state";
 import { RecommendationRow } from "@pochimail/ui/components/recommendation-row";
 import { SignalRow } from "@pochimail/ui/components/signal-row";
 import { Skeleton } from "@pochimail/ui/components/skeleton";
@@ -17,12 +16,12 @@ import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { FiguresSection } from "./figures-section.tsx";
+import { NoFiguresState } from "./no-figures-state.tsx";
 import {
   type CleanRowView,
   cleanRows,
   cleanSplit,
   type OverviewData,
-  type OverviewView,
   overviewView,
   type ReviewTarget,
   type RowView,
@@ -164,44 +163,6 @@ function CatchSection({ rows, t, locale, onReview }: SectionProps & { rows: RowV
       )}
     </section>
   );
-}
-
-/** What replaces the figures: a failed read, no account to read, or an account whose mail has not arrived yet. */
-function NoFiguresState({
-  view,
-  t,
-  onRetry,
-  onConnect,
-  onSync,
-}: {
-  view: OverviewView;
-  t: T;
-  onRetry: () => void;
-  onConnect: () => void;
-  onSync: () => void;
-}) {
-  const copy = {
-    error: {
-      title: t("overview.worker.unavailable"),
-      label: t("overview.retry"),
-      onClick: onRetry,
-    },
-    empty: {
-      title: t("overview.empty.title"),
-      description: t("overview.empty.description"),
-      label: t("overview.empty.action"),
-      onClick: onConnect,
-    },
-    syncing: {
-      title: t("overview.syncing.title"),
-      description: t("overview.syncing.description"),
-      label: t("overview.retry"),
-      onClick: onSync,
-    },
-  } as const;
-  if (view !== "error" && view !== "empty" && view !== "syncing") return null;
-  const { label, onClick, title, ...rest } = copy[view];
-  return <EmptyState title={title} {...rest} action={{ label, onClick }} />;
 }
 
 export function OverviewPage() {
