@@ -3,7 +3,7 @@
 Status: Accepted (2026-11-19) · Changes "never delete" · Related: [ADR 0007](0007-oauth-credentials-scopes.md)
 
 ## Context
-Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that impossible.
+Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that impossible.
 
 ## Decision
 - Pochimail can delete email. **Delete always means moving to the provider's Trash**: Gmail `users.messages.trash` (`gmail.modify`), Microsoft Graph (v1.1) move to Deleted Items (`Mail.ReadWrite`). No new scope.
@@ -16,18 +16,19 @@ Archiving frees no space. Users want a disk cleaner's result, safely. "Nothing i
   - has an attachment the user has not saved;
   - the sender is marked Keep.
   Signals are computed per email by the local classifier ([ADR 0016](0016-fixed-types-and-automatic-topics.md)); when it is unsure, the email is protected.
-- Every deletion is logged with its inverse; **Undo restores from the Trash** while the provider holds it.
-- Clean up reports freeable space apart from archivable email, using provider sizes (Gmail `sizeEstimate`; verify Graph before showing Microsoft figures).
+- Every deletion is logged with its inverse; **Undo restores from the Trash**.
+- Clean up reports freeable space apart from archivable email, using provider sizes (Gmail `sizeEstimate`; verify Graph first).
 - Promise: "You keep the control. Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo."
 
 ## Addendum (#128): unsure
-- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects unconditionally: never pre-selected, proposed or auto-applied. Its signal has confidence `UNSURE_CONFIDENCE` (0.5), reason "Not sure, kept safe", and is never counted.
-- "Time-sensitive" is a proxy: a recent unopened `transactional` email. Stored text is off limits (ADR 0014), so deadlines are unread: it misses dated mail of other types and flags undated transactional email.
+- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects unconditionally: never pre-selected, proposed or auto-applied. Its signal is never counted.
+- Only unsure is enforced at the action boundary (`authorize` denies Autopilot). Other protections are not.
+- "Time-sensitive" is a proxy: a recent unopened `transactional` email. Deadlines are unread (ADR 0014): it misses dated mail of other types and flags undated transactional email.
+- Gmail metadata gives a lower-bound attachment count and no size: the Overview "attachments saved" figure is a floor.
 
 ## Consequences
 - "GB you can free" is real again, tied to deletion only.
-- Copy, invariants, tests and designs saying "never deleted" change.
-- Undo is limited by the provider's Trash retention; the UI says so.
+- The UI states that Undo ends with the provider's Trash retention.
 
 ## Alternatives considered
 - Archive only: rejected; frees no space.

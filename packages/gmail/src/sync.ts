@@ -18,7 +18,8 @@ import { type Identity, SYNC_HEADERS, toIncoming } from "./mapping.ts";
 
 /** Quota units one sync batch may spend; the page size follows from it (list + one get per id). */
 export const SYNC_BATCH_QUOTA_UNITS = 1_000;
-const METADATA_FIELDS = "id,threadId,labelIds,sizeEstimate,internalDate,payload/headers";
+const METADATA_FIELDS =
+  "id,threadId,labelIds,sizeEstimate,internalDate,payload/mimeType,payload/filename,payload/headers,payload/parts/filename";
 
 export interface GmailSyncOptions {
   /** Messages per batch. Default: as many as `SYNC_BATCH_QUOTA_UNITS` pays for. */

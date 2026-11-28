@@ -26,8 +26,10 @@ export interface SettleRequest {
   readonly command: Command;
   readonly result: Result<readonly AppliedCommand[], MailProviderError>;
   /**
-   * A cancelled call is closed as `failed` (`operation.cancelled`) so it is never replayed: the
-   * user stopped it. Off for recovery, whose own cancellation is a shutdown, not a decision.
+   * A cancelled call is closed as `failed` (`action.outcome_unknown`: the cancel may have come
+   * after the request left) so it is never replayed: the user stopped it. Off for recovery,
+   * whose own cancellation is a shutdown, not a decision; there it still closes the remainder
+   * of a call that had already applied part of its work, which no replay could find.
    */
   readonly closeCancelled: boolean;
 }
@@ -69,8 +71,8 @@ async function settleFailure(
     if (!saved.ok) return { status: "failed", error: saved.error };
   }
   const cancelled = (partial?.failure ?? error) instanceof Cancelled;
-  if (cancelled && !closeCancelled) return { status: "cancelled" };
-  const errorCode = cancelled ? "operation.cancelled" : error.code;
+  if (cancelled && !closeCancelled && !partial?.applied.length) return { status: "cancelled" };
+  const errorCode = cancelled ? "action.outcome_unknown" : error.code;
   const entry: ActionLog = {
     ...base(),
     outcome: "failed",

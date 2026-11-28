@@ -15,14 +15,26 @@ export const messageListSchema = z.object({
 
 const headerSchema = z.object({ name: z.string(), value: z.string() });
 
-/** Metadata only: ids, labels, size, date and three headers. Never a subject, snippet or body. */
+/** What attachment counting reads of a top-level part: its filename. Names are never kept. */
+const attachmentPartSchema = z.object({
+  filename: z.string().default(""),
+});
+
+/** Metadata only: ids, labels, size, date, three headers and the part structure. Never a subject, snippet or body. */
 export const metadataSchema = z.object({
   id: z.string(),
   threadId: z.string(),
   labelIds: z.array(z.string()).default([]),
   sizeEstimate: z.number().optional(),
   internalDate: z.string(),
-  payload: z.object({ headers: z.array(headerSchema).default([]) }).default({ headers: [] }),
+  payload: z
+    .object({
+      mimeType: z.string().default(""),
+      filename: z.string().default(""),
+      headers: z.array(headerSchema).default([]),
+      parts: z.array(attachmentPartSchema).default([]),
+    })
+    .default({ mimeType: "", filename: "", headers: [], parts: [] }),
 });
 export type GmailMetadata = z.infer<typeof metadataSchema>;
 

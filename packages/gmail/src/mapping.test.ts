@@ -11,6 +11,9 @@ const raw = (over: Partial<GmailMetadata> = {}): GmailMetadata => ({
   sizeEstimate: 900,
   internalDate: String(Date.UTC(2026, 0, 2)),
   payload: {
+    mimeType: "multipart/alternative",
+    filename: "",
+    parts: [],
     headers: [
       { name: "From", value: "Ada <Ada@Example.com>" },
       { name: "To", value: 'a@example.com, "B" <b@example.com>' },
@@ -37,7 +40,7 @@ it("maps metadata to the minimal record with empty subject and snippet", () => {
     toIncoming(
       raw({
         labelIds: ["INBOX"],
-        payload: { headers: [{ name: "From", value: "a@example.com" }] },
+        payload: { ...raw().payload, headers: [{ name: "From", value: "a@example.com" }] },
       }),
       identity,
     ),
@@ -49,6 +52,31 @@ it("maps metadata to the minimal record with empty subject and snippet", () => {
 
 // Guards: a half-stored message when Gmail returns something we cannot use.
 it("skips a message without a usable sender or date", () => {
-  expect(toIncoming(raw({ payload: { headers: [] } }), identity)).toBeNull();
+  expect(toIncoming(raw({ payload: { ...raw().payload, headers: [] } }), identity)).toBeNull();
   expect(toIncoming(raw({ internalDate: "soon" }), identity)).toBeNull();
+});
+
+// Guards: every real message carrying "kept safe", or a signed or related message wrongly counted as having no file.
+it("counts what the payload shows and leaves unknown what it cannot tell", () => {
+  const payload = (
+    mimeType: string,
+    parts: GmailMetadata["payload"]["parts"] = [],
+    filename = "",
+  ) => ({ ...raw().payload, mimeType, filename, parts });
+  const part = (filename: string) => ({ filename });
+  const count = (p: GmailMetadata["payload"]) =>
+    toIncoming(raw({ payload: p }), identity)?.savedCount;
+  expect(count(payload("text/plain"))).toBe(0);
+  expect(count(payload("multipart/alternative"))).toBe(0);
+  expect(count(payload("multipart/alternative", [], "a.pdf"))).toBe(1);
+  expect(count(payload("application/pdf", [], "a.pdf"))).toBe(1);
+  expect(count(payload("application/pdf"))).toBeUndefined();
+  expect(count(payload("multipart/signed"))).toBeUndefined();
+  expect(count(payload("multipart/related"))).toBeUndefined();
+  expect(count(payload("multipart/mixed", [part(""), part("a.pdf")]))).toBe(1);
+  // The metadata format omits parts: a mixed body is the only sign of a file.
+  expect(count(payload("multipart/mixed"))).toBe(1);
+  expect(toIncoming(raw({ payload: payload("multipart/signed") }), identity)).not.toHaveProperty(
+    "savedCount",
+  );
 });

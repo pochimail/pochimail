@@ -1,17 +1,21 @@
 import type { ActionLog } from "@pochimail/actions/model/action";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
 import type { Message } from "@pochimail/mailbox/model/message";
-import { byText, copy, type Data, key } from "../in-memory-store-data.ts";
+import { copy, type Data, key } from "../in-memory-store-data.ts";
 
+/** The action log in insertion order, each entry with its 1-based sequence number. */
+export const sequenced = (log: Map<string, ActionLog>, ws: WorkspaceId) =>
+  [...log.values()]
+    .map((entry, seq) => ({ seq: seq + 1, entry }))
+    .filter((r) => r.entry.workspaceId === ws);
 export const oldestFirst = (
   log: Map<string, ActionLog>,
   ws: WorkspaceId,
-  match: (l: ActionLog) => boolean = () => true,
+  match = (_: ActionLog) => true,
 ) =>
-  [...log.values()]
-    .filter((l) => l.workspaceId === ws && match(l))
-    .sort((a, b) => byText(a.at, b.at))
-    .map(copy);
+  sequenced(log, ws)
+    .filter((r) => match(r.entry))
+    .map((r) => copy(r.entry));
 export function inSequenceRange(
   data: Data,
   m: Message,
