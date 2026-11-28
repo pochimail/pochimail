@@ -114,13 +114,8 @@ function Frame({
                   </SidebarMenuItem>
                   {types.map(([label, Icon, count]) => (
                     <SidebarMenuItem key={label} reach="wide">
-                      <SidebarMenuButton
-                        href="#type"
-                        tone="muted"
-                        tooltip={label}
-                        className={count === 0 ? "opacity-60" : undefined}
-                      >
-                        <Icon />
+                      <SidebarMenuButton href="#type" tone="muted" tooltip={label}>
+                        <Icon className={count === 0 ? "opacity-60" : undefined} />
                         <SidebarMenuLabel>{label}</SidebarMenuLabel>
                         <SidebarMenuBadge>{count.toLocaleString("en")}</SidebarMenuBadge>
                       </SidebarMenuButton>
@@ -192,7 +187,7 @@ export const IconRail: Story = { args: { width: 860 } };
 /** 560-760: rail, edge to edge (the desktop window minimum is 720). */
 export const IconRailEdgeToEdge: Story = { args: { width: 720 } };
 export const BottomTabs: Story = { args: { width: 420 } };
-/** Empty types stay listed, muted, with a count of 0: here only Personal and Newsletters have mail. */
+/** Empty types stay listed with a count of 0 at full contrast; only the icon is dimmed: here only Personal and Newsletters have mail. */
 export const EmptyTypesMuted: Story = {
   args: {
     width: 1100,

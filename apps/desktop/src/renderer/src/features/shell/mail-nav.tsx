@@ -15,7 +15,10 @@ import { AtSignIcon, FileTextIcon, HashIcon, NewspaperIcon, TagIcon, UserIcon } 
 import type { ComponentType } from "react";
 import { TYPE_LABELS } from "../../lib/type-labels.ts";
 
-const TYPE_NAV: Record<EmailType, { label: MessageKey; icon: ComponentType }> = {
+const TYPE_NAV: Record<
+  EmailType,
+  { label: MessageKey; icon: ComponentType<{ className?: string }> }
+> = {
   personal: { label: TYPE_LABELS.personal, icon: UserIcon },
   transactional: { label: TYPE_LABELS.transactional, icon: FileTextIcon },
   notification: { label: TYPE_LABELS.notification, icon: AtSignIcon },
@@ -23,8 +26,8 @@ const TYPE_NAV: Record<EmailType, { label: MessageKey; icon: ComponentType }> = 
   promotion: { label: TYPE_LABELS.promotion, icon: TagIcon },
 };
 
-/** An empty section stays listed and clickable, muted, and its name says it is empty. */
-const EMPTY_CLASS = "opacity-60";
+/** An empty section stays listed and clickable; only its decorative icon is dimmed, so its label and its 0 keep full contrast, and its name says it is empty. */
+const DIMMED = "opacity-60";
 
 /** The inside of a sidebar link: icon, label and email count. */
 function RowContent({
@@ -32,14 +35,15 @@ function RowContent({
   label,
   count,
 }: {
-  icon: ComponentType;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   count: number;
 }) {
   const locale = useLocale();
+  const dim = count === 0 ? DIMMED : "";
   return (
     <>
-      <Icon />
+      <Icon className={dim} />
       <SidebarMenuLabel>{label}</SidebarMenuLabel>
       <SidebarMenuBadge>{count.toLocaleString(locale)}</SidebarMenuBadge>
     </>
@@ -65,7 +69,6 @@ export function TypeItems({
           isActive={pathname === `/type/${id}`}
           tone="muted"
           tooltip={label}
-          className={count === 0 ? EMPTY_CLASS : undefined}
         >
           <Link
             to="/type/$typeId"
@@ -102,7 +105,6 @@ export function TopicsGroup({
               isActive={pathname === `/topic/${id}`}
               tone="muted"
               tooltip={name}
-              className={count === 0 ? EMPTY_CLASS : undefined}
             >
               <Link
                 to="/topic/$topicId"
