@@ -192,7 +192,7 @@ const createWindow = (): void => {
   // Packaging smoke test (M0-10): report that the renderer loaded, then quit.
   if (process.env.POCHIMAIL_SMOKE === "1")
     window.webContents.once("did-finish-load", () => {
-      process.stdout.write("smoke:window-loaded\n");
+      process.stdout.write(`smoke:window-loaded version=${app.getVersion()}\n`);
       void smokeStorage({
         vault: safeStorage,
         keyFile: process.env.POCHIMAIL_SMOKE_KEY_FILE,
