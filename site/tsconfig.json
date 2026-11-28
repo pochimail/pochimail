@@ -1,0 +1,4 @@
+{
+  "extends": "@pochimail/typescript-config/node-library.json",
+  "include": ["scripts"]
+}

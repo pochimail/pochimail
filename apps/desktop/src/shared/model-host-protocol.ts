@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 import { classifiableMessageSchema } from "@pochimail/classification/model/message-facts";
 import { z } from "zod";
 
@@ -7,6 +7,15 @@ import { z } from "zod";
  * or out-of-memory kill never takes the worker (and its database) down. Both ends validate every message.
  */
 const id = z.number().int().nonnegative();
+const MAX_SCHEMA_CHARS = 20_000;
+const jsonSchema = z.record(z.string(), z.unknown()).refine((schema) => {
+  try {
+    return JSON.stringify(schema).length <= MAX_SCHEMA_CHARS;
+  } catch {
+    // A cycle or a BigInt: not JSON, so not a schema.
+    return false;
+  }
+});
 
 export const hostRequestSchema = z.discriminatedUnion("method", [
   z.object({
@@ -21,7 +30,18 @@ export const hostRequestSchema = z.discriminatedUnion("method", [
     system: z.string().max(100_000).optional(),
     maxTokens: z.number().int().positive().optional(),
   }),
+  z.object({
+    id,
+    method: z.literal("completeJson"),
+    prompt: z.string().max(100_000),
+    system: z.string().max(100_000).optional(),
+    maxTokens: z.number().int().positive().optional(),
+    /** The shape the answer is decoded into; the worker parses the answer with its own zod schema. */
+    jsonSchema,
+  }),
   z.object({ id, method: z.literal("embed"), texts: z.array(z.string().max(100_000)).max(500) }),
+  /** Stops request `id` on the engine; no answer. */
+  z.object({ id, method: z.literal("cancel") }),
   /** Drops what the host remembers of mail (the classification cache); sent on account removal and lock. */
   z.object({ id, method: z.literal("clear-cache") }),
 ]);
@@ -30,7 +50,7 @@ export type HostRequest = z.infer<typeof hostRequestSchema>;
 export const classificationsSchema = z.array(
   z.object({
     messageId: z.string().min(1),
-    category: z.enum(CATEGORIES),
+    category: z.enum(EMAIL_TYPES),
     confidence: z.number().min(0).max(1),
     reasons: z.array(z.string()),
     modelVersion: z.string().optional(),
@@ -48,8 +68,12 @@ export const hostResponseSchema = z.discriminatedUnion("ok", [
     /** Checked by the caller against the schema of the method it asked. */
     result: z.unknown(),
   }),
-  /** `unavailable`: no model is loaded (or it failed); the worker treats it as `AiUnavailable`. */
-  z.object({ id, ok: z.literal(false), error: z.enum(["unavailable", "cancelled"]) }),
+  /** `unavailable`: no model is loaded (or it failed); the worker treats it as `AiUnavailable`. `invalid_output`: the model's answer was not JSON. */
+  z.object({
+    id,
+    ok: z.literal(false),
+    error: z.enum(["unavailable", "cancelled", "invalid_output"]),
+  }),
 ]);
 export type HostResponse = z.infer<typeof hostResponseSchema>;
 

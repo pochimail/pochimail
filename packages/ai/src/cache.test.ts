@@ -94,4 +94,70 @@ describe("createCachingClassifier", () => {
 
     expect(inferred()).toBe(6);
   });
+
+  it("two concurrent batches with the same content infer once (guards paying twice for a template that is already being classified)", async () => {
+    const { classifier, inferred } = countingEngine();
+    const cached = createCachingClassifier(classifier);
+    const messages = mailbox(4, 2);
+
+    const [first, second] = await Promise.all([
+      cached.classify(messages, signal),
+      cached.classify(messages, signal),
+    ]);
+
+    expect(inferred()).toBe(2);
+    expect(unwrap(first).map((c) => c.messageId)).toEqual(messages.map((m) => m.id));
+    expect(unwrap(second)).toEqual(unwrap(first));
+  });
+
+  it("a failing shared inference reaches every waiter and leaves nothing cached (guards a waiter hanging or a failure being remembered)", async () => {
+    const { classifier, engine, inferred } = countingEngine();
+    const cached = createCachingClassifier(classifier);
+    const messages = mailbox(4, 2);
+    engine.faults.failWith(new AiUnavailable(), { times: 1 });
+
+    const [first, second] = await Promise.all([
+      cached.classify(messages, signal),
+      cached.classify(messages, signal),
+    ]);
+    const retried = unwrap(await cached.classify(messages, signal));
+
+    expect(first.ok).toBe(false);
+    expect(second.ok).toBe(false);
+    expect(retried).toHaveLength(4);
+    expect(inferred()).toBe(2 + 2);
+  });
+
+  it("an engine that throws on a multi-content batch reaches the caller and raises no unhandled rejection (guards the host dying on a rejection nobody awaits)", async () => {
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => void unhandled.push(reason);
+    process.on("unhandledRejection", record);
+    try {
+      const boom = new Error("engine crashed");
+      const cached = createCachingClassifier({
+        classify: () => Promise.reject(boom),
+      });
+
+      await expect(cached.classify(mailbox(6, 3), signal)).rejects.toBe(boom);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", record);
+    }
+  });
+
+  it("clear during a classify drops that classify's answers (guards mail-derived answers returning to memory after account removal or lock)", async () => {
+    const { classifier, inferred } = countingEngine();
+    const cached = createCachingClassifier(classifier);
+    const messages = mailbox(6, 3);
+
+    const running = cached.classify(messages, signal);
+    cached.clear();
+    const answered = unwrap(await running);
+    await cached.classify(messages, signal);
+
+    expect(answered).toHaveLength(6);
+    expect(inferred()).toBe(3 + 3);
+  });
 });

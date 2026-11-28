@@ -5,8 +5,18 @@ import {
   workspaceIdSchema,
 } from "@pochimail/kernel/schemas";
 import { z } from "zod";
-import { signalKindSchema } from "./category.ts";
 import { confidenceSchema } from "./scores.ts";
+
+export const SIGNAL_KINDS = [
+  "needs-reply",
+  "waiting-on-them",
+  "important-sender",
+  "has-document",
+  "time-sensitive",
+  "old-never-opened",
+] as const;
+export const signalKindSchema = z.enum(SIGNAL_KINDS);
+export type SignalKind = z.infer<typeof signalKindSchema>;
 
 export const signalSchema = z.object({
   schemaVersion,

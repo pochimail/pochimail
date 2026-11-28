@@ -1,7 +1,7 @@
 {
-  "file-too-long|apps/desktop/src/shared/ipc/rpc.contract.ts": 94,
-  "file-too-long|packages/testing/src/fixture-mailbox/generator.ts": 177,
-  "file-too-long|packages/testing/src/in-memory-store.ts": 74,
+  "file-too-long|apps/desktop/src/shared/ipc/rpc.contract.ts": 90,
+  "file-too-long|packages/testing/src/fixture-mailbox/generator.ts": 172,
+  "file-too-long|packages/testing/src/in-memory-store.ts": 49,
   "file-too-long|packages/testing/src/logger-contract.ts": 77,
   "file-too-long|packages/testing/src/repositories-contract.ts": 22,
   "file-too-long|packages/testing/src/sync-contract.ts": 27,

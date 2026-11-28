@@ -1,12 +1,13 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
-import { CountCategories } from "@pochimail/classification/use-cases/count-categories";
+import { CountTopics } from "@pochimail/classification/use-cases/count-topics";
+import { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import { RecordDigestReady } from "@pochimail/cleanup/use-cases/record-digest-ready";
 import type { Clock } from "@pochimail/kernel/clock";
-import type { WorkspaceId } from "@pochimail/kernel/ids";
+import { AccountId, type WorkspaceId } from "@pochimail/kernel/ids";
 import type { Logger } from "@pochimail/logger/logger";
 import type { Timer } from "@pochimail/pipeline/event-batching";
 import { createInMemoryEventBus } from "@pochimail/pipeline/in-memory-event-bus";
@@ -23,10 +24,12 @@ import type { WorkflowUnitOfWork as UnitOfWork } from "@pochimail/workflows/port
 import { RunScan } from "@pochimail/workflows/use-cases/run-scan";
 import { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
 import type { Handlers } from "../shared/ipc/server.ts";
+import type { NotifyMessage } from "../shared/notifications.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { SettingsStore } from "../shared/settings.ts";
 import { createDigestTally } from "./digest-tally.ts";
-import { createHandlers } from "./handlers.ts";
+import { createHandlers, type WorkerHandlers } from "./handlers.ts";
+import { createMainNotifier } from "./main-notifier.ts";
 import { ManageSettings } from "./manage-settings.ts";
 import { resolvePendingActions } from "./pending-actions.ts";
 
@@ -49,6 +52,8 @@ export interface WorkerAdapters {
   readonly classifier: Classifier;
   /** Without it scans keep one classify batch at a time and never pause for power. */
   readonly power?: PowerMonitor;
+  /** One way to main, which shows Pochimail's own notifications; without it nothing is announced. */
+  readonly sendNotification?: (message: NotifyMessage) => void;
   /** Drops what the model host remembers of mail; called when an account is removed. */
   readonly clearClassifierCache?: () => void;
   /** The mail provider of one connected account. */
@@ -58,6 +63,12 @@ export interface WorkerAdapters {
 
 export interface WorkerApp {
   readonly handlers: Handlers;
+  /** Tells every `app.events` subscriber about something the worker did outside a scan or an action. */
+  readonly emitAppEvent: WorkerHandlers["emitAppEvent"];
+  /** Stops an account's scans and resolves once they have ended; for the account's removal. */
+  stopScans(accountId: string): Promise<void>;
+  /** Drops the figures the worker keeps in memory for a removed account. */
+  forgetDigest(accountId: string): void;
   /** Resolves once every running scan has stopped (orderly shutdown, tests). */
   idle(): Promise<void>;
 }
@@ -93,6 +104,20 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     if (event.payload.state === "disconnected") adapters.clearClassifierCache?.();
   });
 
+  const settings = new ManageSettings({ store: adapters.settings, logger: adapters.logger });
+  const { sendNotification } = adapters;
+  if (sendNotification) {
+    const notifier = createMainNotifier({ settings, workspaceId, send: sendNotification });
+    bus.subscribe("ScanCompleted", async (event) => {
+      if (event.payload.processed > 0)
+        await notifier.notify({ kind: "scan-complete", count: event.payload.processed });
+    });
+    bus.subscribe("DigestReady", async (event) => {
+      if (event.payload.itemCount > 0)
+        await notifier.notify({ kind: "digest-ready", count: event.payload.itemCount });
+    });
+  }
+
   const limiter = adapters.power && createPowerLimiter(adapters.power, CLASSIFY_LIMITS);
   const scans = new ScanRunner({
     uow,
@@ -124,15 +149,25 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     workspaceId,
     listAccounts: new ListAccounts({ uow }),
     getOverview: new GetOverview({ uow, clock }),
-    categories: new CountCategories({ uow }),
+    types: new CountTypes({ uow }),
+    topics: new CountTopics({ uow }),
     digestStatus: new GetDigestStatus({ tally }),
-    settings: new ManageSettings({ store: adapters.settings }),
+    settings,
     scans,
     events: bus,
     deviceName: adapters.deviceName,
   });
   return {
     handlers,
+    emitAppEvent: handlers.emitAppEvent,
+    stopScans: async (accountId) => {
+      const id = AccountId(accountId);
+      if (id.ok) await scans.stopAccount(id.value);
+    },
+    forgetDigest: (accountId) => {
+      const id = AccountId(accountId);
+      if (id.ok) tally.forget(id.value);
+    },
     idle: async () => {
       await recovery;
       await scans.idle();

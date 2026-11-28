@@ -87,7 +87,7 @@ const setup = (
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
       "accounts.list": () =>
         (current.accounts ?? ["a1"]).map((id) => ({
@@ -95,14 +95,12 @@ const setup = (
           provider: "google" as const,
           displayName: `${id}@example.test`,
         })),
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "scan.status": () => [],
       "overview.get": () => emptyOverview,
@@ -269,7 +267,7 @@ it("uses the bottom-sheet container classes below the phone breakpoint", async (
 it.each([
   { figures: { unsubscribed: 5, archived: 1, saved: 1 }, count: 5, heading: "Newsletters" },
   { figures: { archived: 4, saved: 1, unsubscribed: 1 }, count: 4, heading: "Alert emails" },
-  { figures: { saved: 3, archived: 1, unsubscribed: 1 }, count: 3, heading: "Records" },
+  { figures: { saved: 3, archived: 1, unsubscribed: 1 }, count: 3, heading: "Transactional" },
 ])("routes $count new items to $heading", async ({ figures, count, heading }) => {
   const user = userEvent.setup();
   setup({

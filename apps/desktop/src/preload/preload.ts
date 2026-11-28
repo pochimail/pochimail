@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
+  type NotificationScreen,
+  notificationScreenSchema,
+  openScreenChannel,
+} from "../shared/notifications.ts";
+import {
   chosenFolderSchema,
   folderPathSchema,
   mailAppLinkSchema,
@@ -12,6 +17,14 @@ import {
   storageStatusSchema,
   unlockPassphraseSchema,
 } from "../shared/storage-calls.ts";
+import {
+  announcementSchema,
+  autoCheckSchema,
+  checkResultSchema,
+  updateChannels,
+  updateStateSchema,
+  versionSchema,
+} from "../shared/update-calls.ts";
 
 /**
  * Narrow bridge (ADR 0002). Main sends one MessagePort connected to the worker; the page asks for it and the preload
@@ -32,10 +45,31 @@ ipcRenderer.once("worker-port", (event) => {
   deliver();
 });
 
+// A notification can be clicked before the page has subscribed (a window opened by the click), so the screen waits here.
+let screenListener: ((screen: NotificationScreen) => void) | undefined;
+let pendingScreen: NotificationScreen | undefined;
+
+ipcRenderer.on(openScreenChannel, (_event, screen: unknown) => {
+  const parsed = notificationScreenSchema.safeParse(screen);
+  if (!parsed.success) return;
+  if (screenListener === undefined) pendingScreen = parsed.data;
+  else screenListener(parsed.data);
+});
+
 const api = {
   requestWorkerPort: (): void => {
     requested = true;
     deliver();
+  },
+  onOpenScreen: (listener: (screen: NotificationScreen) => void): (() => void) => {
+    screenListener = listener;
+    if (pendingScreen !== undefined) {
+      listener(pendingScreen);
+      pendingScreen = undefined;
+    }
+    return () => {
+      if (screenListener === listener) screenListener = undefined;
+    };
   },
   openMailAppLink: (link: string): Promise<void> =>
     ipcRenderer.invoke(osChannels.openMailAppLink, mailAppLinkSchema.parse(link)),
@@ -43,6 +77,23 @@ const api = {
     ipcRenderer.invoke(osChannels.showInFinder, folderPathSchema.parse(path)),
   chooseFolder: async (): Promise<string | null> =>
     chosenFolderSchema.parse(await ipcRenderer.invoke(osChannels.chooseFolder)),
+  updates: {
+    state: async () => updateStateSchema.parse(await ipcRenderer.invoke(updateChannels.state)),
+    checkNow: async () =>
+      checkResultSchema.parse(await ipcRenderer.invoke(updateChannels.checkNow)),
+    setAutoCheck: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke(updateChannels.setAutoCheck, autoCheckSchema.parse(enabled)),
+    dismiss: (version: string): Promise<void> =>
+      ipcRenderer.invoke(updateChannels.dismiss, versionSchema.parse(version)),
+    download: (): Promise<void> => ipcRenderer.invoke(updateChannels.download),
+    announcement: async () =>
+      announcementSchema.parse(await ipcRenderer.invoke(updateChannels.announcement)),
+    onChanged: (listener: () => void): (() => void) => {
+      const forward = (): void => listener();
+      ipcRenderer.on(updateChannels.changed, forward);
+      return () => ipcRenderer.removeListener(updateChannels.changed, forward);
+    },
+  },
   storage: {
     status: async () => storageStatusSchema.parse(await ipcRenderer.invoke(storageChannels.status)),
     setPassphrase: async (passphrase: string) =>

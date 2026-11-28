@@ -57,7 +57,7 @@ for (const colorScheme of COLOR_SCHEMES) {
       await expect(sheet).toBeHidden();
       await expect.soft(page).toHaveScreenshot(`overview-${colorScheme}.png`);
       const screens: readonly [name: string, title: string][] = [
-        ["notifications", copy("category.notifications")],
+        ["notifications", copy("type.notification")],
         ["documents", copy("documents.title")],
         ["activity", copy("activity.title")],
         ["settings", copy("settings.title")],

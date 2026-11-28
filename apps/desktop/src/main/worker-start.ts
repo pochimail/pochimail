@@ -71,14 +71,17 @@ export const bootWorker = async (options: {
     worker.kill();
     return false;
   }
-  startWorker(
-    worker,
-    secrets,
-    key.value,
-    options.databasePath,
-    createChannel,
-    options.openExternal,
-  );
-  key.value?.fill(0);
+  try {
+    startWorker(
+      worker,
+      secrets,
+      key.value,
+      options.databasePath,
+      createChannel,
+      options.openExternal,
+    );
+  } finally {
+    key.value?.fill(0);
+  }
   return true;
 };

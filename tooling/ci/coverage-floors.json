@@ -1,0 +1,69 @@
+{
+  "apps/cli/src/**": {
+    "lines": 96,
+    "branches": 62
+  },
+  "apps/desktop/src/**": {
+    "lines": 87,
+    "branches": 76
+  },
+  "packages/accounts/src/**": {
+    "lines": 92,
+    "branches": 58
+  },
+  "packages/actions/src/**": {
+    "lines": 94,
+    "branches": 76
+  },
+  "packages/ai/src/**": {
+    "lines": 94,
+    "branches": 84
+  },
+  "packages/classification/src/**": {
+    "lines": 98,
+    "branches": 79
+  },
+  "packages/cleanup/src/**": {
+    "lines": 99,
+    "branches": 78
+  },
+  "packages/db/src/**": {
+    "lines": 95,
+    "branches": 83
+  },
+  "packages/documents/src/**": {
+    "lines": 99
+  },
+  "packages/gmail/src/**": {
+    "lines": 92,
+    "branches": 68
+  },
+  "packages/kernel/src/**": {
+    "lines": 96,
+    "branches": 94
+  },
+  "packages/logger/src/**": {
+    "lines": 93,
+    "branches": 86
+  },
+  "packages/mailbox/src/**": {
+    "lines": 94,
+    "branches": 63
+  },
+  "packages/net/src/**": {
+    "lines": 89,
+    "branches": 79
+  },
+  "packages/pipeline/src/**": {
+    "lines": 95,
+    "branches": 81
+  },
+  "packages/ui/src/**": {
+    "lines": 91,
+    "branches": 86
+  },
+  "packages/workflows/src/**": {
+    "lines": 94,
+    "branches": 69
+  }
+}

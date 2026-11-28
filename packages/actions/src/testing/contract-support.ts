@@ -38,8 +38,8 @@ export const ws = unwrap(WorkspaceId("wsp_1"));
 export const ALL_ENTRIES = Number.MAX_SAFE_INTEGER;
 export const confirmed: ApplyActionItem["authorization"] = {
   autonomy: "suggest",
-  categories: ["newsletters"],
-  protectedCategories: ["people"],
+  categories: ["newsletter"],
+  protectedCategories: ["personal"],
   confidence: 0.95,
   userConfirmed: true,
 };

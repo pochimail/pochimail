@@ -21,9 +21,9 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
       const base = h.clock.now().getTime();
       const at = (ms: number) => new Date(base + ms).toISOString();
       await h.seed({
-        1: { message: { receivedAt: at(-3_600_000) }, category: "newsletters" },
-        2: { message: { receivedAt: at(-3_000_000) }, category: "people" },
-        3: { message: { receivedAt: at(-2_000_000) }, category: "promotions" },
+        1: { message: { receivedAt: at(-3_600_000) }, category: "newsletter" },
+        2: { message: { receivedAt: at(-3_000_000) }, category: "personal" },
+        3: { message: { receivedAt: at(-2_000_000) }, category: "promotion" },
       });
       const build = new BuildDigest({ uow: h.uow, clock: h.clock });
       const first = unwrap(
@@ -35,13 +35,13 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
       await h.seed({
         4: {
           message: { receivedAt: at(1_800_000), from: "alice@example.com" },
-          category: "people",
+          category: "personal",
           signals: ["needs-reply"],
         },
-        5: { message: { receivedAt: at(2_000_000) }, category: "promotions" },
+        5: { message: { receivedAt: at(2_000_000) }, category: "promotion" },
         6: {
           message: { receivedAt: at(2_100_000), from: "bob@example.com" },
-          category: "people",
+          category: "personal",
           confidence: 0.3,
           unsureSignals: ["needs-reply"],
         },
@@ -53,7 +53,7 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
         ),
       );
       expect(second.newMessageCount).toBe(3);
-      expect(second.byCategory).toEqual({ people: 2, promotions: 1 });
+      expect(second.byCategory).toEqual({ personal: 2, promotion: 1 });
       expect(second.attention).toEqual([{ messageId: idOf(4), kind: "needs-reply" }]);
       expect((await h.eventTypes()).filter((t) => t === "DigestReady")).toHaveLength(2);
     },
@@ -64,8 +64,8 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
       const base = h.clock.now().getTime();
       const at = (ms: number) => new Date(base + ms).toISOString();
       await h.seed({
-        1: { message: { receivedAt: at(-3_000_000) }, category: "newsletters" },
-        2: { message: { receivedAt: at(-2_000_000) }, category: "promotions" },
+        1: { message: { receivedAt: at(-3_000_000) }, category: "newsletter" },
+        2: { message: { receivedAt: at(-2_000_000) }, category: "promotion" },
       });
       const build = new BuildDigest({ uow: h.uow, clock: h.clock });
       const request = { workspaceId: WS_A, accountId: ACCOUNT_1 };
@@ -73,11 +73,11 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
       expect(first.newMessageCount).toBe(2);
 
       h.clock.advance(3_600_000);
-      await h.seed({ 3: { message: { receivedAt: at(1_800_000) }, category: "promotions" } });
+      await h.seed({ 3: { message: { receivedAt: at(1_800_000) }, category: "promotion" } });
       const second = unwrap(await build.execute(request, live()));
       expect(second.since).toBe(first.generatedAt);
       expect(second.newMessageCount).toBe(1);
-      expect(second.byCategory).toEqual({ promotions: 1 });
+      expect(second.byCategory).toEqual({ promotion: 1 });
     },
   ),
   check(
@@ -85,18 +85,18 @@ export const digestChecks: readonly Check<DigestHarness>[] = [
     async (h) => {
       const base = h.clock.now().getTime();
       const at = (ms: number) => new Date(base + ms).toISOString();
-      await h.seed({ 1: { message: { receivedAt: at(-3_000_000) }, category: "newsletters" } });
+      await h.seed({ 1: { message: { receivedAt: at(-3_000_000) }, category: "newsletter" } });
       const build = new BuildDigest({ uow: h.uow, clock: h.clock });
       const request = { workspaceId: WS_A, accountId: ACCOUNT_1 };
       expect(unwrap(await build.execute(request, live())).newMessageCount).toBe(1);
 
       h.clock.advance(3_600_000);
-      await h.seed({ 2: { message: { receivedAt: at(-9_000_000) }, category: "promotions" } });
+      await h.seed({ 2: { message: { receivedAt: at(-9_000_000) }, category: "promotion" } });
       const second = unwrap(await build.execute(request, live()));
       expect(second.newMessageCount).toBe(1);
-      expect(second.byCategory).toEqual({ promotions: 1 });
+      expect(second.byCategory).toEqual({ promotion: 1 });
       // A re-sync of the same mail is not new again.
-      await h.seed({ 2: { message: { receivedAt: at(-9_000_000) }, category: "promotions" } });
+      await h.seed({ 2: { message: { receivedAt: at(-9_000_000) }, category: "promotion" } });
       expect(unwrap(await build.execute(request, live())).newMessageCount).toBe(0);
     },
   ),

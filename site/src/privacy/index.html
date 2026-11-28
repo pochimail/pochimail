@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Privacy policy | Pochimail</title>
+    <meta name="description" content="What Pochimail does with your data: everything stays on your computer. Includes the Google API Services Limited Use statement.">
+    <link rel="icon" href="../assets/mascot/pochi-default.png" type="image/png">
+    <link rel="stylesheet" href="../assets/tokens.css">
+    <link rel="stylesheet" href="../style.css">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to the content</a>
+    <div class="wrap">
+      <header class="site-header">
+        <a class="brand" href="../">Pochimail</a>
+        <nav aria-label="Main">
+          <ul>
+            <li><a href="{{repositoryUrl}}/releases">Releases</a></li>
+            <li><a href="{{repositoryUrl}}">Source</a></li>
+            <li><a href="./" aria-current="page">Privacy policy</a></li>
+          </ul>
+        </nav>
+      </header>
+
+      <main id="main">
+        <h1>Privacy policy</h1>
+        <p class="muted">Last updated: <time datetime="{{lastUpdated}}">{{lastUpdated}}</time>. Every version of this page is kept in the project's <a href="{{repositoryUrl}}/commits/main/site/src/privacy/index.html">public history</a>.</p>
+
+        <h2 id="short">The short version</h2>
+        <ul>
+          <li>Pochimail is a desktop app. Everything it does with your email happens on your computer.</li>
+          <li>There is no Pochimail server. There is no telemetry and no crash reporting. Nothing is sent to the developer or to any third party.</li>
+          <li>It never stores the subject, the text, the names or the addresses of your emails.</li>
+          <li>Google data is never used to train an AI or machine-learning model, is never sold, and is never used for advertising.</li>
+        </ul>
+
+        <h2 id="where">Where your data is processed</h2>
+        <p>Pochimail reads and sorts your email on your own computer, with models that run on that computer. The project runs no server that receives your email, your account details or your usage. The app contacts only these services, directly from your computer:</p>
+        <ul>
+          <li><strong>Google</strong>, to sign you in and to read and organize your Gmail as you allow (see the next section).</li>
+          <li><strong>GitHub</strong>, in released builds, to check whether a newer version exists. This is a plain request for a small public file. It carries no account or mailbox data. If there is a newer version, the app tells you and opens the download page; it never installs anything by itself.</li>
+          <li><strong>Hugging Face</strong>, to download the on-device AI model files once. The download carries no mailbox data.</li>
+        </ul>
+        <p>Like any website or download, GitHub and Hugging Face see your IP address when you contact them. They receive nothing from your mailbox.</p>
+
+        <h2 id="google-data">Google data the app accesses, and why</h2>
+        <p>You connect a Gmail account with Google's sign-in page in your own browser. Pochimail never sees your Google password. It asks for access in steps, and only as much as the feature you choose needs.</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th scope="col">Access</th><th scope="col">When it is requested</th><th scope="col">What it is used for</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row"><code>gmail.readonly</code></th>
+                <td>When you connect an account.</td>
+                <td>To read your email on your computer so Pochimail can tell what needs you, what is clutter and which documents you may want to keep. In "Just look" mode this is all it does.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>gmail.modify</code></th>
+                <td>Only when you let Pochimail act (the Suggest or Autopilot levels).</td>
+                <td>To carry out what you approve: archive, apply labels, and move email to Gmail's Trash. Pochimail never deletes anything permanently, and Autopilot never deletes at all.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>gmail.send</code></th>
+                <td>Not requested today. Only if an unsubscribe-by-email feature is released, and only if you turn it on.</td>
+                <td>To send the one unsubscribe email you confirm. Pochimail does not write or send any other email.</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>openid</code> and <code>email</code></th>
+                <td>When you connect an account.</td>
+                <td>To show which address is connected. Pochimail does not use the other profile data.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Pochimail never asks for permission to delete email permanently or for full access to your mailbox.</p>
+
+        <h2 id="stored">What is stored on your computer</h2>
+        <p>Pochimail keeps what it found and what it did, not your mail:</p>
+        <ul>
+          <li><strong>Stored:</strong> the provider's message and thread ids, the category and the reason for it, signal types and dates, sizes, the labels Pochimail set, a keyed hash of each sender (not the address), summary reports (counts, sizes, categories), the log of every action with how to undo it, sync positions, your settings, and where you saved documents.</li>
+          <li><strong>Never stored:</strong> subjects, snippets, message text, names and addresses in clear text, attachment names, unsubscribe links.</li>
+        </ul>
+        <p>When a screen needs to show an email's sender or subject, the app fetches it from Gmail at that moment and keeps it in memory only. If you ask Pochimail to save an attachment, it is written to a folder you choose, on your computer.</p>
+        <p>The local database is encrypted. Its key is kept in your operating system's secure storage.</p>
+
+        <h2 id="tokens">How sign-in tokens are stored</h2>
+        <p>The token that keeps your account connected is stored on your computer in your operating system's secure storage (the Keychain on macOS, the Windows credential store, the system keyring on Linux). Short-lived access tokens stay in memory. Tokens are never written to logs. On a system without secure storage, Pochimail asks you how to protect the data and does not store tokens without your explicit choice.</p>
+
+        <h2 id="models">On-device models and learning</h2>
+        <p>Pochimail sorts email with rules and small AI models that run on your computer. Your email, and anything derived from it, never leaves the device. <strong>Google user data is not used to develop, improve or train any generalized AI or machine-learning model.</strong> The app learns only from your own corrections, and keeps what it learns on your computer as rules attached to a sender hash and a category.</p>
+
+        <h2 id="limited-use">Google API Services User Data Policy: Limited Use</h2>
+        <blockquote>
+          <p>Pochimail's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        </blockquote>
+        <p>In plain words:</p>
+        <ul>
+          <li><strong>No human reads your data</strong>, unless you give your consent for specific messages, it is needed for security (for example to investigate abuse), or the law requires it. Today the project receives none of your data at all.</li>
+          <li><strong>No transfer</strong> of your Google data to anyone, except as needed to provide the features you use, for security, or to follow the law. Today nothing is transferred.</li>
+          <li><strong>No advertising.</strong> Your data is never used to show ads, including personalized or interest-based ads.</li>
+          <li><strong>No sale.</strong> Your data is never sold.</li>
+        </ul>
+
+        <h2 id="control">Revoke access and delete your data</h2>
+        <ul>
+          <li><strong>In Pochimail:</strong> use <em>Remove account</em>. It revokes the access at Google and deletes that account's tokens and local data. Documents you saved stay in the folder you chose.</li>
+          <li><strong>At Google:</strong> open your <a href="https://myaccount.google.com/permissions">Google Account permissions page</a>, choose Pochimail and remove its access.</li>
+          <li><strong>Everything on this computer:</strong> remove each account in the app, then delete Pochimail's application data folder (an uninstaller may leave it behind) and the folders where you saved documents, if you want those gone too.</li>
+        </ul>
+        <p>Because the project holds no copy of your data, there is nothing to delete on a server.</p>
+
+        <h2 id="contact">Changes and contact</h2>
+        <p>If this policy changes, this page is updated and the date above changes. Questions or requests about privacy: <a href="mailto:{{contactEmail}}">{{contactEmail}}</a>. The source code is public, so every statement here can be checked against it.</p>
+      </main>
+
+      <footer class="site-footer">
+        <p>This website sets no cookies and loads no third-party scripts, fonts or trackers. It is hosted on GitHub Pages.</p>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,4 +1,3 @@
-import type { Category } from "@pochimail/classification/model/category";
 import {
   AccountSwitcher,
   AccountSwitcherContent,
@@ -32,43 +31,26 @@ import {
   SidebarProvider,
 } from "@pochimail/ui/components/sidebar";
 import { useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
-import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  AtSignIcon,
   ChevronDownIcon,
-  FileTextIcon,
-  KeyRoundIcon,
   LayoutGridIcon,
-  NewspaperIcon,
   PaperclipIcon,
   PlusIcon,
   SettingsIcon,
-  ShoppingBagIcon,
-  TagIcon,
   Undo2Icon,
-  UserIcon,
   UsersIcon,
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
-import { CATEGORY_LABELS } from "../../lib/category-labels.ts";
 import { isMacDesktop } from "../../lib/platform.ts";
+import { ProviderIcon } from "../../lib/provider-icon.tsx";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { useSelectedAccounts } from "../../lib/use-selected-accounts.ts";
+import { useTopics } from "../../lib/use-topics.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
-import { ProviderIcon } from "./provider-icon.tsx";
+import { TopicsGroup, TypeItems } from "./mail-nav.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
-import { visibleCategories } from "./visible-categories.ts";
-
-const CATEGORY_NAV: Record<Category, { label: MessageKey; icon: ComponentType }> = {
-  people: { label: CATEGORY_LABELS.people, icon: UserIcon },
-  records: { label: CATEGORY_LABELS.records, icon: FileTextIcon },
-  "purchases-travel": { label: CATEGORY_LABELS["purchases-travel"], icon: ShoppingBagIcon },
-  "sign-ins-security": { label: CATEGORY_LABELS["sign-ins-security"], icon: KeyRoundIcon },
-  notifications: { label: CATEGORY_LABELS.notifications, icon: AtSignIcon },
-  newsletters: { label: CATEGORY_LABELS.newsletters, icon: NewspaperIcon },
-  promotions: { label: CATEGORY_LABELS.promotions, icon: TagIcon },
-};
 
 type NavTarget = "/overview" | "/documents" | "/activity" | "/settings";
 
@@ -98,8 +80,8 @@ function NavItem({
 
 const REFRESH_EVERY_MS = 2000;
 
-/** A category appears when it gets mail (D5): while an account scans, refresh the counts at most every 2 s. */
-function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) {
+/** A section's count follows the mail it gets: while an account scans, refresh the counts at most every 2 s. */
+function useRefreshCountsWhileScanning(accounts: readonly { id: string }[]) {
   const accountIds = accounts.map((a) => a.id);
   const client = useWorkerClient();
   const queryClient = useQueryClient();
@@ -135,26 +117,19 @@ function useRefreshCategoriesWhileScanning(accounts: readonly { id: string }[]) 
 /** The signed-in shell: sidebar/tabs, account switcher (`?account=`) and counts. */
 export function AppFrame({ pose }: { readonly pose: MascotPose }) {
   const t = useT();
-  const locale = useLocale();
+  const _locale = useLocale();
   const client = useWorkerClient();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { account } = useSearch({ strict: false });
-  const accounts = useQuery({
-    queryKey: queryKeys.accounts(),
-    queryFn: () => client.call("accounts.list"),
-  });
-  const accountList = accounts.data ?? [];
+  const { list: accountList, selected, accountIds, loaded } = useSelectedAccounts();
   const allAccountIds = accountList.map((a) => a.id);
-  const selected = accountList.some((a) => a.id === account) ? (account ?? null) : null;
-  const accountIds = selected === null ? allAccountIds : [selected];
 
   const counts = useQuery({
-    queryKey: queryKeys.categoryCounts(accountIds),
-    queryFn: () => client.call("mailbox.categories", { accountIds }),
-    enabled: accounts.isSuccess,
+    queryKey: queryKeys.typeCounts(accountIds),
+    queryFn: () => client.call("mailbox.types", { accountIds }),
+    enabled: loaded,
   });
-  const categories = visibleCategories(counts.data);
+  const topics = useTopics(accountIds, loaded).data ?? [];
   const current = accountList.find((a) => a.id === selected);
   const currentLabel = current?.displayName ?? t("switcher.all");
   const selectAccount = (next: string) =>
@@ -165,7 +140,7 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
         return next === ALL_ACCOUNTS ? rest : { ...rest, account: next };
       },
     });
-  useRefreshCategoriesWhileScanning(accountList);
+  useRefreshCountsWhileScanning(accountList);
 
   const onMac = isMacDesktop();
 
@@ -225,33 +200,10 @@ export function AppFrame({ pose }: { readonly pose: MascotPose }) {
                   icon={LayoutGridIcon}
                   active={pathname}
                 />
-                {categories.map(({ id, count }) => {
-                  const nav = CATEGORY_NAV[id];
-                  const Icon = nav.icon;
-                  const target = `/category/${id}`;
-                  return (
-                    <SidebarMenuItem key={id} reach="wide">
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === target}
-                        tone="muted"
-                        tooltip={t(nav.label)}
-                      >
-                        <Link
-                          to="/category/$categoryId"
-                          params={{ categoryId: id }}
-                          search={(prev) => prev}
-                        >
-                          <Icon />
-                          <SidebarMenuLabel>{t(nav.label)}</SidebarMenuLabel>
-                          <SidebarMenuBadge>{count.toLocaleString(locale)}</SidebarMenuBadge>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
+                <TypeItems counts={counts.data} pathname={pathname} />
               </SidebarMenu>
             </SidebarGroup>
+            <TopicsGroup topics={topics} pathname={pathname} />
             <SidebarGroup>
               <SidebarGroupLabel>{t("nav.tools")}</SidebarGroupLabel>
               <SidebarMenu>

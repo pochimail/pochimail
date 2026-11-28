@@ -15,6 +15,8 @@ export interface ModelTransportRequest {
 export interface ModelTransportResponse {
   readonly status: number;
   readonly contentRange?: string;
+  /** The raw `Retry-After` header: delay-seconds or an HTTP date. */
+  readonly retryAfter?: string;
   readonly body: AsyncIterable<Uint8Array>;
 }
 
@@ -37,6 +39,8 @@ export interface FileDownloadPorts {
 
 const FIRST_DELAY_MS = 2_000;
 const MAX_DELAY_MS = 60_000;
+/** A server asking for longer than this is waited out in slices: cancel must stay reachable. */
+const MAX_RETRY_AFTER_MS = 300_000;
 
 export const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
   new Promise((resolve) => {
@@ -80,13 +84,22 @@ const failureOf = (error: unknown): DownloadFailure => {
 /** Statuses that mean "try again later", not "this file cannot be had". */
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
+/** `Retry-After` as milliseconds from now, capped; undefined when absent or unreadable. */
+const retryAfterMs = (header: string | undefined, now: number): number | undefined => {
+  if (header === undefined) return undefined;
+  const value = header.trim();
+  const ms = /^\d+$/.test(value) ? Number(value) * 1_000 : Date.parse(value) - now;
+  return Number.isNaN(ms) ? undefined : Math.min(Math.max(ms, 0), MAX_RETRY_AFTER_MS);
+};
+
 /** Lets go of a body we will not read, so its connection is closed. */
 const discard = (body: AsyncIterable<Uint8Array>): void => {
   void Promise.resolve(body[Symbol.asyncIterator]().return?.()).catch(() => undefined);
 };
 
 type Outcome = "progressed" | "interrupted" | "restart";
-type Pull = Result<Outcome, DownloadFailure>;
+/** `retryAfterMs` is what a busy server asked for; it replaces the backoff delay once. */
+type Pull = Result<{ outcome: Outcome; retryAfterMs?: number }, DownloadFailure>;
 
 /** Where the response body lands in the partial file, or what to do instead. */
 const bodyStart = async (
@@ -143,6 +156,28 @@ const writeBody = async (
   return ok(offset);
 };
 
+/** Opens the partial file for `start` bytes in; on failure lets go of the live body first. */
+const openPartial = async (
+  partial: string,
+  start: number,
+  body: AsyncIterable<Uint8Array>,
+): Promise<FileHandle> => {
+  try {
+    return await open(partial, start === 0 ? "w" : "a");
+  } catch (error) {
+    discard(body);
+    throw error;
+  }
+};
+
+/** A pause outcome, carrying what a busy server asked for in `Retry-After`. */
+const paused = (outcome: Outcome, response: ModelTransportResponse): Pull => {
+  const asked = RETRYABLE_STATUSES.has(response.status)
+    ? retryAfterMs(response.retryAfter, Date.now())
+    : undefined;
+  return ok(asked === undefined ? { outcome } : { outcome, retryAfterMs: asked });
+};
+
 /** One request from byte `have` on, appended to the partial file. */
 const pull = async (
   file: ModelFile,
@@ -153,21 +188,29 @@ const pull = async (
 ): Promise<Pull> => {
   const response = await ports.transport({ url: file.url, rangeStart: have, signal });
   if (!response.ok) {
-    if (response.error === "unreachable") return ok("interrupted");
+    if (response.error === "unreachable") return ok({ outcome: "interrupted" });
     return err(response.error === "blocked" ? "refused" : "cancelled");
   }
   const start = await bodyStart(response.value, have, partial);
   if (!start.ok || typeof start.value === "string") discard(response.value.body);
   if (!start.ok) return start;
-  if (typeof start.value === "string") return ok(start.value);
-  const handle = await open(partial, start.value === 0 ? "w" : "a");
+  if (typeof start.value === "string") return paused(start.value, response.value);
+  const handle = await openPartial(partial, start.value, response.value.body);
   try {
     const written = await writeBody(file, handle, response.value.body, start.value, ports, signal);
     if (!written.ok) return written;
-    return ok(written.value > have ? "progressed" : "interrupted");
+    return ok({ outcome: written.value > have ? "progressed" : "interrupted" });
   } finally {
     await handle.close();
   }
+};
+
+/** Bytes held so far; a partial larger than the file is garbage and is deleted. */
+const partialSize = async (partial: string, expected: number): Promise<number> => {
+  const have = (await sizeOf(partial)) ?? 0;
+  if (have <= expected) return have;
+  await rm(partial, { force: true });
+  return 0;
 };
 
 /** Hashes the finished partial file; only a match is renamed into place, a mismatch is deleted. */
@@ -210,18 +253,15 @@ export const downloadFile = async (
     await mkdir(ports.partialDir, { recursive: true });
     for (;;) {
       if (signal.aborted) return err("cancelled");
-      const have = (await sizeOf(partial)) ?? 0;
+      const have = await partialSize(partial, file.bytes);
       if (have === file.bytes) return await verifyAndMove(file, partial, finalPath, ports);
-      if (have > file.bytes) {
-        await rm(partial, { force: true });
-        continue;
-      }
       const pulled = await pull(file, partial, have, ports, signal);
       if (!pulled.ok) return pulled;
-      if (pulled.value === "progressed") delay = FIRST_DELAY_MS;
-      if (pulled.value === "interrupted") {
+      const { outcome, retryAfterMs: asked } = pulled.value;
+      if (outcome === "progressed") delay = FIRST_DELAY_MS;
+      if (outcome === "interrupted") {
         ports.report("paused-offline", have);
-        await ports.wait(delay, signal);
+        await ports.wait(asked ?? delay, signal);
         delay = Math.min(delay * 2, MAX_DELAY_MS);
       }
     }

@@ -1,4 +1,4 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import type { T } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import type { MessageKey } from "@pochimail/ui/i18n/messages.ts";
 import type { OutputOf } from "#shared/ipc/contract.ts";
@@ -8,7 +8,7 @@ type Cleanable = OverviewData["cleanable"][number]["category"];
 
 /** The list a Review button opens. A target holds no email id, so no message is pre-selected. */
 export type ReviewTarget = {
-  readonly category: Category;
+  readonly category: EmailType;
   readonly review: "waiting" | "deadlines" | "important" | "delete" | "archive" | "unsubscribe";
 };
 
@@ -22,12 +22,11 @@ export type RowView = {
 
 export type CleanRowView = RowView & { readonly freesSpace: boolean };
 
-/** The action each known cleanable category feeds. Only delete rows free space (ADR 0012). */
-const CATEGORY_ACTION: Record<Cleanable, ReviewTarget["review"]> = {
-  newsletters: "unsubscribe",
-  promotions: "delete",
-  notifications: "archive",
-  "sign-ins-security": "delete",
+/** The action each cleanable type feeds. Only delete rows free space (ADR 0012). */
+const TYPE_ACTION: Record<Cleanable, ReviewTarget["review"]> = {
+  newsletter: "unsubscribe",
+  promotion: "delete",
+  notification: "archive",
 };
 
 const ACTION_ORDER: Record<ReviewTarget["review"], number> = {
@@ -39,22 +38,18 @@ const ACTION_ORDER: Record<ReviewTarget["review"], number> = {
   important: 5,
 };
 
-const CATEGORY_COPY: Record<Cleanable, { sentence: MessageKey; reason: MessageKey }> = {
-  newsletters: {
+const TYPE_COPY: Record<Cleanable, { sentence: MessageKey; reason: MessageKey }> = {
+  newsletter: {
     sentence: "overview.rec.newsletters.sentence",
     reason: "overview.rec.newsletters.reason",
   },
-  promotions: {
+  promotion: {
     sentence: "overview.rec.promotions.sentence",
     reason: "overview.rec.promotions.reason",
   },
-  notifications: {
+  notification: {
     sentence: "overview.rec.notifications.sentence",
     reason: "overview.rec.notifications.reason",
-  },
-  "sign-ins-security": {
-    sentence: "overview.rec.signins.sentence",
-    reason: "overview.rec.signins.reason",
   },
 };
 
@@ -74,14 +69,14 @@ export const overviewView = (
 export const cleanRows = (data: OverviewData, t: T): CleanRowView[] =>
   data.cleanable
     .map((item) => {
-      const copy = CATEGORY_COPY[item.category];
+      const copy = TYPE_COPY[item.category];
       return {
         id: item.category,
         count: item.count,
         label: t(copy.sentence),
         detail: t(copy.reason),
-        review: { category: item.category, review: CATEGORY_ACTION[item.category] },
-        freesSpace: CATEGORY_ACTION[item.category] === "delete",
+        review: { category: item.category, review: TYPE_ACTION[item.category] },
+        freesSpace: TYPE_ACTION[item.category] === "delete",
       };
     })
     .sort((a, b) => ACTION_ORDER[a.review.review] - ACTION_ORDER[b.review.review]);
@@ -89,7 +84,7 @@ export const cleanRows = (data: OverviewData, t: T): CleanRowView[] =>
 /** The count figure comes from delete rows alone; archive and unsubscribe can never change it. */
 export const cleanSplit = (data: OverviewData) => {
   const deletable = data.cleanable
-    .filter((item) => CATEGORY_ACTION[item.category] === "delete")
+    .filter((item) => TYPE_ACTION[item.category] === "delete")
     .reduce((sum, item) => sum + item.count, 0);
   return { deletable, keep: Math.max(0, data.scanned - deletable) };
 };
@@ -106,7 +101,7 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
         data.oldestWaitingDays > 0
           ? t("overview.waiting.detail", { days: data.oldestWaitingDays })
           : undefined,
-      review: { category: "people", review: "waiting" },
+      review: { category: "personal", review: "waiting" },
     });
   if (data.deadlines > 0)
     rows.push({
@@ -114,7 +109,7 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
       count: data.deadlines,
       label: t("overview.deadlines.title", { count: data.deadlines }),
       detail: t("overview.deadlines.detail"),
-      review: { category: "people", review: "deadlines" },
+      review: { category: "personal", review: "deadlines" },
     });
   if (data.important > 0)
     rows.push({
@@ -122,7 +117,7 @@ export const signalRows = (data: OverviewData, t: T): RowView[] => {
       count: data.important,
       label: t("overview.important.title", { count: data.important }),
       detail: t("overview.important.detail"),
-      review: { category: "people", review: "important" },
+      review: { category: "personal", review: "important" },
     });
   return rows;
 };

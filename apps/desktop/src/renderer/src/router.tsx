@@ -11,7 +11,6 @@ import {
 } from "@tanstack/react-router";
 import type { RpcClient } from "#shared/ipc/client.ts";
 import { ActivityPage } from "./features/activity/activity-page.tsx";
-import { CategoryPage } from "./features/category/category-page.tsx";
 import { ConnectPage } from "./features/connect/connect-page.tsx";
 import { DocumentsPage } from "./features/documents/documents-page.tsx";
 import { OnboardingLayout } from "./features/onboarding/onboarding-layout.tsx";
@@ -23,6 +22,10 @@ import { AppearanceControls } from "./features/settings/appearance-controls.tsx"
 import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
+import { ReconnectGate } from "./features/states/reconnect-gate.tsx";
+import { TopicPage } from "./features/topic/topic-page.tsx";
+import { TypePage } from "./features/type/type-page.tsx";
+import { UpdatesSection } from "./features/updates/updates-section.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
 import { ScanStatusProvider } from "./lib/scan-status.tsx";
 
@@ -121,32 +124,45 @@ const setupRoute = createRoute({
   },
 });
 
-const overviewRoute = createRoute({
+// Settings stays outside the gate: it is where an account that lost access is reconnected or removed.
+const gateRoute = createRoute({
   getParentRoute: () => shellRoute,
+  id: "gate",
+  component: ReconnectGate,
+});
+
+const overviewRoute = createRoute({
+  getParentRoute: () => gateRoute,
   path: "/overview",
   component: OverviewPage,
 });
 
 const reviewRoute = createRoute({
-  getParentRoute: () => shellRoute,
+  getParentRoute: () => gateRoute,
   path: "/review",
   component: ReviewPage,
 });
 
-const categoryRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: "/category/$categoryId",
-  component: CategoryPage,
+const typeRoute = createRoute({
+  getParentRoute: () => gateRoute,
+  path: "/type/$typeId",
+  component: TypePage,
+});
+
+const topicRoute = createRoute({
+  getParentRoute: () => gateRoute,
+  path: "/topic/$topicId",
+  component: TopicPage,
 });
 
 const documentsRoute = createRoute({
-  getParentRoute: () => shellRoute,
+  getParentRoute: () => gateRoute,
   path: "/documents",
   component: DocumentsPage,
 });
 
 const activityRoute = createRoute({
-  getParentRoute: () => shellRoute,
+  getParentRoute: () => gateRoute,
   path: "/activity",
   component: ActivityPage,
 });
@@ -154,7 +170,11 @@ const activityRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: () => (
+    <SettingsPage>
+      <UpdatesSection />
+    </SettingsPage>
+  ),
 });
 
 // Dev and E2E builds only: __POCHIMAIL_GALLERY__ is a build-time literal, so a production bundle drops this branch and the gallery chunk.
@@ -175,11 +195,14 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   onboardingRoute.addChildren([welcomeRoute, connectRoute, setupRoute]),
   shellRoute.addChildren([
-    overviewRoute,
-    reviewRoute,
-    categoryRoute,
-    documentsRoute,
-    activityRoute,
+    gateRoute.addChildren([
+      overviewRoute,
+      reviewRoute,
+      typeRoute,
+      topicRoute,
+      documentsRoute,
+      activityRoute,
+    ]),
     settingsRoute,
   ]),
   ...galleryRoutes,

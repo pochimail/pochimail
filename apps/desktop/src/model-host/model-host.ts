@@ -2,10 +2,10 @@ import { hostControlSchema } from "../shared/model-host-protocol.ts";
 import { loadEngine } from "./engine.ts";
 import { serveModelHost } from "./serve.ts";
 
-// Runs inside its own Electron utilityProcess (ADR 0002). Until M3 ships a real model there is none to load:
-// requests are answered `unavailable`, except in demo mode, where the fixture stubs answer.
+// Runs inside its own Electron utilityProcess (ADR 0002). With no model paths set there is nothing to load: requests are
+// answered `unavailable`, except in demo mode, where the fixture stubs answer.
 const parent = process.parentPort;
-const engine = loadEngine(process.env.POCHIMAIL_DEMO);
+const engine = loadEngine(process.env).catch(() => undefined);
 
 parent.on("message", (event) => {
   const message = hostControlSchema.safeParse(event.data);

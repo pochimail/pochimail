@@ -31,9 +31,9 @@ export const derivedChecks: readonly Check<DerivedHarness>[] = [
   check(
     "saving again replaces the row and never returns another workspace's data (guards duplicates on re-classification and cross-workspace leaks)",
     async (h) => {
-      await save(h, makeDerived(1), makeDerived(1, { category: "promotions", confidence: 0.5 }));
+      await save(h, makeDerived(1), makeDerived(1, { category: "promotion", confidence: 0.5 }));
       const got = unwrap(await h.uow.reads.derived.get(WS_A, "msg-1" as MessageId));
-      expect([got.category, got.confidence]).toEqual(["promotions", 0.5]);
+      expect([got.category, got.confidence]).toEqual(["promotion", 0.5]);
       const listed = unwrap(await h.uow.reads.derived.list(WS_A, ACCOUNT_1, { limit: 10 }));
       expect(listed.items).toHaveLength(1);
       expect((await h.uow.reads.derived.get(WS_B, "msg-1" as MessageId)).ok).toBe(false);

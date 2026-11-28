@@ -1,6 +1,6 @@
 import type { AsyncResult, CancelSignal, Page, PageRequest } from "@pochimail/kernel/common";
 import type { NotFound, StorageError } from "@pochimail/kernel/errors";
-import type { AccountId, MessageId, WorkspaceId } from "@pochimail/kernel/ids";
+import type { AccountId, MessageId, TopicId, WorkspaceId } from "@pochimail/kernel/ids";
 import type { IncomingMessage, Message } from "../model/message.ts";
 
 // Every method takes the workspaceId first: all reads and writes are workspace-scoped.
@@ -32,6 +32,11 @@ export interface MessageReader {
     ws: WorkspaceId,
     accountIds: readonly AccountId[],
   ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
+  /** Emails per topic id over the given accounts, one aggregate read (a topic with no message may be absent). */
+  countByTopic(
+    ws: WorkspaceId,
+    accountIds: readonly AccountId[],
+  ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
 }
 export interface MessageWriter {
   /** Inserts or updates by id; a re-run with the same input changes nothing (idempotent). */
@@ -43,6 +48,12 @@ export interface MessageWriter {
     ws: WorkspaceId,
     id: MessageId,
     category: string,
+  ): AsyncResult<void, StorageError | NotFound>;
+  /** Replaces the topics of the message. A re-sync keeps them, like the category. */
+  setTopics(
+    ws: WorkspaceId,
+    id: MessageId,
+    topicIds: readonly TopicId[],
   ): AsyncResult<void, StorageError | NotFound>;
 }
 

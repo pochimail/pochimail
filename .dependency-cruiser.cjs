@@ -202,6 +202,16 @@ module.exports = {
       to: { path: "^apps/desktop/src/(renderer|worker|model-host)/" },
     },
     {
+      name: "worker-does-not-probe-hardware",
+      severity: "error",
+      comment:
+        "The GPU probe and the CPU benchmark run in the model host only: a driver crash or hang must not reach the worker (ADR 0002, 0019).",
+      from: { path: "^apps/desktop/src/worker/", pathNot: NOT_SHIPPED },
+      to: {
+        path: "^(packages/ai/src/(gpu-probe|cpu-benchmark)\\.ts|apps/desktop/src/model-host/hardware\\.ts)$",
+      },
+    },
+    {
       name: "preload-is-tiny",
       severity: "error",
       comment:

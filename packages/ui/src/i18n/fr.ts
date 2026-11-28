@@ -1,8 +1,9 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -83,8 +84,6 @@ export const fr = {
     "Des alertes automatiques, pas des emails de personnes. Examiner ouvre la liste : rien n’est archivé avant votre accord.",
     [],
   ),
-  "overview.rec.signins.sentence": entry("Supprimer les codes de connexion expirés", []),
-  "overview.rec.signins.reason": entry("Des codes à usage unique et des alertes de connexion", []),
   "overview.scan.progress": entry("{processed, number} emails triés sur {total, number}", [
     "processed",
     "total",
@@ -193,7 +192,8 @@ export const fr = {
 
   "settings.title": entry("Réglages", []),
   "settings.description": entry("Les préférences et les réglages du compte apparaîtront ici.", []),
-  ...appearanceMessages.fr,
+  ...settingsMessages.fr,
+  ...pochimailNotificationMessages.fr,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Navigation principale", []),
@@ -204,14 +204,13 @@ export const fr = {
   "switcher.menu": entry("Compte", []),
   "switcher.all": entry("Tous les comptes", []),
   "switcher.add": entry("Ajouter un autre compte", []),
-  "category.people": entry("Personnes", []),
-  "category.records": entry("Documents officiels", []),
-  "category.purchasesTravel": entry("Achats et voyages", []),
-  "category.signInsSecurity": entry("Connexions et sécurité", []),
-  "category.notifications": entry("Emails d’alerte", []),
-  "category.newsletters": entry("Newsletters", []),
-  "category.promotions": entry("Promotions", []),
-  "category.placeholder": entry("Les emails de cette catégorie apparaîtront ici.", []),
+  "nav.empty": entry("{name}, vide", ["name"]),
+  "nav.topics": entry("Sujets", []),
+  "type.personal": entry("Personnel", []),
+  "type.transactional": entry("Transactionnel", []),
+  "type.notification": entry("Emails d’alerte", []),
+  "type.newsletter": entry("Infolettres", []),
+  "type.promotion": entry("Promotions", []),
   ...notificationMessages.fr,
 
   "devGallery.title": entry("Galerie de développement", []),
@@ -282,11 +281,4 @@ export const fr = {
     [],
   ),
   "state.nothingToDo.action": entry("Retour à la vue d’ensemble", []),
-  "state.updateReady.title": entry("Une nouvelle version est prête", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} est prêt. Il s’installe au redémarrage, et vos emails restent où ils sont.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Redémarrer maintenant", []),
-  "state.updateReady.whatsNew": entry("Nouveautés", []),
 } satisfies Catalog;

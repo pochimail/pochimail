@@ -10,7 +10,10 @@ const empty = (): DigestStatus => ({
 });
 
 /** Each account's newest digest's new-item figures, in memory for the life of the worker. */
-export function createDigestTally(): DigestTally {
+export function createDigestTally(): DigestTally & {
+  /** Drops an account's figures when it is removed, so the All-accounts summary stops counting it. */
+  forget(accountId: AccountId): void;
+} {
   const seen = new Set<string>();
   const byAccount = new Map<AccountId, DigestStatus>();
   return {
@@ -32,6 +35,9 @@ export function createDigestTally(): DigestTally {
         unsubscribed: digest.unsubscribed ?? 0,
         ...(digest.generatedAt === undefined ? {} : { generatedAt: digest.generatedAt }),
       });
+    },
+    forget: (accountId) => {
+      byAccount.delete(accountId);
     },
     status: (accountId) => byAccount.get(accountId) ?? empty(),
     statuses: () => [...byAccount.values()],

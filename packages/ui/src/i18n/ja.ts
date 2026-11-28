@@ -1,8 +1,9 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
+import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -75,8 +76,6 @@ export const ja = {
     "自動送信された通知メールで、個人からのメールではありません。「確認する」を押すと一覧が開き、承認するまで何もアーカイブされません。",
     [],
   ),
-  "overview.rec.signins.sentence": entry("期限切れのログインコードを削除する", []),
-  "overview.rec.signins.reason": entry("ワンタイムコードとログインの通知です", []),
   "overview.scan.progress": entry("{total, number}件中{processed, number}件を整理しました", [
     "processed",
     "total",
@@ -173,7 +172,8 @@ export const ja = {
 
   "settings.title": entry("設定", []),
   "settings.description": entry("環境設定とアカウント設定がここに表示されます。", []),
-  ...appearanceMessages.ja,
+  ...settingsMessages.ja,
+  ...pochimailNotificationMessages.ja,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("メインナビゲーション", []),
@@ -184,14 +184,13 @@ export const ja = {
   "switcher.menu": entry("アカウント", []),
   "switcher.all": entry("すべてのアカウント", []),
   "switcher.add": entry("別のアカウントを追加", []),
-  "category.people": entry("人", []),
-  "category.records": entry("記録", []),
-  "category.purchasesTravel": entry("購入・旅行", []),
-  "category.signInsSecurity": entry("サインイン・セキュリティ", []),
-  "category.notifications": entry("通知メール", []),
-  "category.newsletters": entry("ニュースレター", []),
-  "category.promotions": entry("プロモーション", []),
-  "category.placeholder": entry("このカテゴリのメールがここに表示されます。", []),
+  "nav.empty": entry("{name}、空", ["name"]),
+  "nav.topics": entry("トピック", []),
+  "type.personal": entry("個人", []),
+  "type.transactional": entry("取引", []),
+  "type.notification": entry("通知メール", []),
+  "type.newsletter": entry("ニュースレター", []),
+  "type.promotion": entry("プロモーション", []),
   ...notificationMessages.ja,
 
   "devGallery.title": entry("開発ギャラリー", []),
@@ -262,11 +261,4 @@ export const ja = {
     [],
   ),
   "state.nothingToDo.action": entry("概要に戻る", []),
-  "state.updateReady.title": entry("新しいバージョンの準備ができました", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} の準備ができました。再起動するとインストールされ、メールはそのままです。",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("今すぐ再起動", []),
-  "state.updateReady.whatsNew": entry("新機能", []),
 } satisfies Catalog;

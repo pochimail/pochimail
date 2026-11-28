@@ -2,7 +2,7 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /** Installers worth reporting: blockmaps and update metadata are not downloads users pick. */
-const installerPattern = /\.(dmg|zip|exe|AppImage|deb|rpm)$/;
+const installerPattern = /\.(dmg|exe|AppImage|deb|rpm)$/;
 
 const formatMegabytes = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 

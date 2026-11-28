@@ -7,9 +7,12 @@ import type { RpcClient } from "#shared/ipc/client.ts";
 import { AppearanceProvider, useAppearance } from "../features/settings/appearance.tsx";
 import type { StorageApi } from "../features/storage/storage-api.ts";
 import { StoragePrompt } from "../features/storage/storage-prompt.tsx";
+import { UpdateNotice } from "../features/updates/update-notice.tsx";
+import { type UpdatesApi, UpdatesProvider } from "../features/updates/updates-context.tsx";
 import { AppEventsBridge } from "../lib/app-events-bridge.tsx";
 import { AppErrorBoundary } from "../lib/error-boundary.tsx";
 import { useAppLocale } from "../lib/locale.ts";
+import { NotificationBridge } from "../lib/notification-bridge.tsx";
 import { OptimisticActionProvider } from "../lib/optimistic-context.tsx";
 import { createAppQueryClient } from "../lib/query/client.ts";
 import { createOptimisticActionRegistry } from "../lib/query/optimistic.ts";
@@ -21,6 +24,7 @@ function AppShell({ router }: { router: AppRouter }) {
   return (
     <>
       <AppEventsBridge client={client} />
+      <NotificationBridge router={router} />
       <RouterProvider router={router} />
     </>
   );
@@ -39,6 +43,8 @@ export type AppProps = {
   workerClient?: RpcClient | Promise<RpcClient>;
   /** The preload's storage calls: when given, the app asks how local data is protected before anything else (ADR 0005). */
   storage?: StorageApi;
+  /** The preload's update calls: when given, a newer release shows one toast and Settings gets an Updates row (#300). */
+  updates?: UpdatesApi;
 };
 
 /**
@@ -70,7 +76,10 @@ export function App(props: AppProps = {}) {
               <WorkerClientProvider client={workerClient}>
                 <AppearanceProvider>
                   <AppearanceI18n>
-                    <AppShell router={router} />
+                    <UpdatesProvider api={props.updates}>
+                      <AppShell router={router} />
+                      <UpdateNotice />
+                    </UpdatesProvider>
                     {props.storage === undefined ? null : <StoragePrompt storage={props.storage} />}
                     <Toaster />
                   </AppearanceI18n>

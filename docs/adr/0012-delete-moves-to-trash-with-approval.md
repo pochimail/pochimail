@@ -21,9 +21,9 @@ Users want a disk cleaner's result, safely. "Nothing is ever deleted" made that 
 - Promise: "You keep the control. Nothing is deleted without your approval. Deleted emails go to the Trash, and you can undo."
 
 ## Addendum (#128): unsure
-- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects: never pre-selected, proposed or auto-applied. Its signal is never counted.
-- Only unsure is enforced at the action boundary (`authorize` denies Autopilot). The other protections are not: a Review list must read every signal hit.
-- "Time-sensitive" is a proxy: a recent unopened `records` email. Deadlines are unread (ADR 0014): it misses dated mail of other types and flags undated records.
+- Unsure: confidence below `UNSURE_BELOW` (0.6), no recorded decision, or an unknown fact (attachment count, sender, date). It protects unconditionally: never pre-selected, proposed or auto-applied. Its signal is never counted.
+- Only unsure is enforced at the action boundary (`authorize` denies Autopilot). Other protections are not.
+- "Time-sensitive" is a proxy: a recent unopened `transactional` email. Deadlines are unread (ADR 0014): it misses dated mail of other types and flags undated transactional email.
 - Gmail metadata gives a lower-bound attachment count and no size: the Overview "attachments saved" figure is a floor.
 
 ## Consequences

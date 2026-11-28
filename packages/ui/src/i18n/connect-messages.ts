@@ -1,6 +1,9 @@
-/** Connect screen copy per locale. Plain objects, so this file needs nothing from the catalogs that spread it in. */
+import { accountsMessages } from "./accounts-messages.ts";
+
+/** Connect screen copy per locale, with the account-management copy (reconnect, remove). Plain objects, so this file needs nothing from the catalogs that spread it in. */
 export const connectMessages = {
   en: {
+    ...accountsMessages.en,
     "connect.title": { text: "Connect an email account", params: [] },
     "connect.description": {
       text: "Sign in with your provider. Pochimail never sees your password, and you can add more accounts later.",
@@ -47,6 +50,7 @@ export const connectMessages = {
     },
   },
   fr: {
+    ...accountsMessages.fr,
     "connect.title": { text: "Connecter un compte email", params: [] },
     "connect.description": {
       text: "Connectez-vous auprès de votre fournisseur. Pochimail ne voit jamais votre mot de passe, et vous pourrez ajouter d’autres comptes plus tard.",
@@ -105,6 +109,7 @@ export const connectMessages = {
     },
   },
   ja: {
+    ...accountsMessages.ja,
     "connect.title": { text: "メールアカウントを接続", params: [] },
     "connect.description": {
       text: "ご利用のプロバイダでサインインしてください。Pochimailがパスワードを見ることはなく、アカウントは後から追加できます。",

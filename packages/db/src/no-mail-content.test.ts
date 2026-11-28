@@ -58,11 +58,11 @@ function seedV5(db: Database.Database) {
     INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
       received_at, has_list_unsubscribe, opened, size, topic_ids, suspicious_reasons, suspicious_confidence, category, ingest_seq)
     VALUES ('${WS_A}', 'm-old', 'a', 't', '${OLD.address}', '["${OLD.owner}"]', '${OLD.subject}',
-      '${OLD.snippet}', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["${OLD.reason}"]', 0.5, 'records', 1);
+      '${OLD.snippet}', '2026-01-01T00:00:00.000Z', 0, 0, NULL, '[]', '["${OLD.reason}"]', 0.5, 'transactional', 1);
     INSERT INTO thread (workspace_id, id, account_id, subject, message_ids, last_message_at)
       VALUES ('${WS_A}', 't', 'a', '${OLD.thread}', '["m-old"]', '2026-01-01T00:00:00.000Z');
     INSERT INTO derived (workspace_id, message_id, account_id, category, reason, confidence, model_version, snippet, derived_at)
-      VALUES ('${WS_A}', 'm-old', 'a', 'records', '${OLD.derived}', 0.9, 'rules-1', '${OLD.snippet}', '2026-01-01T00:00:00.000Z');
+      VALUES ('${WS_A}', 'm-old', 'a', 'transactional', '${OLD.derived}', 0.9, 'rules-1', '${OLD.snippet}', '2026-01-01T00:00:00.000Z');
     INSERT INTO signal (workspace_id, message_id, kind, confidence, detected_at, reason)
       VALUES ('${WS_A}', 'm-old', 'has-document', 0.9, '2026-01-01T00:00:00.000Z', '${OLD.signal}');
     INSERT INTO sender_stats (workspace_id, account_id, address, message_count, opened_count, replied_count, last_message_at, vip)
@@ -216,10 +216,10 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     const failed = migrate(db);
     expect(failed.ok).toBe(false);
     if (!failed.ok) expect(failed.error.message).toBe("Database cleanup after migration failed");
-    expect(db.pragma("user_version", { simple: true })).toBe(7);
+    expect(db.pragma("user_version", { simple: true })).toBe(8);
     reader.close();
 
-    expect(unwrap(migrate(db))).toEqual({ from: 7, to: 7 });
+    expect(unwrap(migrate(db))).toEqual({ from: 8, to: 8 });
     for (const marker of Object.values(OLD)) expect(fileBytes(path)).not.toContain(marker);
     db.close();
   });
@@ -234,7 +234,7 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
     old.close();
 
     const storage = open(path);
-    expect(storage.writer.pragma("user_version", { simple: true })).toBe(7);
+    expect(storage.writer.pragma("user_version", { simple: true })).toBe(8);
     const objects = storage.writer
       .prepare(
         "SELECT name FROM sqlite_master WHERE name LIKE 'message_search%' OR name LIKE 'signal_search%'",
@@ -283,6 +283,9 @@ describe("ADR 0014: nothing private reaches SQLite", () => {
       "address",
       "reason",
       "reasons",
+      "embedding",
+      "embeddings",
+      "vector",
       "embedding_ref",
       "embedding",
       "vector",

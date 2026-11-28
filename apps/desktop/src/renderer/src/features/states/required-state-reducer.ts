@@ -12,7 +12,6 @@ export type RequiredStates = {
   readonly needsReauth: readonly { readonly accountId: string; readonly provider: string }[];
   readonly signInCancelled: boolean;
   readonly modelDownloadFailed: boolean;
-  readonly updateVersion: string | null;
 };
 
 export const noRequiredStates: RequiredStates = {
@@ -21,7 +20,6 @@ export const noRequiredStates: RequiredStates = {
   needsReauth: [],
   signInCancelled: false,
   modelDownloadFailed: false,
-  updateVersion: null,
 };
 
 export function reduceRequiredStates(
@@ -47,6 +45,7 @@ export function reduceRequiredStates(
         ],
       };
     case "Reconnected":
+    case "AccountRemoved":
       return {
         ...state,
         needsReauth: state.needsReauth.filter((account) => account.accountId !== event.accountId),
@@ -59,8 +58,6 @@ export function reduceRequiredStates(
       return { ...state, modelDownloadFailed: true };
     case "ModelDownloadStarted":
       return { ...state, modelDownloadFailed: false };
-    case "UpdateReady":
-      return { ...state, updateVersion: event.version };
     case "ActionApplied":
     case "ActionFailed":
     case "ScanCompleted":

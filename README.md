@@ -7,7 +7,7 @@
 
 A private assistant for the email accounts you already have. It shows the big picture of your mailboxes, flags what matters, proposes cleanups and saves your important documents. **Your email never leaves your computer.**
 
-Free and open source ([AGPL-3.0](LICENSE)). The assistant is **Pochi**, a small plush envelope (from *pochi-bukuro*, ポチ袋). Website: [getpochimail.com](https://getpochimail.com). Early development; no release yet.
+Free and open source ([AGPL-3.0](LICENSE)). The assistant is **Pochi**, a small plush envelope (from *pochi-bukuro*, ポチ袋). Website: [pochimail.github.io/pochimail](https://pochimail.github.io/pochimail/). Early development; no release yet.
 
 Pochimail is **not a mail client**: any single email opens in your usual mail app. v1 supports Gmail; Outlook and other providers come in v1.1.
 

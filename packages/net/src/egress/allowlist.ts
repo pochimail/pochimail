@@ -21,12 +21,22 @@ export const STATIC_EGRESS_HOSTS: readonly string[] = [
  */
 const MODEL_DOWNLOAD_HOSTS: readonly string[] = [
   "huggingface.co", // the pinned `resolve` URL
-  "us.aws.cdn.hf.co", // where `huggingface.co` redirects file downloads
+  // CDN edges that `huggingface.co` redirects file downloads to: HF-documented, may change.
+  "us.aws.cdn.hf.co",
   "us.gcp.cdn.hf.co",
   "cdn-lfs-us-1.hf.co",
   "cdn-lfs-eu-1.hf.co",
   "transfer.xethub.hf.co",
   "transfer.xethub-eu.hf.co",
+];
+
+/**
+ * The update notice reads one small file from the latest GitHub Release (#300): `github.com` answers with a redirect
+ * to `release-assets.githubusercontent.com`. Kept apart from the static hosts, like the model hosts. Exact names, no wildcard.
+ */
+const UPDATE_CHECK_HOSTS: readonly string[] = [
+  "github.com",
+  "release-assets.githubusercontent.com",
 ];
 
 /**
@@ -116,4 +126,5 @@ export const egressPolicy = {
   staticHosts: STATIC_EGRESS_HOSTS,
   create: (): HostAllowlist => createHostAllowlist(STATIC_EGRESS_HOSTS),
   createForModelDownloads: (): HostAllowlist => createHostAllowlist(MODEL_DOWNLOAD_HOSTS),
+  createForUpdateCheck: (): HostAllowlist => createHostAllowlist(UPDATE_CHECK_HOSTS),
 } as const;
