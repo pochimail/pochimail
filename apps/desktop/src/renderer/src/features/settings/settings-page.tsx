@@ -1,11 +1,13 @@
 import { useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
+import type { ReactNode } from "react";
 import { PAGE_MAIN_CLASS, PageHeading } from "../../lib/screen-heading.tsx";
+import { SETTINGS_ROW } from "../../lib/settings-row.ts";
 import { AccountsSection } from "./accounts-section.tsx";
 import { LanguageDropdown, ThemeSegments } from "./appearance-controls.tsx";
-import { SETTINGS_ROW, SettingsSection } from "./settings-section.tsx";
+import { SettingsSection } from "./settings-section.tsx";
 
-/** Settings: the reference's Accounts section, then Appearance (the Theme segmented radio plus the language row, JD's addition). */
-export function SettingsPage() {
+/** Settings: the reference's Accounts section, then Appearance (the Theme segmented radio plus the language row, JD's addition). Other sections are passed in by the route. */
+export function SettingsPage({ children }: { children?: ReactNode }) {
   const t = useT();
 
   return (
@@ -24,6 +26,8 @@ export function SettingsPage() {
           <LanguageDropdown />
         </li>
       </SettingsSection>
+
+      {children}
     </main>
   );
 }

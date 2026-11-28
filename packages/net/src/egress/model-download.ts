@@ -26,6 +26,7 @@ export interface ModelDownloadRequest {
 export interface ModelDownloadResponse {
   readonly status: number;
   readonly contentRange?: string;
+  readonly retryAfter?: string;
   readonly body: AsyncIterable<Uint8Array>;
 }
 
@@ -84,7 +85,7 @@ const guardBody = (
   },
 });
 
-type Hop = Awaited<ReturnType<StreamFetch>>;
+export type Hop = Awaited<ReturnType<StreamFetch>>;
 
 const discard = (body: Hop["body"]): void => {
   if (body !== null)
@@ -101,7 +102,7 @@ const redirectTarget = (response: Hop, from: URL): URL | undefined => {
 };
 
 /** Follows redirects by hand: every hop must pass the allow-list, so none can leave the model hosts. */
-const follow = async (
+export const follow = async (
   start: URL,
   call: (url: URL) => Promise<Hop>,
   allowlist: HostAllowlist,
@@ -170,9 +171,11 @@ export const createModelDownloader = (options: {
       if (!followed.ok) return followed;
       const { status, headers: received, body } = followed.value;
       const contentRange = received.get("content-range") ?? undefined;
+      const retryAfter = received.get("retry-after") ?? undefined;
       return ok({
         status,
         ...(contentRange === undefined ? {} : { contentRange }),
+        ...(retryAfter === undefined ? {} : { retryAfter }),
         body: guardBody(body ?? noBody(), idleMs, () => controller.abort(), release),
       });
     };

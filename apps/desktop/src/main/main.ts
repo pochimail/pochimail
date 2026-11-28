@@ -28,10 +28,13 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
+import { focusOrCreateWindow, holdSingleInstanceLock } from "./single-instance.ts";
+import { smokeRuntimes } from "./smoke-runtimes.ts";
 import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
+import { startUpdates } from "./updater/start-updates.ts";
 import { createWorkerLifecycle, type WorkerLifecycle } from "./worker-lifecycle.ts";
 
 // A packaged app never honours the dev-server variable, so an environment override cannot point the window elsewhere.
@@ -189,7 +192,7 @@ const createWindow = (): void => {
   // Packaging smoke test (M0-10): report that the renderer loaded, then quit.
   if (process.env.POCHIMAIL_SMOKE === "1")
     window.webContents.once("did-finish-load", () => {
-      process.stdout.write("smoke:window-loaded\n");
+      process.stdout.write(`smoke:window-loaded version=${app.getVersion()}\n`);
       void smokeStorage({
         vault: safeStorage,
         keyFile: process.env.POCHIMAIL_SMOKE_KEY_FILE,
@@ -197,93 +200,97 @@ const createWindow = (): void => {
           utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
             serviceName: "pochimail-storage-smoke",
           }),
-      }).finally(() => app.quit());
+      })
+        .then(() =>
+          smokeRuntimes(() =>
+            utilityProcess.fork(join(import.meta.dirname, "runtime-smoke.js"), [], {
+              serviceName: "pochimail-runtime-smoke",
+            }),
+          ),
+        )
+        .finally(() => app.quit());
     });
   if (devServerUrl === undefined) void window.loadFile(rendererFile);
   else void window.loadURL(devServerUrl);
 };
 
-app.on("web-contents-created", (_event, contents) =>
-  hardenWebContents(contents, (url) => isAppUrl(url, { devServerOrigin, rendererFile })),
-);
+const appUrl = (url: string): boolean => isAppUrl(url, { devServerOrigin, rendererFile });
+const openExternal = (url: string): Promise<void> => shell.openExternal(url);
+const windows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
 
-void app.whenReady().then(() => {
-  nativeTheme.themeSource = "system";
-  if (devIconPath !== undefined && process.platform === "darwin")
-    app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
-  lockDownSession();
-  registerOsCalls({
-    ipc: ipcMain,
-    openExternal: (url) => shell.openExternal(url),
-    showItemInFolder: (path) => shell.showItemInFolder(path),
-    chooseFolder: async () => {
-      const result = await dialog.showOpenDialog({
-        properties: ["openDirectory", "createDirectory"],
-      });
-      return result.canceled ? null : (result.filePaths[0] ?? null);
-    },
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-    appDataDirs: () => [app.getPath("userData")],
-  });
-  registerStorageCalls({
-    ipc: ipcMain,
-    gate: processStorageGate(),
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-  });
-  createWindow();
-  const locale = localeFromLanguages(app.getPreferredSystemLanguages());
-  // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
-  const trayImages = app.isPackaged
-    ? join(process.resourcesPath, "tray")
-    : join(import.meta.dirname, "../../resources/tray");
-  const appTray = createAppTray({
-    platform: process.platform,
-    imagesDir: trayImages,
-    theme: nativeTheme,
-    createTray: (image) => new Tray(image),
-    imageFromPath: (path, template) => {
-      const image = nativeImage.createFromPath(path);
-      image.setTemplateImage(template);
-      return image;
-    },
-    buildMenu: (items) => Menu.buildFromTemplate([...items]),
-    labels: {
-      tooltip: t("nav.brand", undefined, { locale }),
-      open: t("tray.open", undefined, { locale }),
-      quit: t("tray.quit", undefined, { locale }),
-    },
-    openApp: () => {
-      const [window] = BrowserWindow.getAllWindows();
-      if (window === undefined) createWindow();
-      else {
-        if (window.isMinimized()) window.restore();
-        window.show();
-        window.focus();
-      }
-    },
-    quit: () => app.quit(),
-  });
-  // Quitting waits (briefly) for each worker to release its database, then lets the app go.
-  let workersStopped = false;
-  app.on("will-quit", (event) => {
-    if (!workersStopped) {
-      event.preventDefault();
-      void processWorkerLifecycle()
-        .shutdown()
-        .catch(() => undefined)
-        .finally(() => {
-          workersStopped = true;
-          app.quit();
+app.on("web-contents-created", (_event, contents) => hardenWebContents(contents, appUrl));
+
+const openOrFocus = (): void => focusOrCreateWindow(windows(), createWindow);
+// Before anything opens the database: a refused process starts nothing (#320).
+const holdsLock = holdSingleInstanceLock(app, openOrFocus);
+
+if (holdsLock)
+  void app.whenReady().then(() => {
+    nativeTheme.themeSource = "system";
+    if (devIconPath !== undefined && process.platform === "darwin")
+      app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
+    lockDownSession();
+    registerOsCalls({
+      ipc: ipcMain,
+      openExternal,
+      showItemInFolder: (path) => shell.showItemInFolder(path),
+      chooseFolder: async () => {
+        const result = await dialog.showOpenDialog({
+          properties: ["openDirectory", "createDirectory"],
         });
-      return;
-    }
-    appTray.dispose();
-    processStorageGate().dispose();
+        return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
+      isAppUrl: appUrl,
+      appDataDirs: () => [app.getPath("userData")],
+    });
+    registerStorageCalls({ ipc: ipcMain, gate: processStorageGate(), isAppUrl: appUrl });
+    startUpdates({ app, ipc: ipcMain, openExternal, isAppUrl: appUrl, windows, logger });
+    createWindow();
+    const locale = localeFromLanguages(app.getPreferredSystemLanguages());
+    // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
+    const trayImages = app.isPackaged
+      ? join(process.resourcesPath, "tray")
+      : join(import.meta.dirname, "../../resources/tray");
+    const appTray = createAppTray({
+      platform: process.platform,
+      imagesDir: trayImages,
+      theme: nativeTheme,
+      createTray: (image) => new Tray(image),
+      imageFromPath: (path, template) => {
+        const image = nativeImage.createFromPath(path);
+        image.setTemplateImage(template);
+        return image;
+      },
+      buildMenu: (items) => Menu.buildFromTemplate([...items]),
+      labels: {
+        tooltip: t("nav.brand", undefined, { locale }),
+        open: t("tray.open", undefined, { locale }),
+        quit: t("tray.quit", undefined, { locale }),
+      },
+      openApp: openOrFocus,
+      quit: () => app.quit(),
+    });
+    // Quitting waits (briefly) for each worker to release its database, then lets the app go.
+    let workersStopped = false;
+    app.on("will-quit", (event) => {
+      if (!workersStopped) {
+        event.preventDefault();
+        void processWorkerLifecycle()
+          .shutdown()
+          .catch(() => undefined)
+          .finally(() => {
+            workersStopped = true;
+            app.quit();
+          });
+        return;
+      }
+      appTray.dispose();
+      processStorageGate().dispose();
+    });
+    app.on("activate", () => {
+      if (windows().length === 0) createWindow();
+    });
   });
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

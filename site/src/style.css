@@ -1,0 +1,197 @@
+/* Colors, radii and font names come from the app's tokens (assets/tokens.css, copied from packages/ui by scripts/build.ts); nothing is retyped here. */
+@font-face {
+  font-family: "Newsreader";
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("assets/fonts/newsreader-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Instrument Sans";
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("assets/fonts/instrument-sans-latin.woff2") format("woff2");
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 2rem 0 0.75rem;
+}
+h1 { font-size: clamp(2rem, 6vw, 2.75rem); margin-top: 0; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.125rem; }
+
+p,
+ul,
+ol,
+table {
+  margin: 0 0 1rem;
+}
+li + li { margin-top: 0.4rem; }
+
+a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.08em;
+  transition: text-decoration-color 150ms var(--ease-out);
+}
+a:hover { text-decoration-thickness: 0.15em; }
+a:focus-visible,
+.skip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  padding: 0.5rem 1rem;
+  background: var(--card);
+  color: var(--foreground);
+}
+.skip:focus { top: 1rem; }
+
+.wrap {
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding-block: 1.25rem;
+}
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.site-header ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-header li + li { margin-top: 0; }
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem 2.5rem;
+  padding-block: 1.5rem 1rem;
+}
+.hero > div { flex: 1 1 18rem; }
+.hero img { width: 11rem; height: auto; }
+.lead { font-size: 1.25rem; }
+
+.card {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.card h2 { margin-top: 0; }
+.card :last-child { margin-bottom: 0; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.actions li + li { margin-top: 0; }
+.button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  text-decoration: none;
+}
+.button.secondary {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.muted { color: var(--muted-foreground); }
+
+.table-scroll { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.975rem;
+}
+th,
+td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+blockquote {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--foreground);
+  background: var(--muted);
+  border-radius: var(--radius-sm);
+}
+
+.site-footer {
+  padding-block: 2rem 3rem;
+  color: var(--muted-foreground);
+  font-size: 0.95rem;
+}
+.site-footer a { color: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  a {
+    transition: none;
+  }
+}

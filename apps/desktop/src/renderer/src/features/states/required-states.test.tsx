@@ -21,7 +21,6 @@ import {
   OfflineStatusLine,
   RateLimitState,
   SignInCancelledState,
-  UpdateReadyState,
 } from "./required-states.tsx";
 import { useRequiredStates } from "./use-required-states.ts";
 
@@ -84,14 +83,6 @@ const cases: Case[] = [
     role: "status",
     title: "All caught up",
     primary: "Back to overview",
-  },
-  {
-    name: "update ready",
-    ui: (a, s) => <UpdateReadyState version="1.2" onAction={a} onSecondary={s} />,
-    role: "status",
-    title: "A new version is ready",
-    primary: "Restart now",
-    secondary: "What’s new",
   },
 ];
 

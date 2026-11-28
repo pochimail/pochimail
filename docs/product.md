@@ -1,6 +1,6 @@
 # Product
 
-Pochimail is a private assistant that gives you the big picture of your email accounts, flags what needs you, clears clutter and saves your documents. Everything runs on your computer. Pochi (from *pochi-bukuro* ポチ袋, the small Japanese gift envelope) is the assistant; the site is getpochimail.com.
+Pochimail is a private assistant that gives you the big picture of your email accounts, flags what needs you, clears clutter and saves your documents. Everything runs on your computer. Pochi (from *pochi-bukuro* ポチ袋, the small Japanese gift envelope) is the assistant; the site is [pochimail.github.io/pochimail](https://pochimail.github.io/pochimail/).
 
 ## What it is, and is not
 - **Is**: an overview and cleanup assistant for one or several Gmail accounts. Outlook / Microsoft 365 and other providers (IMAP) come in v1.1 ([ADR 0011](adr/0011-v1-providers-google-and-microsoft.md)).

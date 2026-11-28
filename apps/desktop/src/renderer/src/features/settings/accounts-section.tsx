@@ -7,9 +7,10 @@ import type { OutputOf } from "#shared/ipc/contract.ts";
 import { useNeedsReauth, useReconnect } from "../../lib/needs-reauth.tsx";
 import { ProviderIcon } from "../../lib/provider-icon.tsx";
 import { queryKeys } from "../../lib/query/keys.ts";
+import { SETTINGS_ROW } from "../../lib/settings-row.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { RemoveAccountDialog } from "./remove-account-dialog.tsx";
-import { SETTINGS_ROW, SettingsSection } from "./settings-section.tsx";
+import { SettingsSection } from "./settings-section.tsx";
 
 type SettingsAccount = OutputOf<"accounts.list">[number];
 

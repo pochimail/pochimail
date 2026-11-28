@@ -2,15 +2,10 @@ import { Cancelled } from "@pochimail/kernel/errors";
 import type { MessageId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
 import { createFaults, type Faults } from "@pochimail/kernel/testing/faults";
-import { AiUnavailable } from "../errors.ts";
+import { AiInvalidOutput, AiUnavailable } from "../errors.ts";
 import type { EmailType } from "../model/email-type.ts";
-import type {
-  AiError,
-  Classification,
-  Classifier,
-  Embedder,
-  LlmProvider,
-} from "../ports/classifier.ts";
+import type { AiError, Classification, Classifier, Embedder } from "../ports/classifier.ts";
+import type { JsonLlmProvider } from "../ports/json-llm.ts";
 import type { TopicDiscoverer, TopicProposal } from "../ports/topic-discoverer.ts";
 
 export interface FakeAiControls {
@@ -112,12 +107,20 @@ export function createFakeEmbedder(dimensions = 8): FakeEmbedder {
   };
 }
 
-export interface FakeLlmProvider extends LlmProvider, FakeAiControls {
-  /** Queue the next replies; once empty, `complete` echoes the prompt. */
+export interface FakeLlmProvider extends JsonLlmProvider, FakeAiControls {
+  /** Queue the next replies; once empty, `complete` echoes the prompt and `completeJson` is `AiInvalidOutput`. */
   reply(...texts: string[]): void;
   /** Every prompt received, in order. */
   prompts(): readonly string[];
 }
+
+const parseJson = (text: string | undefined): unknown => {
+  try {
+    return text === undefined ? undefined : JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+};
 
 export function createFakeLlmProvider(): FakeLlmProvider {
   const c = controls();
@@ -133,6 +136,14 @@ export function createFakeLlmProvider(): FakeLlmProvider {
       if (failure) return err(failure);
       prompts.push(request.prompt);
       return ok(replies.shift() ?? `echo: ${request.prompt}`);
+    },
+    async completeJson(request, signal) {
+      if (signal.aborted) return err(new Cancelled());
+      const failure = c.faults.take();
+      if (failure) return err(failure);
+      prompts.push(request.prompt);
+      const parsed = request.schema.safeParse(parseJson(replies.shift()));
+      return parsed.success ? ok(parsed.data) : err(new AiInvalidOutput());
     },
   };
 }

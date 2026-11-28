@@ -1,7 +1,7 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -186,7 +186,7 @@ export const messages = {
   "activity.title": entry("Activity", []),
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
-  ...appearanceMessages.en,
+  ...settingsMessages.en,
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
   "nav.email": entry("Email", []),
@@ -267,13 +267,6 @@ export const messages = {
     [],
   ),
   "state.nothingToDo.action": entry("Back to overview", []),
-  "state.updateReady.title": entry("A new version is ready", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} is ready. It installs when you restart, and your emails stay where they are.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Restart now", []),
-  "state.updateReady.whatsNew": entry("What’s new", []),
 } as const;
 export type MessageKey = keyof typeof messages;
 /** Params are derived from the catalog entry, so a renamed placeholder breaks the call site. */

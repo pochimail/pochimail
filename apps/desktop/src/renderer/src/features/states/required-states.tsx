@@ -116,20 +116,6 @@ function NothingToDoState({ onAction }: Handler) {
   );
 }
 
-function UpdateReadyState({ version, onAction, onSecondary }: WithSecondary & { version: string }) {
-  const t = useT();
-  return (
-    <EmptyState
-      role="status"
-      pose="happy"
-      title={t("state.updateReady.title")}
-      description={t("state.updateReady.body", { version })}
-      action={{ label: t("state.updateReady.restart"), onClick: onAction }}
-      secondaryAction={{ label: t("state.updateReady.whatsNew"), onClick: onSecondary }}
-    />
-  );
-}
-
 export {
   EmptyCategoryState,
   ModelDownloadFailedState,
@@ -138,5 +124,4 @@ export {
   OfflineStatusLine,
   RateLimitState,
   SignInCancelledState,
-  UpdateReadyState,
 };

@@ -1,8 +1,8 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -171,7 +171,7 @@ export const ja = {
 
   "settings.title": entry("設定", []),
   "settings.description": entry("環境設定とアカウント設定がここに表示されます。", []),
-  ...appearanceMessages.ja,
+  ...settingsMessages.ja,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("メインナビゲーション", []),
@@ -257,11 +257,4 @@ export const ja = {
     [],
   ),
   "state.nothingToDo.action": entry("概要に戻る", []),
-  "state.updateReady.title": entry("新しいバージョンの準備ができました", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} の準備ができました。再起動するとインストールされ、メールはそのままです。",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("今すぐ再起動", []),
-  "state.updateReady.whatsNew": entry("新機能", []),
 } satisfies Catalog;

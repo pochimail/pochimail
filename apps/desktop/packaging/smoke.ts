@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
@@ -13,6 +12,8 @@ import { FuseState, FuseV1Options, getCurrentFuseWire } from "@electron/fuses";
 import { fuses } from "../src/main/fuses.ts";
 import { electronBinaryPath } from "./apply-fuses.ts";
 import { galleryLeaksIn } from "./gallery-check.ts";
+import { launchSmoke } from "./launch-smoke.ts";
+import { checkRuntimesOutput, checkUnpackedRuntimes } from "./runtime-check.ts";
 import { checkKeychainRestart, checkStorageOutput, storageSummary } from "./storage-check.ts";
 
 /** Smoke test of a packaged build: fuses are flipped on the binary and the app starts, loads its window and quits. */
@@ -39,16 +40,20 @@ const binary = electronBinaryPath({
 });
 
 // M4-18: the dev gallery route must not ship.
-const asarPath = join(
+const resourcesDir =
   process.platform === "darwin"
     ? join(appOutDir, "Pochimail.app", "Contents", "Resources")
-    : join(appOutDir, "resources"),
-  "app.asar",
-);
+    : join(appOutDir, "resources");
+const asarPath = join(resourcesDir, "app.asar");
 const leaked = galleryLeaksIn(readFileSync(asarPath));
 if (leaked.length > 0)
   throw new Error(`The packaged app contains the dev gallery (${leaked.join(", ")})`);
 console.log("gallery: absent");
+
+// M3: the local model runtimes ship unpacked, for the target OS only.
+const unpacked = checkUnpackedRuntimes(resourcesDir, process.platform);
+if (unpacked.length > 0) throw new Error(`Local model runtimes: ${unpacked.join("; ")}`);
+console.log("runtimes: unpacked");
 
 const wire = await getCurrentFuseWire(binary);
 const expected = {
@@ -70,19 +75,10 @@ if (Object.keys(expected).length !== Object.keys(fuses).filter((k) => /^\d+$/.te
 }
 console.log("fuses: ok");
 
-// Headless launch: Linux CI wraps this script in xvfb-run and its chrome-sandbox helper is not setuid, hence --no-sandbox there only. The app quits itself once the window has loaded.
+// Headless launch (see launch-smoke.ts). Its own user data folder: Electron keys the single-instance lock on it, so the smoke neither fails while a real Pochimail runs nor touches its data.
+const userData = mkdtempSync(join(tmpdir(), "pochimail-smoke-"));
 const launch = async (env: Record<string, string>): Promise<string> => {
-  const child = spawn(binary, process.platform === "linux" ? ["--no-sandbox"] : [], {
-    env: { ...process.env, ...env, POCHIMAIL_SMOKE: "1" },
-    stdio: ["ignore", "pipe", "inherit"],
-  });
-  let output = "";
-  child.stdout.on("data", (chunk: Buffer) => {
-    output += chunk.toString();
-  });
-  const timer = setTimeout(() => child.kill(), 60_000);
-  const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
-  clearTimeout(timer);
+  const { code, output } = await launchSmoke(binary, env, userData);
   if (code !== 0 || !output.includes("smoke:window-loaded")) {
     throw new Error(`App did not start cleanly (exit ${code}). Output: ${output}`);
   }
@@ -100,7 +96,12 @@ try {
   console.log("restart: ok");
 } finally {
   rmSync(keyDir, { recursive: true, force: true });
+  rmSync(userData, { recursive: true, force: true });
 }
+
+// M3: the packaged app loaded onnxruntime-node, Transformers.js and node-llama-cpp in a utility process.
+for (const line of checkRuntimesOutput(output)) console.log(`runtime ${line}`);
+console.log("runtimes: ok");
 
 // M0-12: the packaged app opened an encrypted WAL database with FTS5 in a utility process, with the key from safeStorage.
 const storage = checkStorageOutput(output);

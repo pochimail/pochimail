@@ -45,6 +45,17 @@ describe("model manifest", () => {
     expect(manifestSchema.safeParse({ models: [entry(url), entry(url)] }).success).toBe(false);
   });
 
+  // Guards: two files with one hash sharing a partial file, so one download never reaches its own path.
+  it("rejects a hash used by two files", () => {
+    const url = `https://huggingface.co/o/r/resolve/${commit}/m.bin`;
+    const second = { name: "n.bin", url, bytes: 1, sha256: sha };
+    const first = entry(url).files;
+    expect(accepts(entry(url, { files: [...first, second] }))).toBe(false);
+    expect(
+      manifestSchema.safeParse({ models: [entry(url), entry(url, { id: "n" })] }).success,
+    ).toBe(false);
+  });
+
   // Guards: the bundled manifest drifting from ADR 0006 (models per tier).
   it("lists the ADR 0006 models per tier", () => {
     const ids = (tier: "T0" | "T1" | "T2") =>

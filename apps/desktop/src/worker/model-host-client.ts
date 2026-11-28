@@ -1,17 +1,18 @@
-import { AiUnavailable } from "@pochimail/classification/errors";
+import { toJsonSchema } from "@pochimail/ai/llm/json-schema";
+import { AiInvalidOutput, AiUnavailable } from "@pochimail/classification/errors";
 import type {
   AiError,
   Classification,
   Classifier,
   Embedder,
-  LlmProvider,
 } from "@pochimail/classification/ports/classifier";
+import type { JsonLlmProvider } from "@pochimail/classification/ports/json-llm";
 import { type AsyncResult, type CancelSignal, createCancelSource } from "@pochimail/kernel/common";
 import { Cancelled } from "@pochimail/kernel/errors";
 import type { MessageId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
 import type { Timer } from "@pochimail/pipeline/event-batching";
-import type { z } from "zod";
+import { z } from "zod";
 import type { Transport } from "../shared/ipc/transport.ts";
 import {
   classificationsSchema,
@@ -21,22 +22,22 @@ import {
   hostResponseSchema,
 } from "../shared/model-host-protocol.ts";
 
-type Body<M extends HostRequest["method"]> = Omit<
-  Extract<HostRequest, { method: M }>,
-  "id" | "method"
->;
+type Method = Exclude<HostRequest["method"], "cancel">;
+type Body<M extends Method> = Omit<Extract<HostRequest, { method: M }>, "id" | "method">;
 type Pending = {
   readonly request: HostRequest;
   readonly settle: (result: ReturnType<typeof parse> | { ok: false; error: AiError }) => void;
   /** Cancels the "no host" deadline while the request sits on a live port. */
   cancelDeadline: (() => void) | undefined;
+  /** The host has been sent the request, so a cancel must reach it too. */
+  sent: boolean;
 };
 
 const parse = (data: unknown) => hostResponseSchema.safeParse(data);
 
 export interface ModelHostClient {
   readonly classifier: Classifier;
-  readonly llm: LlmProvider;
+  readonly llm: JsonLlmProvider;
   readonly embedder: Embedder;
   /**
    * Main hands the worker a fresh port every time the host (re)starts. Requests that were waiting or in flight on the
@@ -69,6 +70,7 @@ export const createModelHostClient = (options: {
     entry.cancelDeadline = undefined;
     try {
       transport?.post(entry.request);
+      entry.sent = transport !== undefined;
     } catch {
       // The port just closed; the close handler below puts the request back to waiting.
     }
@@ -80,7 +82,7 @@ export const createModelHostClient = (options: {
     }, waitMs);
   };
 
-  const call = <M extends HostRequest["method"]>(
+  const call = <M extends Method>(
     method: M,
     body: Body<M>,
     signal: CancelSignal,
@@ -93,11 +95,14 @@ export const createModelHostClient = (options: {
         request: { id, method, ...body } as unknown as HostRequest,
         settle: resolve,
         cancelDeadline: undefined,
+        sent: false,
       };
       pending.set(id, entry);
       const onAbort = (): void => {
         if (pending.delete(id)) {
           entry.cancelDeadline?.();
+          // The host stops generating or embedding, freeing the model for the next request.
+          if (entry.sent) transport?.post({ id, method: "cancel" } satisfies HostRequest);
           resolve({ ok: false, error: new Cancelled() });
         }
       };
@@ -106,17 +111,47 @@ export const createModelHostClient = (options: {
       else armDeadline(id, entry);
     });
 
-  const asResult = async <T>(
+  const hostError = (
+    name: "unavailable" | "cancelled" | "invalid_output",
+    invalid: (() => AiInvalidOutput) | undefined,
+  ): AiError | AiInvalidOutput => {
+    if (name === "cancelled") return new Cancelled();
+    return name === "invalid_output" && invalid ? invalid() : new AiUnavailable();
+  };
+
+  /** `invalid` is what the host's `invalid_output` becomes: only a structured request can get one. */
+  const asResult = async <T, E extends AiError | AiInvalidOutput = AiError>(
     reply: Promise<ReturnType<typeof parse> | { ok: false; error: AiError }>,
     schema: z.ZodType<T>,
-  ): AsyncResult<T, AiError> => {
+    invalid?: () => E,
+  ): AsyncResult<T, AiError | E> => {
     const answer = await reply;
     if ("error" in answer && !("success" in answer)) return err(answer.error);
     if (!("success" in answer) || !answer.success) return err(new AiUnavailable());
     const value = answer.data;
-    if (!value.ok) return err(value.error === "cancelled" ? new Cancelled() : new AiUnavailable());
+    if (!value.ok) return err(hostError(value.error, invalid));
     const picked = schema.safeParse(value.result);
     return picked.success ? ok(picked.data) : err(new AiUnavailable());
+  };
+
+  const completeJson: JsonLlmProvider["completeJson"] = async (request, signal) => {
+    const reply = await asResult(
+      call(
+        "completeJson",
+        {
+          prompt: request.prompt,
+          jsonSchema: toJsonSchema(request.schema),
+          ...(request.system === undefined ? {} : { system: request.system }),
+          ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
+        },
+        signal,
+      ),
+      z.unknown(),
+      () => new AiInvalidOutput(),
+    );
+    if (!reply.ok) return reply;
+    const parsed = request.schema.safeParse(reply.value);
+    return parsed.success ? ok(parsed.data) : err(new AiInvalidOutput());
   };
 
   const never = createCancelSource().signal;
@@ -178,6 +213,7 @@ export const createModelHostClient = (options: {
           ),
           completionSchema,
         ),
+      completeJson,
     },
     embedder: {
       dimensions: options.embedderDimensions ?? 8,

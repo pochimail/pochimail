@@ -24,6 +24,7 @@ import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
 import { ReconnectGate } from "./features/states/reconnect-gate.tsx";
 import { TypePage } from "./features/type/type-page.tsx";
+import { UpdatesSection } from "./features/updates/updates-section.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
 import { ScanStatusProvider } from "./lib/scan-status.tsx";
 
@@ -162,7 +163,11 @@ const activityRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/settings",
-  component: SettingsPage,
+  component: () => (
+    <SettingsPage>
+      <UpdatesSection />
+    </SettingsPage>
+  ),
 });
 
 // Dev and E2E builds only: __POCHIMAIL_GALLERY__ is a build-time literal, so a production bundle drops this branch and the gallery chunk.

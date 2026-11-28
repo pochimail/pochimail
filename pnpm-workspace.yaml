@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - tooling/*
+  - site
 # node-llama-cpp / onnxruntime-node / protobufjs: prebuilt binaries ship in the packages (ADR 0006); their install scripts stay off.
 # electron: no install hook in 45 (apps/desktop's postinstall runs install-electron); kept allowed for versions that restore one.
 allowBuilds:
@@ -23,3 +24,5 @@ overrides:
   "glob@7.2.3>minimatch": 3.1.5
   glob: 14.0.4
   minimatch: 11.0.4
+patchedDependencies:
+  node-llama-cpp@3.22.3: patches/node-llama-cpp@3.22.3.patch

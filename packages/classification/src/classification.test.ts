@@ -9,6 +9,7 @@ import { suspiciousDomainFlag, suspiciousRules } from "./policies/suspicious-rul
 import {
   classifierContract,
   embedderContract,
+  jsonLlmProviderContract,
   llmProviderContract,
   topicDiscovererContract,
 } from "./testing/ai-contract.ts";
@@ -54,6 +55,11 @@ signalsSafetyContract(signalsHarness);
 classifierContract(createFakeClassifier);
 embedderContract(() => createFakeEmbedder(8));
 llmProviderContract(createFakeLlmProvider);
+jsonLlmProviderContract(() => {
+  const llm = createFakeLlmProvider();
+  llm.reply('{"answer":"yes"}');
+  return llm;
+});
 topicDiscovererContract(createFakeTopicDiscoverer);
 
 describe("classification", () => {

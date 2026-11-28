@@ -120,6 +120,7 @@ const DOC_BUDGETS: readonly (readonly [pattern: RegExp, maxWords: number])[] = [
   [/^docs\/product\.md$/, 800],
   [/^docs\/design\.md$/, 1200],
   [/^docs\/security\.md$/, 1200],
+  [/^docs\/release\.md$/, 500],
   [/^docs\/adr\/README\.md$/, 200],
   [/^docs\/adr\/\d{4}-[a-z0-9-]+\.md$/, 400],
   [/^docs\/design\/README\.md$/, 200],
