@@ -61,7 +61,7 @@ describe("migrator", () => {
         "INSERT INTO digest_state (workspace_id, account_id, last_digest_at) VALUES ('w', 'a', '2026-01-01T00:00:00.000Z')",
       )
       .run();
-    expect(unwrap(migrate(first.writer))).toEqual({ from: 7, to: 7 });
+    expect(unwrap(migrate(first.writer))).toEqual({ from: 8, to: 8 });
     first.close();
     const again = open(path);
     expect(again.writer.prepare("SELECT count(*) AS n FROM digest_state").get()).toEqual({ n: 1 });
@@ -79,12 +79,12 @@ describe("migrator", () => {
         `INSERT INTO message (workspace_id, id, account_id, thread_id, sender, recipients, subject, snippet,
          received_at, has_list_unsubscribe, opened, size, topic_ids, category, ingest_seq)
        VALUES ('w', 'm-old', 'a', 't', 'sender@example.com', '["owner@example.com"]', 'Subject', 'Snippet',
-         '2026-01-01T00:00:00.000Z', 0, 0, 1234, '[]', 'notifications', 1)`,
+         '2026-01-01T00:00:00.000Z', 0, 0, 1234, '[]', 'notification', 1)`,
       )
       .run();
     old.close();
     const storage = open(path);
-    expect(storage.writer.pragma("user_version", { simple: true })).toBe(7);
+    expect(storage.writer.pragma("user_version", { simple: true })).toBe(8);
     const stored = unwrap(
       createMessageRepository(storage.writer, {
         cache: new DisplayFieldsCache(),

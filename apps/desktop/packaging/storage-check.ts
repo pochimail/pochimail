@@ -4,7 +4,12 @@ type Protection =
   | { level: "os-keychain"; backend: string }
   | { level: "basic-text" }
   | { level: "unavailable" };
-export type StorageSmoke = { protection: Protection; report: StorageProofReport };
+type KeyCheck = { source: "created" | "read"; sha256: string };
+export type StorageSmoke = {
+  protection: Protection;
+  report: StorageProofReport;
+  keyCheck?: KeyCheck;
+};
 
 /** Reads the `smoke:storage` line the packaged app prints and fails on anything short of a full pass. */
 export const checkStorageOutput = (output: string): StorageSmoke => {
@@ -14,6 +19,7 @@ export const checkStorageOutput = (output: string): StorageSmoke => {
   const parsed = JSON.parse(line.slice("smoke:storage ".length)) as {
     protection: Protection;
     result: { ok: true; report: StorageProofReport } | { ok: false; error: string };
+    keyCheck?: KeyCheck | null;
   };
   if (!parsed.result.ok) throw new Error(`Encrypted database proof failed: ${parsed.result.error}`);
   const { report } = parsed.result;
@@ -34,7 +40,32 @@ export const checkStorageOutput = (output: string): StorageSmoke => {
     );
   if (failures.length > 0)
     throw new Error(`Encrypted database proof failed: ${failures.join("; ")}`);
-  return { protection: parsed.protection, report };
+  return {
+    protection: parsed.protection,
+    report,
+    ...(parsed.keyCheck ? { keyCheck: parsed.keyCheck } : {}),
+  };
+};
+
+/**
+ * Two launches of the packaged app over one key file: the first creates the key through the real OS keychain, the second
+ * reads it back and must get the same key. macOS (Keychain) and Windows (DPAPI) must prove it. Linux CI runners have no
+ * secret service (`basic_text`), so there is nothing to prove and the decision is recorded: see docs/security.md.
+ */
+export const checkKeychainRestart = (
+  platform: string,
+  first: StorageSmoke,
+  second: StorageSmoke,
+): string => {
+  if (platform === "linux" && first.protection.level !== "os-keychain")
+    return "Real keychain: not exercised (no secret service on this Linux runner, recorded decision)";
+  if (first.keyCheck?.source !== "created")
+    throw new Error("The first launch did not create a key through the OS keychain");
+  if (second.keyCheck?.source !== "read")
+    throw new Error("The second launch did not read the key back from the OS keychain");
+  if (second.keyCheck.sha256 !== first.keyCheck.sha256)
+    throw new Error("The OS keychain returned a different key after the restart");
+  return `Real keychain (${first.protection.level === "os-keychain" ? first.protection.backend : first.protection.level}): the key survived a restart`;
 };
 
 export const storageSummary = (platform: string, { protection, report }: StorageSmoke): string =>

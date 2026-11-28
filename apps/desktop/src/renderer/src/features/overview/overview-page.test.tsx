@@ -37,8 +37,8 @@ const sorted: Overview = {
   important: 2,
   oldestWaitingDays: 9,
   cleanable: [
-    { category: "newsletters", count: 300 },
-    { category: "notifications", count: 120 },
+    { category: "newsletter", count: 300 },
+    { category: "notification", count: 120 },
   ],
   figures: {
     archived: 120,
@@ -53,7 +53,7 @@ const sorted: Overview = {
 const smallSizes: Overview = {
   ...sorted,
   scanned: 24,
-  cleanable: [{ category: "promotions", count: 6 }],
+  cleanable: [{ category: "promotion", count: 6 }],
   figures: {
     archived: 3,
     savedCount: 4,
@@ -90,20 +90,18 @@ const setup = (
   };
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
       "accounts.list": () => [
         { id: "a1", provider: "google" as const, displayName: "ann@example.test" },
         { id: "a2", provider: "microsoft" as const, displayName: "ann@work.example.test" },
       ],
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "scan.status": ({ accountIds }) => {
         state.statusAsked++;
@@ -397,29 +395,23 @@ describe("overview", () => {
       all: {
         ...sorted,
         cleanable: [
-          { category: "promotions", count: 400 },
-          { category: "notifications", count: 120 },
-          { category: "sign-ins-security", count: 80 },
-          { category: "newsletters", count: 300 },
+          { category: "promotion", count: 400 },
+          { category: "notification", count: 120 },
+          { category: "newsletter", count: 300 },
         ],
       },
     });
     await screen.findByText("Delete old promotions");
     const cases = [
-      { label: "Delete old promotions", path: "/category/promotions", review: "delete" },
-      {
-        label: "Delete expired sign-in codes",
-        path: "/category/sign-ins-security",
-        review: "delete",
-      },
+      { label: "Delete old promotions", path: "/type/promotion", review: "delete" },
       {
         label: "Archive alert emails",
-        path: "/category/notifications",
+        path: "/type/notification",
         review: "archive",
       },
       {
         label: "Unsubscribe from newsletters",
-        path: "/category/newsletters",
+        path: "/type/newsletter",
         review: "unsubscribe",
       },
     ];
@@ -445,7 +437,7 @@ describe("overview", () => {
     ];
     for (const [label, review] of cases) {
       await user.click(reviewButton(label));
-      await waitFor(() => expect(router.state.location.pathname).toBe("/category/people"));
+      await waitFor(() => expect(router.state.location.pathname).toBe("/type/personal"));
       expect(router.state.location.search).toMatchObject({ review });
       expect(router.state.location.search).not.toMatchObject({ review: "delete" });
       await user.click(await screen.findByRole("button", { name: "Back to overview" }));
@@ -459,7 +451,7 @@ describe("overview", () => {
       all: {
         ...sorted,
         figures: empty.figures,
-        cleanable: [{ category: "promotions", count: 400 }],
+        cleanable: [{ category: "promotion", count: 400 }],
       },
     });
     await screen.findByText("Delete old promotions");

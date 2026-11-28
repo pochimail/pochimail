@@ -1,6 +1,7 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import type { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
-import type { CountCategories } from "@pochimail/classification/use-cases/count-categories";
+import type { CountTopics } from "@pochimail/classification/use-cases/count-topics";
+import type { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import type { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import type { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
@@ -21,7 +22,8 @@ export interface HandlerDeps {
   readonly workspaceId: WorkspaceId;
   readonly listAccounts: ListAccounts;
   readonly getOverview: GetOverview;
-  readonly categories: CountCategories;
+  readonly types: CountTypes;
+  readonly topics: CountTopics;
   readonly digestStatus: GetDigestStatus;
   readonly settings: ManageSettings;
   readonly scans: ScanRunner;
@@ -33,6 +35,9 @@ const PROVIDERS: Record<Account["provider"], OutputOf<"accounts.list">[number]["
   gmail: "google",
   graph: "microsoft",
 };
+
+/** The provider's name as the person knows it; the screen puts it in "I lost access to your … account". */
+const PROVIDER_NAMES: Record<Account["provider"], string> = { gmail: "Gmail", graph: "Outlook" };
 
 type FailureReason = Extract<EventOf<"app.events">, { type: "ActionFailed" }>["reason"];
 
@@ -59,18 +64,41 @@ const unwrapOrThrow = <T>(result: { ok: true; value: T } | { ok: false; error: E
   return result.value;
 };
 
-export function createHandlers(deps: HandlerDeps): Handlers {
+/** The handlers, plus the way to tell every `app.events` subscriber something that has no domain event. */
+export interface WorkerHandlers extends Handlers {
+  emitAppEvent(event: EventOf<"app.events">): void;
+}
+
+export function createHandlers(deps: HandlerDeps): WorkerHandlers {
   const { workspaceId } = deps;
   // UI-only events have no domain counterpart: tell every app.events subscriber when a scan is cancelled.
   const appEventEmitters = new Set<(event: EventOf<"app.events">) => void>();
+  // The accounts that lost access, kept here (not per subscriber) so a screen that reloads is told again.
+  const needsReauth = new Map<string, string>();
   const emitAppEvent = (event: EventOf<"app.events">) => {
+    if (event.type === "NeedsReauth") needsReauth.set(event.accountId, event.provider);
+    if (event.type === "Reconnected" || event.type === "AccountRemoved")
+      needsReauth.delete(event.accountId);
     for (const emit of appEventEmitters) emit(event);
   };
+  deps.events.subscribe("AccountStateChanged", async (event) => {
+    if (event.payload.state !== "needs_reauth") return;
+    const { accountId } = event.payload;
+    const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
+    const account = accounts.find((item) => item.id === accountId);
+    if (account === undefined) return;
+    emitAppEvent({ type: "NeedsReauth", accountId, provider: PROVIDER_NAMES[account.provider] });
+  });
   return {
+    emitAppEvent,
     procedures: {
       "app.state": async () => {
         const accounts = unwrapOrThrow(await deps.listAccounts.execute(workspaceId));
-        return { status: "ready", hasConnectedAccount: accounts.length > 0 };
+        return {
+          status: "ready",
+          hasConnectedAccount: accounts.length > 0,
+          needsReauth: [...needsReauth].map(([accountId, provider]) => ({ accountId, provider })),
+        };
       },
       "device.name": () => deps.deviceName(),
       "accounts.list": async () =>
@@ -105,14 +133,21 @@ export function createHandlers(deps: HandlerDeps): Handlers {
           noAccount: !hasAccount,
         };
       },
-      "mailbox.categories": async ({ accountIds }) => {
+      "mailbox.types": async ({ accountIds }) => {
         return unwrapOrThrow(
-          await deps.categories.execute(
+          await deps.types.execute(
             workspaceId,
             accountIds.map((id) => unwrapOrThrow(AccountId(id))),
           ),
         );
       },
+      "mailbox.topics": async ({ accountIds }) =>
+        unwrapOrThrow(
+          await deps.topics.execute(
+            workspaceId,
+            accountIds.map((id) => unwrapOrThrow(AccountId(id))),
+          ),
+        ).map((topic) => ({ ...topic })),
       "scan.status": ({ accountIds }) =>
         deps.scans.live(accountIds.map((id) => unwrapOrThrow(AccountId(id)))),
       "digest.get": ({ accountId }) =>

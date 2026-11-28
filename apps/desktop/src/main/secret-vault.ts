@@ -3,6 +3,7 @@ import { err, ok, type Result } from "@pochimail/kernel/result";
 import type { Logger } from "@pochimail/logger/logger";
 import { SecretStoreError } from "../shared/secret-error.ts";
 import { writeFileAtomic } from "./atomic-write.ts";
+import { isSealed, seal, unseal } from "./secret-seal.ts";
 import { type KeyProtection, type KeyVault, keyProtection } from "./storage-key.ts";
 
 export type SecretVault = {
@@ -17,18 +18,20 @@ type Entries = Record<string, string>;
 
 /**
  * Main-process owner of the secrets file. Each value is wrapped by the OS keychain (async `safeStorage`) before it
- * touches the disk. `basic-text` (Linux without a secret service) stores nothing unless `allowBasicText()` says the
- * user chose it; with `unavailable` nothing is ever written. Values never reach a log or an error.
+ * touches the disk. On `basic-text` (Linux without a secret service) the wrap is only obfuscation, so a value is
+ * stored only when the person chose a passphrase: it is then sealed under a subkey of the passphrase-derived key
+ * (`passphraseKey`). With no protection chosen, or `unavailable`, nothing is ever written. Values never reach a log or an error.
  */
 export const createSecretVault = (options: {
   vault: KeyVault;
   file: string;
   platform: NodeJS.Platform;
-  allowBasicText?: () => boolean;
+  /** A copy of the passphrase-derived database key, or `undefined` when the person did not choose a passphrase. The vault zeroes it. */
+  passphraseKey?: () => Promise<Buffer | undefined>;
   logger?: Logger;
 }): SecretVault => {
   const { vault, file, platform, logger } = options;
-  const allowBasicText = options.allowBasicText ?? (() => false);
+  const passphraseKey = options.passphraseKey ?? (async () => undefined);
   // Reads and writes are serialized so two concurrent `set` calls never lose one another's entry.
   let queue: Promise<unknown> = Promise.resolve();
   const serial = <T>(task: () => Promise<T>): Promise<T> => {
@@ -62,9 +65,38 @@ export const createSecretVault = (options: {
   };
   const save = (entries: Entries): void =>
     writeFileAtomic(file, JSON.stringify({ version: 1, entries }));
-  const mayWrap = async (): Promise<boolean> => {
-    const level = (await keyProtection(vault, platform)).level;
-    return level === "os-keychain" || (level === "basic-text" && allowBasicText());
+  /** The value as it goes to disk, or `undefined` when no protection that is more than obfuscation is available. */
+  const wrap = async (name: string, value: string): Promise<string | undefined> => {
+    const { level } = await keyProtection(vault, platform);
+    if (level === "os-keychain") return (await vault.encryptStringAsync(value)).toString("base64");
+    if (level !== "basic-text") return undefined;
+    const key = await passphraseKey();
+    if (key === undefined) return undefined;
+    try {
+      return seal(key, name, value);
+    } finally {
+      key.fill(0);
+    }
+  };
+  /** The plain value, or `undefined` when no key can open this entry now. Throws on damage. */
+  const unwrap = async (name: string, stored: string): Promise<string | undefined> => {
+    if (!isSealed(stored)) {
+      if ((await keyProtection(vault, platform)).level === "unavailable") return undefined;
+      const { result, shouldReEncrypt } = await vault.decryptStringAsync(
+        Buffer.from(stored, "base64"),
+      );
+      // Re-wrapping is a write: it follows the same rule as `set` (never on basic_text without a passphrase).
+      const rewrapped = shouldReEncrypt ? await wrap(name, result) : undefined;
+      if (rewrapped !== undefined) save({ ...load(), [name]: rewrapped });
+      return result;
+    }
+    const key = await passphraseKey();
+    if (key === undefined) return undefined;
+    try {
+      return unseal(key, name, stored);
+    } finally {
+      key.fill(0);
+    }
   };
 
   return {
@@ -75,29 +107,24 @@ export const createSecretVault = (options: {
         if (entries === undefined) return fail("get", new SecretStoreError("corrupted"));
         const wrapped = entries[key];
         if (wrapped === undefined) return ok(null);
-        if ((await keyProtection(vault, platform)).level === "unavailable")
-          return fail("get", new SecretStoreError("protection-unavailable"));
         try {
-          const { result, shouldReEncrypt } = await vault.decryptStringAsync(
-            Buffer.from(wrapped, "base64"),
-          );
-          // Re-wrapping is a write: it follows the same consent gate as `set` (basic_text needs the user's choice).
-          if (shouldReEncrypt && (await mayWrap())) {
-            entries[key] = (await vault.encryptStringAsync(result)).toString("base64");
-            save(entries);
-          }
-          return ok(result);
+          const value = await unwrap(key, wrapped);
+          return value === undefined
+            ? fail("get", new SecretStoreError("protection-unavailable"))
+            : ok(value);
         } catch {
           return fail("get", new SecretStoreError("corrupted"));
         }
       }),
     set: (key, value) =>
       serial(async () => {
-        if (!(await mayWrap())) return fail("set", new SecretStoreError("protection-unavailable"));
         const entries = load();
         if (entries === undefined) return fail("set", new SecretStoreError("corrupted"));
         try {
-          entries[key] = (await vault.encryptStringAsync(value)).toString("base64");
+          const wrapped = await wrap(key, value);
+          if (wrapped === undefined)
+            return fail("set", new SecretStoreError("protection-unavailable"));
+          entries[key] = wrapped;
           save(entries);
           return ok(undefined);
         } catch {

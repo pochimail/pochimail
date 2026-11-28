@@ -23,7 +23,6 @@ import { demoScale } from "../shared/demo.ts";
 import { type NotificationScreen, openScreenChannel } from "../shared/notifications.ts";
 import { databasePathFor } from "./database-path.ts";
 import { hostEnvironments } from "./host-env.ts";
-import { superviseModelHost } from "./model-host-supervisor.ts";
 import { registerOsCalls } from "./os-calls.ts";
 import { bridgePowerToWorker } from "./power-bridge.ts";
 import { createSecretVault, type SecretVault } from "./secret-vault.ts";
@@ -34,13 +33,15 @@ import {
   sessionEgress,
   webPreferences,
 } from "./security.ts";
+import { focusOrCreateWindow, holdSingleInstanceLock } from "./single-instance.ts";
+import { smokeRuntimes } from "./smoke-runtimes.ts";
 import { smokeStorage } from "./smoke-storage.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
-import { linkWorkerOnEveryLoad } from "./worker-link.ts";
+import { startUpdates } from "./updater/start-updates.ts";
+import { createWorkerLifecycle, type WorkerLifecycle } from "./worker-lifecycle.ts";
 import { showWorkerNotifications } from "./worker-notifications.ts";
-import { bootWorker } from "./worker-start.ts";
 
 // A packaged app never honours the dev-server variable, so an environment override cannot point the window elsewhere.
 const devServerUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
@@ -90,6 +91,7 @@ const processSecretVault = (): SecretVault => {
     vault: safeStorage,
     file: join(app.getPath("userData"), "secrets.json"),
     platform: process.platform,
+    passphraseKey: () => processStorageGate().passphraseKey(),
     logger,
   });
   return secretVault;
@@ -113,72 +115,46 @@ const processStorageGate = (): StorageGate => {
 const demo = app.isPackaged ? undefined : demoScale(process.env.POCHIMAIL_DEMO);
 const { demoEnv, workerEnv } = hostEnvironments(demo, process.env);
 
-const connectWorker = (window: BrowserWindow): void => {
-  const worker = utilityProcess.fork(join(import.meta.dirname, "worker.js"), [], {
-    serviceName: "pochimail-worker",
-    env: workerEnv(),
-  });
-  // The model host is its own process so a model crash never takes the worker down; main restarts it.
-  const modelHost = superviseModelHost({
-    fork: () =>
+// One lifecycle per process: it owns every window's worker and model host (restart, orderly shutdown).
+let workerLifecycle: WorkerLifecycle | undefined;
+const processWorkerLifecycle = (): WorkerLifecycle => {
+  workerLifecycle ??= createWorkerLifecycle({
+    forkWorker: () =>
+      utilityProcess.fork(join(import.meta.dirname, "worker.js"), [], {
+        serviceName: "pochimail-worker",
+        env: workerEnv(),
+      }),
+    // The model host is its own process so a model crash never takes the worker down; main restarts it.
+    forkModelHost: () =>
       utilityProcess.fork(join(import.meta.dirname, "model-host.js"), [], {
         serviceName: "pochimail-model-host",
         env: demoEnv,
       }),
-    worker,
     createChannel: () => new MessageChannelMain(),
+    attachToWorker: (worker) => {
+      showWorkerNotifications({
+        worker,
+        create: (content) => (Notification.isSupported() ? new Notification(content) : undefined),
+        now: Date.now,
+        osLocale: localeFromLanguages(app.getPreferredSystemLanguages()),
+        open: openScreen,
+      });
+      return bridgePowerToWorker(powerMonitor, worker);
+    },
     timer: {
       set: (fn, ms) => {
         const handle = setTimeout(fn, ms);
         return () => clearTimeout(handle);
       },
     },
-    logger,
-  });
-  const stopPowerBridge = bridgePowerToWorker(powerMonitor, worker);
-  showWorkerNotifications({
-    worker,
-    create: (content) => (Notification.isSupported() ? new Notification(content) : undefined),
-    now: Date.now,
-    osLocale: localeFromLanguages(app.getPreferredSystemLanguages()),
-    open: openScreen,
-  });
-  linkWorkerOnEveryLoad(window.webContents, worker, () => new MessageChannelMain());
-  const userData = app.getPath("userData");
-  const databasePath = databasePathFor(userData);
-  void bootWorker({
-    worker,
     secrets: processSecretVault(),
-    databasePath,
+    databasePath: databasePathFor(app.getPath("userData")),
     loadKey: () => processStorageGate().key(),
-    createChannel: () => new MessageChannelMain(),
     // Sign-in consent opens in the user's browser, never in an app window (ADR 0007).
     openExternal: (url) => shell.openExternal(url),
     logger,
   });
-  window.once("closed", () => {
-    stopPowerBridge();
-    modelHost.stop();
-    worker.kill();
-  });
-};
-
-/** Brings the app window to the front, opening one if the last was closed. */
-const showMainWindow = (): BrowserWindow => {
-  const [existing] = BrowserWindow.getAllWindows();
-  if (existing === undefined) return createWindow();
-  if (existing.isMinimized()) existing.restore();
-  existing.show();
-  existing.focus();
-  return existing;
-};
-
-/** A notification was clicked: show the window and tell the page which screen to open. */
-const openScreen = (screen: NotificationScreen): void => {
-  const { webContents } = showMainWindow();
-  const send = (): void => webContents.send(openScreenChannel, screen);
-  if (webContents.isLoading()) webContents.once("did-finish-load", send);
-  else send();
+  return workerLifecycle;
 };
 
 const createWindow = (): BrowserWindow => {
@@ -198,82 +174,120 @@ const createWindow = (): BrowserWindow => {
     },
   });
   window.once("ready-to-show", () => window.show());
-  connectWorker(window);
+  processWorkerLifecycle().connect(window);
   // Packaging smoke test (M0-10): report that the renderer loaded, then quit.
   if (process.env.POCHIMAIL_SMOKE === "1")
     window.webContents.once("did-finish-load", () => {
-      process.stdout.write("smoke:window-loaded\n");
+      process.stdout.write(`smoke:window-loaded version=${app.getVersion()}\n`);
       void smokeStorage({
         vault: safeStorage,
+        keyFile: process.env.POCHIMAIL_SMOKE_KEY_FILE,
         fork: () =>
           utilityProcess.fork(join(import.meta.dirname, "storage-smoke.js"), [], {
             serviceName: "pochimail-storage-smoke",
           }),
-      }).finally(() => app.quit());
+      })
+        .then(() =>
+          smokeRuntimes(() =>
+            utilityProcess.fork(join(import.meta.dirname, "runtime-smoke.js"), [], {
+              serviceName: "pochimail-runtime-smoke",
+            }),
+          ),
+        )
+        .finally(() => app.quit());
     });
   if (devServerUrl === undefined) void window.loadFile(rendererFile);
   else void window.loadURL(devServerUrl);
   return window;
 };
 
-app.on("web-contents-created", (_event, contents) =>
-  hardenWebContents(contents, (url) => isAppUrl(url, { devServerOrigin, rendererFile })),
-);
+const appUrl = (url: string): boolean => isAppUrl(url, { devServerOrigin, rendererFile });
+const openExternal = (url: string): Promise<void> => shell.openExternal(url);
+const windows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
 
-void app.whenReady().then(() => {
-  nativeTheme.themeSource = "system";
-  if (devIconPath !== undefined && process.platform === "darwin")
-    app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
-  lockDownSession();
-  registerOsCalls({
-    ipc: ipcMain,
-    openExternal: (url) => shell.openExternal(url),
-    showItemInFolder: (path) => shell.showItemInFolder(path),
-    chooseFolder: async () => {
-      const result = await dialog.showOpenDialog({
-        properties: ["openDirectory", "createDirectory"],
-      });
-      return result.canceled ? null : (result.filePaths[0] ?? null);
-    },
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-    appDataDirs: () => [app.getPath("userData")],
+app.on("web-contents-created", (_event, contents) => hardenWebContents(contents, appUrl));
+
+const openOrFocus = (): void => focusOrCreateWindow(windows(), createWindow);
+
+/** A notification was clicked: show the window and tell the page which screen to open. */
+const openScreen = (screen: NotificationScreen): void => {
+  openOrFocus();
+  const [window] = windows();
+  if (window === undefined) return;
+  const send = (): void => window.webContents.send(openScreenChannel, screen);
+  if (window.webContents.isLoading()) window.webContents.once("did-finish-load", send);
+  else send();
+};
+// Before anything opens the database: a refused process starts nothing (#320).
+const holdsLock = holdSingleInstanceLock(app, openOrFocus);
+
+if (holdsLock)
+  void app.whenReady().then(() => {
+    nativeTheme.themeSource = "system";
+    if (devIconPath !== undefined && process.platform === "darwin")
+      app.dock?.setIcon(nativeImage.createFromPath(devIconPath));
+    lockDownSession();
+    registerOsCalls({
+      ipc: ipcMain,
+      openExternal,
+      showItemInFolder: (path) => shell.showItemInFolder(path),
+      chooseFolder: async () => {
+        const result = await dialog.showOpenDialog({
+          properties: ["openDirectory", "createDirectory"],
+        });
+        return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
+      isAppUrl: appUrl,
+      appDataDirs: () => [app.getPath("userData")],
+    });
+    registerStorageCalls({ ipc: ipcMain, gate: processStorageGate(), isAppUrl: appUrl });
+    startUpdates({ app, ipc: ipcMain, openExternal, isAppUrl: appUrl, windows, logger });
+    createWindow();
+    const locale = localeFromLanguages(app.getPreferredSystemLanguages());
+    // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
+    const trayImages = app.isPackaged
+      ? join(process.resourcesPath, "tray")
+      : join(import.meta.dirname, "../../resources/tray");
+    const appTray = createAppTray({
+      platform: process.platform,
+      imagesDir: trayImages,
+      theme: nativeTheme,
+      createTray: (image) => new Tray(image),
+      imageFromPath: (path, template) => {
+        const image = nativeImage.createFromPath(path);
+        image.setTemplateImage(template);
+        return image;
+      },
+      buildMenu: (items) => Menu.buildFromTemplate([...items]),
+      labels: {
+        tooltip: t("nav.brand", undefined, { locale }),
+        open: t("tray.open", undefined, { locale }),
+        quit: t("tray.quit", undefined, { locale }),
+      },
+      openApp: openOrFocus,
+      quit: () => app.quit(),
+    });
+    // Quitting waits (briefly) for each worker to release its database, then lets the app go.
+    let workersStopped = false;
+    app.on("will-quit", (event) => {
+      if (!workersStopped) {
+        event.preventDefault();
+        void processWorkerLifecycle()
+          .shutdown()
+          .catch(() => undefined)
+          .finally(() => {
+            workersStopped = true;
+            app.quit();
+          });
+        return;
+      }
+      appTray.dispose();
+      processStorageGate().dispose();
+    });
+    app.on("activate", () => {
+      if (windows().length === 0) createWindow();
+    });
   });
-  registerStorageCalls({
-    ipc: ipcMain,
-    gate: processStorageGate(),
-    isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-  });
-  createWindow();
-  const locale = localeFromLanguages(app.getPreferredSystemLanguages());
-  // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
-  const trayImages = app.isPackaged
-    ? join(process.resourcesPath, "tray")
-    : join(import.meta.dirname, "../../resources/tray");
-  const appTray = createAppTray({
-    platform: process.platform,
-    imagesDir: trayImages,
-    theme: nativeTheme,
-    createTray: (image) => new Tray(image),
-    imageFromPath: (path, template) => {
-      const image = nativeImage.createFromPath(path);
-      image.setTemplateImage(template);
-      return image;
-    },
-    buildMenu: (items) => Menu.buildFromTemplate([...items]),
-    labels: {
-      tooltip: t("nav.brand", undefined, { locale }),
-      open: t("tray.open", undefined, { locale }),
-      quit: t("tray.quit", undefined, { locale }),
-    },
-    openApp: () => void showMainWindow(),
-    quit: () => app.quit(),
-  });
-  app.on("will-quit", appTray.dispose);
-  app.on("will-quit", () => processStorageGate().dispose());
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

@@ -1,8 +1,11 @@
 /** Query keys for worker-backed data. Centralized so subscriptions can update the same caches without refetching. */
 export const queryKeys = {
+  /** Accounts that lost access, filled by worker events only (never invalidated: nothing could refetch it). */
+  needsReauth: () => ["needs-reauth"] as const,
   appState: () => ["app", "state"] as const,
   accounts: () => ["accounts", "list"] as const,
-  categoryCounts: (accountIds: readonly string[]) => ["mailbox", "categories", accountIds] as const,
+  typeCounts: (accountIds: readonly string[]) => ["mailbox", "types", accountIds] as const,
+  topicCounts: (accountIds: readonly string[]) => ["mailbox", "topics", accountIds] as const,
   overview: (accountId?: string) => ["overview", accountId ?? "all"] as const,
   review: (accountId?: string) => ["review", accountId ?? "all"] as const,
   /** Without an account this is the prefix that invalidates every account's digest cache. */

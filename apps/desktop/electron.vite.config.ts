@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import type { Plugin } from "vite";
+import { isReleaseBuild } from "./packaging/signing-mode.ts";
 import { buildCsp } from "./src/shared/csp.ts";
 import { adoptRuntimeStyles } from "./src/shared/csp-safe-styles.ts";
 import { E2E_OUT_DIR, galleryDefine, galleryEnabled } from "./src/shared/gallery-build.ts";
@@ -34,6 +35,8 @@ const outRoot = resolve(
 
 export default defineConfig(({ command }) => ({
   main: {
+    // The update notice runs only in a build made by the release workflow (#300).
+    define: { __POCHIMAIL_RELEASE__: JSON.stringify(isReleaseBuild(process.env)) },
     build: {
       outDir: resolve(outRoot, "main"),
       rollupOptions: {
@@ -41,6 +44,7 @@ export default defineConfig(({ command }) => ({
           index: resolve(import.meta.dirname, "src/main/main.ts"),
           worker: resolve(import.meta.dirname, "src/worker/worker.ts"),
           "model-host": resolve(import.meta.dirname, "src/model-host/model-host.ts"),
+          "runtime-smoke": resolve(import.meta.dirname, "src/model-host/runtime-smoke.ts"),
           "storage-smoke": resolve(import.meta.dirname, "src/worker/storage-smoke.ts"),
         },
       },

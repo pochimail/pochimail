@@ -56,4 +56,4 @@ Every workspace is `packages/<name>` or `apps/<name>`. Packages are of three kin
 - Boundaries: `.dependency-cruiser.cjs`
 
 ## Releases
-`electron-updater` reads GitHub Releases: signed and notarized builds, stable and beta channels, differential downloads. Models update separately through a signed manifest with SHA-256 per file ([ADR 0006](docs/adr/0006-local-ai-runtimes-and-models.md)). The repository owner and name live only in the root `package.json` `repository` field; the updater and About screen read it. Security rules: [docs/security.md](docs/security.md).
+Releases are direct downloads from GitHub Releases, unsigned in v1 ([docs/release.md](docs/release.md)). The app only notices new versions: it reads `latest.json` from the latest Release and opens the download page. There is no `electron-updater`. Models update separately through a signed manifest with SHA-256 per file ([ADR 0006](docs/adr/0006-local-ai-runtimes-and-models.md)). The repository owner and name live in the root `package.json` `repository` field; a test checks the update notice's URLs against it. Security rules: [docs/security.md](docs/security.md).

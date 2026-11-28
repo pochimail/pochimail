@@ -8,8 +8,8 @@ import { useRef } from "react";
 import { type AppSettings, DEFAULT_APP_SETTINGS } from "#shared/settings.ts";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
+import { SETTINGS_ROW } from "../../lib/settings-row.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
-import { SETTINGS_ROW } from "./settings-row.ts";
 
 /** Settings › Notifications: the one switch for Pochimail's own notifications (ADR 0008). The bell is reserved for this section. */
 export function NotificationsSection() {

@@ -10,7 +10,7 @@ Calm, sober, editorial: screens read like a typeset document, not a dashboard of
 - **Summary** is a plain sheet from Pochi over the current screen, never a page: "From Pochi · date", a title, one sentence, three figures, one next step, Keep it tidy choices. It shows only what is new. Bottom sheet on phones.
 - **Saved attachments** go to the user's own storage ([ADR 0010](adr/0010-saved-attachments-go-to-user-storage.md)).
 - **Review lists** (proposed, maintainer to confirm): Pochimail may label the concerned emails in the provider and open that filtered list in the user's mail app.
-- Only types and topics that contain email are shown ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)).
+- Every type and topic is listed, muted when empty ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)).
 
 ## Tokens
 - Use the tokens as-is; never hard-code a color. Light and dark, text pairs at least 4.5:1, graphics at least 3:1.

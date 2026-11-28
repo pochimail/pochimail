@@ -74,11 +74,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export function normalizeSettings(raw: unknown): AppSettings {
   const row = isRecord(raw) ? raw : {};
-  const autonomy = AUTONOMY_LEVELS.find((level) => level === row["autonomy"]);
-  const theme = THEMES.find((value) => value === row["theme"]);
-  const locale = SETTINGS_LOCALES.find((value) => value === row["locale"]) ?? null;
-  const tidyCadence = TIDY_CADENCES.find((value) => value === row["tidyCadence"]);
-  const saved = isRecord(row["capabilities"]) ? row["capabilities"] : {};
+  const autonomy = AUTONOMY_LEVELS.find((level) => level === row.autonomy);
+  const theme = THEMES.find((value) => value === row.theme);
+  const locale = SETTINGS_LOCALES.find((value) => value === row.locale) ?? null;
+  const tidyCadence = TIDY_CADENCES.find((value) => value === row.tidyCadence);
+  const saved = isRecord(row.capabilities) ? row.capabilities : {};
   const capabilities = Object.fromEntries(
     CAPABILITIES.map((name) => {
       const value = saved[name];
@@ -86,15 +86,15 @@ export function normalizeSettings(raw: unknown): AppSettings {
     }),
   ) as { -readonly [K in Capability]: boolean };
   return {
-    autonomy: autonomy ?? (row["autopilot"] === true ? "autopilot" : DEFAULT_APP_SETTINGS.autonomy),
+    autonomy: autonomy ?? (row.autopilot === true ? "autopilot" : DEFAULT_APP_SETTINGS.autonomy),
     capabilities,
     notifications:
-      typeof row["notifications"] === "boolean"
-        ? row["notifications"]
+      typeof row.notifications === "boolean"
+        ? row.notifications
         : DEFAULT_APP_SETTINGS.notifications,
     theme: theme ?? DEFAULT_APP_SETTINGS.theme,
     locale,
     tidyCadence: tidyCadence ?? DEFAULT_TIDY_CADENCE,
-    summaryShown: row["summaryShown"] === true,
+    summaryShown: row.summaryShown === true,
   };
 }

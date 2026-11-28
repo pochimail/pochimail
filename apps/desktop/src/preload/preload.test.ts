@@ -5,7 +5,12 @@ vi.mock("electron", () => ({
   contextBridge: {
     exposeInMainWorld: (key: string, api: Record<string, unknown>) => void exposed.push([key, api]),
   },
-  ipcRenderer: { once: vi.fn(), on: vi.fn(), invoke: vi.fn(async () => null) },
+  ipcRenderer: {
+    once: vi.fn(),
+    on: vi.fn(),
+    removeListener: vi.fn(),
+    invoke: vi.fn(async () => null),
+  },
 }));
 
 beforeEach(() => {
@@ -27,9 +32,19 @@ describe("preload surface", () => {
       "requestWorkerPort",
       "showInFinder",
       "storage",
+      "updates",
     ]);
     for (const [name, value] of Object.entries(api))
-      if (name !== "storage") expect(typeof value).toBe("function");
+      if (name !== "storage" && name !== "updates") expect(typeof value).toBe("function");
+    expect(Object.keys(api.updates as object).sort()).toEqual([
+      "announcement",
+      "checkNow",
+      "dismiss",
+      "download",
+      "onChanged",
+      "setAutoCheck",
+      "state",
+    ]);
     expect(Object.keys(api.storage as object).sort()).toEqual([
       "setPassphrase",
       "status",
@@ -126,5 +141,31 @@ describe("preload surface", () => {
     deliver({}, "review");
 
     expect(seen).toEqual(["review", "overview"]);
+  });
+
+  // Guards: the Download call taking a URL from the page, or a bad version or answer crossing the bridge unchecked.
+  it("gives Download no argument and validates update arguments and answers", async () => {
+    const { ipcRenderer } = await import("electron");
+    await import("./preload.ts");
+    const { updates } = (exposed[0]?.[1] ?? {}) as {
+      updates: {
+        download: (...args: unknown[]) => Promise<void>;
+        dismiss: (version: string) => Promise<void>;
+        setAutoCheck: (enabled: unknown) => Promise<void>;
+        checkNow: () => Promise<unknown>;
+        onChanged: (listener: () => void) => () => void;
+      };
+    };
+    vi.mocked(ipcRenderer.invoke).mockClear();
+    await updates.download("https://evil.example");
+    expect(ipcRenderer.invoke).toHaveBeenLastCalledWith("update:download");
+    expect(() => updates.dismiss("1.2.3; rm")).toThrow();
+    expect(() => updates.setAutoCheck("yes")).toThrow();
+    vi.mocked(ipcRenderer.invoke).mockResolvedValueOnce({ status: "available", version: "x" });
+    await expect(updates.checkNow()).rejects.toThrow();
+    const stop = updates.onChanged(() => undefined);
+    expect(ipcRenderer.on).toHaveBeenCalledWith("update:changed", expect.any(Function));
+    stop();
+    expect(ipcRenderer.removeListener).toHaveBeenCalled();
   });
 });

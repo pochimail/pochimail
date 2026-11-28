@@ -17,6 +17,14 @@ import {
   storageStatusSchema,
   unlockPassphraseSchema,
 } from "../shared/storage-calls.ts";
+import {
+  announcementSchema,
+  autoCheckSchema,
+  checkResultSchema,
+  updateChannels,
+  updateStateSchema,
+  versionSchema,
+} from "../shared/update-calls.ts";
 
 /**
  * Narrow bridge (ADR 0002). Main sends one MessagePort connected to the worker; the page asks for it and the preload
@@ -69,6 +77,23 @@ const api = {
     ipcRenderer.invoke(osChannels.showInFinder, folderPathSchema.parse(path)),
   chooseFolder: async (): Promise<string | null> =>
     chosenFolderSchema.parse(await ipcRenderer.invoke(osChannels.chooseFolder)),
+  updates: {
+    state: async () => updateStateSchema.parse(await ipcRenderer.invoke(updateChannels.state)),
+    checkNow: async () =>
+      checkResultSchema.parse(await ipcRenderer.invoke(updateChannels.checkNow)),
+    setAutoCheck: (enabled: boolean): Promise<void> =>
+      ipcRenderer.invoke(updateChannels.setAutoCheck, autoCheckSchema.parse(enabled)),
+    dismiss: (version: string): Promise<void> =>
+      ipcRenderer.invoke(updateChannels.dismiss, versionSchema.parse(version)),
+    download: (): Promise<void> => ipcRenderer.invoke(updateChannels.download),
+    announcement: async () =>
+      announcementSchema.parse(await ipcRenderer.invoke(updateChannels.announcement)),
+    onChanged: (listener: () => void): (() => void) => {
+      const forward = (): void => listener();
+      ipcRenderer.on(updateChannels.changed, forward);
+      return () => ipcRenderer.removeListener(updateChannels.changed, forward);
+    },
+  },
   storage: {
     status: async () => storageStatusSchema.parse(await ipcRenderer.invoke(storageChannels.status)),
     setPassphrase: async (passphrase: string) =>

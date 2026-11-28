@@ -16,17 +16,15 @@ const setup = (path: string) => {
   port2.start();
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "device" as const,
       "accounts.list": () => [],
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "scan.status": () => [],
       "overview.get": () => ({
@@ -89,7 +87,7 @@ const cases = [
   },
   {
     name: "category",
-    path: "/category/people",
+    path: "/type/personal",
     title: "Nothing to clean here",
     body: "This category is already tidy. I’ll let you know when that changes.",
     pose: "happy",

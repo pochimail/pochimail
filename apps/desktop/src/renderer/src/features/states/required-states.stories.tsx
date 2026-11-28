@@ -8,7 +8,6 @@ import {
   OfflineStatusLine,
   RateLimitState,
   SignInCancelledState,
-  UpdateReadyState,
 } from "./required-states.tsx";
 
 const noop = () => {};
@@ -39,9 +38,6 @@ export const RateLimit = {
 };
 export const EmptyCategory = { render: () => <EmptyCategoryState onAction={noop} /> };
 export const NothingToDo = { render: () => <NothingToDoState onAction={noop} /> };
-export const UpdateReady = {
-  render: () => <UpdateReadyState version="1.2" onAction={noop} onSecondary={noop} />,
-};
 
 const dark = [darkDecorator];
 export const SignInCancelledDark = { ...SignInCancelled, decorators: dark };
@@ -51,4 +47,3 @@ export const ModelDownloadFailedDark = { ...ModelDownloadFailed, decorators: dar
 export const RateLimitDark = { ...RateLimit, decorators: dark };
 export const EmptyCategoryDark = { ...EmptyCategory, decorators: dark };
 export const NothingToDoDark = { ...NothingToDo, decorators: dark };
-export const UpdateReadyDark = { ...UpdateReady, decorators: dark };

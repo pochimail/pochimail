@@ -18,8 +18,8 @@ const stored: Review = {
   deadlines: 1,
   important: 4,
   cleanable: [
-    { category: "newsletters", count: 300 },
-    { category: "notifications", count: 120 },
+    { category: "newsletter", count: 300 },
+    { category: "notification", count: 120 },
   ],
   noAccount: true,
 };
@@ -32,14 +32,12 @@ const setup = () => {
   serveRpc(fromDomPort(port2), {
     procedures: {
       "accounts.list": () => [{ id: "a1", provider: "google" as const, displayName: "Account" }],
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "scan.status": () => [],
       "review.get": (input) => {

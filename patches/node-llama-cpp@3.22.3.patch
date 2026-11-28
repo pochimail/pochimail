@@ -1,0 +1,15 @@
+diff --git a/dist/bindings/utils/testBindingBinary.js b/dist/bindings/utils/testBindingBinary.js
+index fc2ed379662d4d5cc7282a9d01faf3c327caa593..5eae57a033349a48d0069f0c4cc8941ee9c3bc05 100644
+--- a/dist/bindings/utils/testBindingBinary.js	
++++ b/dist/bindings/utils/testBindingBinary.js
+@@ -12,6 +12,10 @@ const __filename = fileURLToPath(import.meta.url);
+ const detectedFileName = path.basename(__filename);
+ const expectedFileName = "testBindingBinary";
+ export async function testBindingBinary(bindingBinaryPath, extBackendsPath, gpu, testTimeout = 1000 * 60 * 5, pipeOutputOnNode = false) {
++    // Pochimail: an Electron utility process cannot fork the test process while the runAsNode fuse is off, so the
++    // test cannot run there. The packaged smoke loads the binary in that process instead.
++    if (process.type === "utility")
++        return true;
+     if (!detectedFileName.startsWith(expectedFileName)) {
+         console.warn(getConsoleLogPrefix() +
+             `"${expectedFileName}.js" file is not independent, so testing a binding binary with the current system ` +

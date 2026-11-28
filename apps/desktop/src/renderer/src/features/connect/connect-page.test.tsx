@@ -30,7 +30,11 @@ const harness = (
   let lists = 0;
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: existing > 0 }),
+      "app.state": () => ({
+        status: "ready" as const,
+        hasConnectedAccount: existing > 0,
+        needsReauth: [],
+      }),
       "device.name": () => "Mac" as const,
       "accounts.list": () => {
         lists += 1;
@@ -60,14 +64,12 @@ const harness = (
         },
         notifications: true,
       }),
-      "mailbox.categories": () => ({
-        people: 0,
-        records: 0,
-        "purchases-travel": 0,
-        "sign-ins-security": 0,
-        notifications: 0,
-        newsletters: 0,
-        promotions: 0,
+      "mailbox.types": () => ({
+        personal: 0,
+        transactional: 0,
+        notification: 0,
+        newsletter: 0,
+        promotion: 0,
       }),
       "overview.get": () => ({
         scanned: 0,

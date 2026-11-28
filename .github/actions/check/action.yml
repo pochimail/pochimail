@@ -1,5 +1,5 @@
 name: check
-description: The full quality gate (install, gates, typecheck, lint, test, build, knip, manypkg, arch, quality). One place for the steps; ci.yml calls it from one job per OS. The caller must run actions/checkout first.
+description: The full quality gate (install, gates, typecheck, lint, test with coverage, build, knip, manypkg, arch, quality). One place for the steps; ci.yml calls it from one job per OS. The caller must run actions/checkout first.
 runs:
   using: composite
   steps:
@@ -26,9 +26,18 @@ runs:
     - name: Lint
       run: pnpm lint
       shell: bash
-    - name: Test
-      run: pnpm test
+    # The tests, run once over every package with v8 coverage; fails when a package falls below its floor (tooling/ci/coverage-floors.json).
+    - name: Test with coverage
+      run: pnpm coverage
       shell: bash
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: coverage-${{ runner.os }}
+        path: coverage
+        retention-days: 14
+        if-no-files-found: ignore
     - name: Build
       run: pnpm build
       shell: bash

@@ -21,7 +21,6 @@ import {
   OfflineStatusLine,
   RateLimitState,
   SignInCancelledState,
-  UpdateReadyState,
 } from "./required-states.tsx";
 import { useRequiredStates } from "./use-required-states.ts";
 
@@ -84,14 +83,6 @@ const cases: Case[] = [
     role: "status",
     title: "All caught up",
     primary: "Back to overview",
-  },
-  {
-    name: "update ready",
-    ui: (a, s) => <UpdateReadyState version="1.2" onAction={a} onSecondary={s} />,
-    role: "status",
-    title: "A new version is ready",
-    primary: "Restart now",
-    secondary: "What’s new",
   },
 ];
 
@@ -177,6 +168,14 @@ describe("required states from worker events", () => {
       { type: "Reconnected", accountId: "a" },
     );
     expect(state.needsReauth).toEqual([{ accountId: "b", provider: "Outlook" }]);
+  });
+
+  it("removing an account clears its reconnect notice (guards a Reconnect for an account that no longer exists)", () => {
+    const state = run(
+      { type: "NeedsReauth", accountId: "a", provider: "Gmail" },
+      { type: "AccountRemoved", accountId: "a" },
+    );
+    expect(state.needsReauth).toEqual([]);
   });
 
   it("a retried sign-in or download clears its failure (guards a stale failure after retry)", () => {

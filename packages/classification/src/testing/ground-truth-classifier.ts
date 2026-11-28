@@ -2,7 +2,7 @@ import { Cancelled } from "@pochimail/kernel/errors";
 import { err, ok } from "@pochimail/kernel/result";
 import { createFaults, type Faults } from "@pochimail/kernel/testing/faults";
 import { AiUnavailable } from "../errors.ts";
-import type { Category } from "../model/category.ts";
+import type { EmailType } from "../model/email-type.ts";
 import type { AiError, Classification, Classifier } from "../ports/classifier.ts";
 
 export interface GroundTruthClassifier extends Classifier {
@@ -16,7 +16,7 @@ export interface GroundTruthClassifier extends Classifier {
  * (confidence 1). A message without a label gets no answer. The real classifier arrives in M3.
  */
 export function createGroundTruthClassifier(
-  labels: ReadonlyMap<string, Category>,
+  labels: ReadonlyMap<string, EmailType>,
 ): GroundTruthClassifier {
   const faults = createFaults<AiError>();
   return {

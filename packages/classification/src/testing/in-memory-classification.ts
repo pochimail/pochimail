@@ -1,11 +1,12 @@
 import { Cancelled, NotFound } from "@pochimail/kernel/errors";
 import type { EventEnvelope } from "@pochimail/kernel/event";
+import type { TopicId } from "@pochimail/kernel/ids";
 import { err, ok } from "@pochimail/kernel/result";
-import type { SuspiciousFlag } from "../model/category.ts";
-import { CATEGORIES } from "../model/category.ts";
 import type { DerivedMessage } from "../model/derived.ts";
+import { EMAIL_TYPES } from "../model/email-type.ts";
 import type { ClassifiableMessage, SignalFacts } from "../model/message-facts.ts";
 import type { StoredSignal } from "../model/signal.ts";
+import type { SuspiciousFlag } from "../model/suspicious-flag.ts";
 import type { Topic } from "../model/topic.ts";
 import type { ClassificationUnitOfWork } from "../ports/unit-of-work.ts";
 import { makeDerived, makeMessage, OWNER_ADDRESS, type Seeder, WS_A } from "./samples.ts";
@@ -19,6 +20,7 @@ const byText = (a: string, b: string) => {
 /** A message as the in-memory mailbox keeps it, with the facts only signals read. */
 type StoredMessage = ClassifiableMessage & {
   category: string;
+  topicIds?: readonly TopicId[];
   attachmentCount?: number;
   suspicious?: SuspiciousFlag;
 };
@@ -69,6 +71,8 @@ export interface InMemoryClassification extends Seeder {
   readonly uow: ClassificationUnitOfWork;
   /** Events committed so far, in order; a rolled-back transaction leaves none. */
   committedEvents(): readonly EventEnvelope[];
+  /** The topics each message was filed under, by message id; messages in none are left out. */
+  topicAssignments(): Record<string, readonly string[]>;
   /** Derived rows, signals and events committed so far, as plain data (for leak checks). */
   snapshot(): Promise<{
     derived: unknown[];
@@ -129,14 +133,27 @@ export function createInMemoryClassification(): InMemoryClassification {
       get: async (ws, id) => {
         const m = data().messages.get(`${ws}/${id}`);
         if (!m) return err(new NotFound("Message"));
-        const { category: _category, attachmentCount: _count, suspicious: _flag, ...message } = m;
+        const {
+          category: _category,
+          topicIds: _topics,
+          attachmentCount: _count,
+          suspicious: _flag,
+          ...message
+        } = m;
         return ok(copy(message));
       },
       countByCategory: async (ws, accountIds) => {
-        const counts: Record<string, number> = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
+        const counts: Record<string, number> = Object.fromEntries(EMAIL_TYPES.map((c) => [c, 0]));
         for (const [key, m] of data().messages)
           if (key.startsWith(`${ws}/`) && accountIds.includes(m.accountId))
             counts[m.category] = (counts[m.category] ?? 0) + 1;
+        return ok(counts);
+      },
+      countByTopic: async (ws, accountIds) => {
+        const counts: Record<string, number> = {};
+        for (const [key, m] of data().messages)
+          if (key.startsWith(`${ws}/`) && accountIds.includes(m.accountId))
+            for (const id of m.topicIds ?? []) counts[id] = (counts[id] ?? 0) + 1;
         return ok(counts);
       },
     },
@@ -194,6 +211,12 @@ export function createInMemoryClassification(): InMemoryClassification {
               draft.messages.set(`${ws}/${id}`, { ...m, category });
               return ok(undefined);
             },
+            setTopics: async (ws, id, topicIds) => {
+              const m = draft.messages.get(`${ws}/${id}`);
+              if (!m) return err(new NotFound("Message"));
+              draft.messages.set(`${ws}/${id}`, { ...m, topicIds: [...topicIds] });
+              return ok(undefined);
+            },
           },
         },
         events: {
@@ -215,6 +238,13 @@ export function createInMemoryClassification(): InMemoryClassification {
   return {
     uow,
     committedEvents: () => events.map(copy),
+    topicAssignments: () =>
+      Object.fromEntries(
+        [...committed.messages.values()]
+          .filter((m) => (m.topicIds?.length ?? 0) > 0)
+          .sort((a, b) => byText(a.id, b.id))
+          .map((m) => [m.id, m.topicIds ?? []]),
+      ),
     snapshot: async () => ({
       derived: copy([...committed.derived.values()]),
       signals: copy([...committed.signals.values()]),
@@ -224,7 +254,7 @@ export function createInMemoryClassification(): InMemoryClassification {
       for (const [key, row] of Object.entries(rows)) {
         const n = Number(key);
         const message = makeMessage(n, row.message);
-        const category = row.category ?? "notifications";
+        const category = row.category ?? "notification";
         committed.messages.set(`${WS_A}/${message.id}`, {
           ...message,
           category,

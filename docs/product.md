@@ -1,6 +1,6 @@
 # Product
 
-Pochimail is a private assistant that gives you the big picture of your email accounts, flags what needs you, clears clutter and saves your documents. Everything runs on your computer. Pochi (from *pochi-bukuro* ポチ袋, the small Japanese gift envelope) is the assistant; the site is getpochimail.com.
+Pochimail is a private assistant that gives you the big picture of your email accounts, flags what needs you, clears clutter and saves your documents. Everything runs on your computer. Pochi (from *pochi-bukuro* ポチ袋, the small Japanese gift envelope) is the assistant; the site is [pochimail.github.io/pochimail](https://pochimail.github.io/pochimail/).
 
 ## What it is, and is not
 - **Is**: an overview and cleanup assistant for one or several Gmail accounts. Outlook / Microsoft 365 and other providers (IMAP) come in v1.1 ([ADR 0011](adr/0011-v1-providers-google-and-microsoft.md)).
@@ -24,7 +24,7 @@ Pochimail is a private assistant that gives you the big picture of your email ac
 - Every batch is previewed, every action is logged and undoable. Unsubscribe is the exception and the UI says so first ([ADR 0013](adr/0013-unsubscribe-suggested-user-decides.md)).
 
 ## Mail model
-- **Types, signals and topics** ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)): every email has one of five types (personal, transactional, notification (shown as Alert emails), newsletter, promotion), per-email signals that drive protection, and topics discovered from the user's own mailbox. *Suspicious* is a flag. Only types and topics that contain email are shown. The seven categories still in the code are replaced by #100.
+- **Types, signals and topics** ([ADR 0016](adr/0016-fixed-types-and-automatic-topics.md)): every email has one of five types (personal, transactional, notification (shown as Alert emails), newsletter, promotion), per-email signals that drive protection, and topics discovered from the user's own mailbox. *Suspicious* is a flag. The sidebar lists every type and topic, muted when empty.
 - **Topics** (any number, user-editable): Job search, Work, Finance, Home, Health, Travel, Family, Projects…
 - **Signals** (computed): needs a reply, waiting on them, important sender, has a document, time-sensitive, old and never opened.
 - Classification is local, cheapest first: rules, then calibrated decision heads, then a small local LLM ([ADR 0006](adr/0006-local-ai-runtimes-and-models.md)). It learns from the user's corrections, on the device.

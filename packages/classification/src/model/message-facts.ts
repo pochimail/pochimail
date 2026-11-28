@@ -6,7 +6,7 @@ import {
   timestampSchema,
 } from "@pochimail/kernel/schemas";
 import { z } from "zod";
-import type { SuspiciousFlag } from "./category.ts";
+import type { SuspiciousFlag } from "./suspicious-flag.ts";
 
 // PRIVATE MAIL DATA: subjects, addresses and snippets. Never log them.
 

@@ -1,8 +1,8 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { pochimailNotificationMessages } from "./pochimail-notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -99,8 +99,6 @@ export const messages = {
     "Automated alerts, not emails from people. Review opens the list — nothing is archived until you approve.",
     [],
   ),
-  "overview.rec.signins.sentence": entry("Delete expired sign-in codes", []),
-  "overview.rec.signins.reason": entry("One-time codes and login alerts", []),
   "overview.scan.progress": entry("{processed, number} of {total, number} emails sorted", [
     "processed",
     "total",
@@ -188,7 +186,7 @@ export const messages = {
   "activity.title": entry("Activity", []),
   "settings.title": entry("Settings", []),
   "settings.description": entry("Preferences and account settings will appear here.", []),
-  ...appearanceMessages.en,
+  ...settingsMessages.en,
   ...pochimailNotificationMessages.en,
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Main navigation", []),
@@ -199,14 +197,13 @@ export const messages = {
   "switcher.menu": entry("Account", []),
   "switcher.all": entry("All accounts", []),
   "switcher.add": entry("Add another account", []),
-  "category.people": entry("People", []),
-  "category.records": entry("Records", []),
-  "category.purchasesTravel": entry("Purchases & travel", []),
-  "category.signInsSecurity": entry("Sign-ins & security", []),
-  "category.notifications": entry("Alert emails", []),
-  "category.newsletters": entry("Newsletters", []),
-  "category.promotions": entry("Promotions", []),
-  "category.placeholder": entry("Emails in this category will appear here.", []),
+  "nav.empty": entry("{name}, empty", ["name"]),
+  "nav.topics": entry("Topics", []),
+  "type.personal": entry("Personal", []),
+  "type.transactional": entry("Transactional", []),
+  "type.notification": entry("Alert emails", []),
+  "type.newsletter": entry("Newsletters", []),
+  "type.promotion": entry("Promotions", []),
   ...notificationMessages.en,
   "devGallery.title": entry("Dev gallery", []),
   "devGallery.description": entry("States and motion previews for development.", []),
@@ -273,13 +270,6 @@ export const messages = {
     [],
   ),
   "state.nothingToDo.action": entry("Back to overview", []),
-  "state.updateReady.title": entry("A new version is ready", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} is ready. It installs when you restart, and your emails stay where they are.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Restart now", []),
-  "state.updateReady.whatsNew": entry("What’s new", []),
 } as const;
 export type MessageKey = keyof typeof messages;
 /** Params are derived from the catalog entry, so a renamed placeholder breaks the call site. */

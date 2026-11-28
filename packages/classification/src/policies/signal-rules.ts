@@ -1,5 +1,6 @@
 import { UNSURE_BELOW } from "@pochimail/kernel/confidence";
-import type { Category, SignalKind } from "../model/category.ts";
+import type { EmailType } from "../model/email-type.ts";
+import type { SignalKind } from "../model/signal.ts";
 import type { SignalSettings } from "../model/signal-settings.ts";
 
 const DAY_MS = 86_400_000;
@@ -12,14 +13,14 @@ export const UNSURE_CONFIDENCE = 0.5;
 /** "Deadlines this week": a recent unopened notice is time-sensitive for this long. */
 export const TIME_SENSITIVE_WITHIN_DAYS = 7;
 /** Automated mail whose silence is what makes a clean-up proposal safe. */
-export const BULK_CATEGORIES: readonly Category[] = ["notifications", "newsletters", "promotions"];
+export const BULK_TYPES: readonly EmailType[] = ["notification", "newsletter", "promotion"];
 
 export interface RuleInput {
   /** Whether the owner sent it; `undefined` when the sender is unknown. */
   readonly fromOwner: boolean | undefined;
   readonly receivedAt: string;
   readonly opened: boolean;
-  readonly category: Category;
+  readonly category: EmailType;
   /** The classifier's confidence in `category`; `undefined` when no decision was recorded. */
   readonly confidence: number | undefined;
   readonly now: Date;
@@ -70,12 +71,12 @@ const decided = (i: RuleInput): boolean =>
 function person(i: RuleInput): Verdict {
   if (i.hasListUnsubscribe) return "no";
   if (!decided(i)) return "unsure";
-  return known(i.category === "people");
+  return known(i.category === "personal");
 }
 
 /** Is this one of a given set of types? An unsure classifier cannot say. */
-function typeIn(i: RuleInput, categories: readonly Category[]): Verdict {
-  return decided(i) ? known(categories.includes(i.category)) : "unsure";
+function typeIn(i: RuleInput, types: readonly EmailType[]): Verdict {
+  return decided(i) ? known(types.includes(i.category)) : "unsure";
 }
 
 function sentByOwner(i: RuleInput): Verdict {
@@ -100,7 +101,7 @@ export function signalRules(i: RuleInput): Hit[] {
   const last = known(i.lastInThread);
   const { recentDays, waitingAfterDays } = i.settings;
   const oldUnopenedBulk = combine(
-    typeIn(i, BULK_CATEGORIES),
+    typeIn(i, BULK_TYPES),
     known(!i.opened),
     between(age, OLD_AFTER_DAYS, Infinity),
   );
@@ -133,12 +134,12 @@ export function signalRules(i: RuleInput): Hit[] {
     ),
     // Text-free proxy for "time-sensitive": a deadline cannot be read without the subject or
     // body, which are not stored (ADR 0014). Until dates are extracted from display fields
-    // fetched on demand, a recent unopened records notice counts, and so does any recent
+    // fetched on demand, a recent unopened transactional email counts, and so does any recent
     // unopened message whose type is unsure, because ADR 0012 protects "Time-sensitive".
     ...hit(
       "time-sensitive",
       combine(
-        typeIn(i, ["records"]),
+        typeIn(i, ["transactional"]),
         known(!i.opened),
         between(age, -Infinity, TIME_SENSITIVE_WITHIN_DAYS),
       ),

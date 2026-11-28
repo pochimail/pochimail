@@ -2,14 +2,14 @@ import type { AsyncResult, CancelSignal } from "@pochimail/kernel/common";
 import type { Cancelled } from "@pochimail/kernel/errors";
 import type { MessageId } from "@pochimail/kernel/ids";
 import type { AiUnavailable } from "../errors.ts";
-import type { Category } from "../model/category.ts";
+import type { EmailType } from "../model/email-type.ts";
 import type { ClassifiableMessage } from "../model/message-facts.ts";
 
 export type AiError = AiUnavailable | Cancelled;
 
 export interface Classification {
   readonly messageId: MessageId;
-  readonly category: Category;
+  readonly category: EmailType;
   readonly confidence: number;
   readonly reasons: readonly string[];
   /** Rules or model version that decided; recorded with the decision. */

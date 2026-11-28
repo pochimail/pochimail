@@ -1,4 +1,4 @@
-import type { Category } from "@pochimail/classification/model/category";
+import type { EmailType } from "@pochimail/classification/model/email-type";
 import { Button } from "@pochimail/ui/components/button";
 import { EmptyState } from "@pochimail/ui/components/empty-state";
 import { RecommendationRow } from "@pochimail/ui/components/recommendation-row";
@@ -192,13 +192,13 @@ export function OverviewPage() {
   const locale = useLocale();
   const device = deviceLabel(deviceName.data ?? "device", locale);
   const data = overview.data;
-  const goToCategory = (category: Category, filter?: ReviewTarget["review"]) =>
+  const goToType = (category: EmailType, filter?: ReviewTarget["review"]) =>
     void navigate({
-      to: "/category/$categoryId",
-      params: { categoryId: category },
+      to: "/type/$typeId",
+      params: { typeId: category },
       search: (prev) => (filter === undefined ? prev : { ...prev, review: filter }),
     });
-  const review = (target: ReviewTarget) => goToCategory(target.category, target.review);
+  const review = (target: ReviewTarget) => goToType(target.category, target.review);
 
   const view = overviewView(data, scan.active, overview.isError);
   const rows = data === undefined ? [] : cleanRows(data, t);
@@ -231,7 +231,7 @@ export function OverviewPage() {
               device={device}
               cadence={summary.cadence}
               onCadenceChange={summary.selectCadence}
-              onReview={goToCategory}
+              onReview={goToType}
             />
           ) : undefined
         }

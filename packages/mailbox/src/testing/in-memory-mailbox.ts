@@ -13,7 +13,7 @@ const byText = (a: string, b: string) => {
   if (a === b) return 0;
   return a < b ? -1 : 1;
 };
-const DEFAULT_LABEL = "notifications";
+const DEFAULT_LABEL = "notification";
 
 interface Data {
   messages: Map<string, Message & { seq: number }>;
@@ -88,6 +88,13 @@ export function createInMemoryMailbox(): InMemoryMailbox {
             counts[m.category] = (counts[m.category] ?? 0) + 1;
         return ok(counts);
       },
+      countByTopic: async (ws: string, accountIds: readonly string[]) => {
+        const counts: Record<string, number> = {};
+        for (const m of data().messages.values())
+          if (m.workspaceId === ws && accountIds.includes(m.accountId))
+            for (const id of m.topicIds) counts[id] = (counts[id] ?? 0) + 1;
+        return ok(counts);
+      },
     },
     threads: {
       get: async (ws: string, id: string) => {
@@ -146,6 +153,7 @@ export function createInMemoryMailbox(): InMemoryMailbox {
                   draft.messages.set(key, {
                     ...copy(m),
                     category: before?.category ?? DEFAULT_LABEL,
+                    topicIds: before?.topicIds ?? m.topicIds,
                     senderHash: fakeSenderHash(m.accountId, m.from),
                     seq: before?.seq ?? ++draft.counter,
                   });
@@ -156,6 +164,12 @@ export function createInMemoryMailbox(): InMemoryMailbox {
                 const before = draft.messages.get(`${ws}/${id}`);
                 if (!before) return err(new NotFound("Message"));
                 draft.messages.set(`${ws}/${id}`, { ...before, category });
+                return ok(undefined);
+              },
+              setTopics: async (ws: string, id: string, topicIds: readonly string[]) => {
+                const before = draft.messages.get(`${ws}/${id}`);
+                if (!before) return err(new NotFound("Message"));
+                draft.messages.set(`${ws}/${id}`, { ...before, topicIds: topicIds as never });
                 return ok(undefined);
               },
             },

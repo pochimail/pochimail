@@ -1,5 +1,7 @@
 import { NotFound, type StorageError } from "@pochimail/kernel/errors";
+import type { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, ok, type Result } from "@pochimail/kernel/result";
+import type { Message } from "@pochimail/mailbox/model/message";
 import type { SenderOfMessage } from "@pochimail/mailbox/ports/sender-repository";
 import { copy, type Data, key } from "../in-memory-store-data.ts";
 import type { ReadRepositories } from "../uow-types.ts";
@@ -44,4 +46,19 @@ export function inMemoryReads(
       },
     }),
   };
+}
+
+/** Counts the workspace's messages of the given accounts by each of the labels `labelsOf` gives; starts from `zeros`. */
+export function countMessages(
+  data: Data,
+  ws: WorkspaceId,
+  accountIds: readonly string[],
+  labelsOf: (m: Message) => readonly string[],
+  zeros: readonly string[] = [],
+): Record<string, number> {
+  const counts: Record<string, number> = Object.fromEntries(zeros.map((label) => [label, 0]));
+  for (const m of data.messages.values())
+    if (m.workspaceId === ws && accountIds.includes(m.accountId))
+      for (const label of labelsOf(m)) counts[label] = (counts[label] ?? 0) + 1;
+  return counts;
 }

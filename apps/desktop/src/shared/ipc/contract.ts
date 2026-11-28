@@ -1,6 +1,7 @@
 import { AUTONOMY_LEVELS } from "@pochimail/actions/policies/autonomy";
-import { categorySchema } from "@pochimail/classification/model/category";
+import { emailTypeSchema } from "@pochimail/classification/model/email-type";
 import { digestFiguresSchema } from "@pochimail/cleanup/model/digest";
+import { CLEANABLE_LABELS } from "@pochimail/cleanup/policies/labels";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
 import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
@@ -18,15 +19,15 @@ const themeSchema = z.enum(THEMES);
 const localeSchema = z.enum(SETTINGS_LOCALES);
 const tidyCadenceSchema = z.enum(TIDY_CADENCES);
 const count = z.number().int().nonnegative();
-/** The four cleanable categories, shared by the Overview and Review figures; counts only (ADR 0014). */
+/** The cleanable types, shared by the Overview and Review figures; counts only (ADR 0014). */
 const cleanableSchema = z
   .array(
     z.object({
-      category: z.enum(["newsletters", "promotions", "notifications", "sign-ins-security"]),
+      category: z.enum(CLEANABLE_LABELS),
       count,
     }),
   )
-  .max(4);
+  .max(CLEANABLE_LABELS.length);
 const capabilitiesSchema = z.object(
   Object.fromEntries(CAPABILITIES.map((name) => [name, z.boolean()])) as Record<
     (typeof CAPABILITIES)[number],
@@ -82,22 +83,22 @@ const queries = {
       noAccount: z.boolean(),
     }),
   },
-  /** Email counts per category over the given accounts (the switcher's selection); counts only, never content. */
-  "mailbox.categories": {
+  /** Email counts per type over the given accounts (the switcher's selection); counts only, never content. */
+  "mailbox.types": {
     input: z.object({ accountIds: z.array(accountId).max(100) }),
-    output: z.record(categorySchema, z.number().int().nonnegative()),
+    output: z.record(emailTypeSchema, z.number().int().nonnegative()),
+  },
+  /** Emails per topic over the given accounts, for every topic (0 when empty); names and counts only, never content. */
+  "mailbox.topics": {
+    input: z.object({ accountIds: z.array(accountId).max(100) }),
+    output: z.array(z.object({ id: z.string().min(1), name: z.string().min(1), count })).max(500),
   },
   /** Read-only: the live (running or paused) scan jobs of the given accounts, so a screen can show Pause or Resume after a reload. */
   "scan.status": {
     input: z.object({ accountIds: z.array(accountId).max(100) }),
     output: z
       .array(
-        z.object({
-          accountId,
-          jobId,
-          status: z.enum(["running", "paused"]),
-          processed: z.number().int().nonnegative(),
-        }),
+        z.object({ accountId, jobId, status: z.enum(["running", "paused"]), processed: count }),
       )
       .max(100),
   },
@@ -124,6 +125,8 @@ const queries = {
     output: z.object({
       status: z.enum(["starting", "ready", "locked"]),
       hasConnectedAccount: z.boolean(),
+      /** Accounts that lost access and wait for a reconnect, so a reloaded screen asks again. */
+      needsReauth: z.array(z.object({ accountId, provider: z.string().max(50) })).max(100),
     }),
   },
   /** M4-07: copy uses deviceName(), never a hard-coded OS name (brief §5.9). */
@@ -142,6 +145,10 @@ export const CONNECT_FAILURES = [
   "unknown",
 ] as const;
 
+/** Why a reconnect failed: the sign-in reasons, plus a consent for another mailbox than the account's. */
+export const RECONNECT_FAILURES = [...CONNECT_FAILURES, "not-found", "wrong-account"] as const;
+const REMOVE_FAILURES = ["not-found", "storage-unavailable", "unknown"] as const;
+
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
 
@@ -155,7 +162,24 @@ const mutations = {
       z.object({ status: z.literal("failed"), reason: z.enum(CONNECT_FAILURES) }),
     ]),
   },
-  /** Stops a sign-in that is waiting for the person; the waiting `accounts.connect` then answers `cancelled`. */
+  /** Consent again for an account in `needs_reauth`: stores the new token, then the scan resumes from its cursor. */
+  "accounts.reconnect": {
+    input: z.object({ accountId }),
+    output: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("reconnected") }),
+      z.object({ status: z.literal("cancelled") }),
+      z.object({ status: z.literal("failed"), reason: z.enum(RECONNECT_FAILURES) }),
+    ]),
+  },
+  /** Revokes the account at the provider, deletes its keychain entry and rows; `remoteRevoked: false`: the provider may still list Pochimail. */
+  "accounts.remove": {
+    input: z.object({ accountId }),
+    output: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("removed"), remoteRevoked: z.boolean() }),
+      z.object({ status: z.literal("failed"), reason: z.enum(REMOVE_FAILURES) }),
+    ]),
+  },
+  /** Stops a sign-in or reconnect that is waiting for the person; the waiting call then answers `cancelled`. */
   "accounts.cancelConnect": {
     input: z.undefined(),
     output: z.undefined(),
@@ -213,11 +237,7 @@ const subscriptions = {
         actionId,
         reason: z.enum(["not-found", "conflict", "provider-error", "cancelled", "unknown"]),
       }),
-      z.object({
-        type: z.literal("ScanCompleted"),
-        accountId,
-        processed: z.number().int().nonnegative(),
-      }),
+      z.object({ type: z.literal("ScanCompleted"), accountId, processed: count }),
       z.object({
         type: z.literal("ScanFailed"),
         accountId,
@@ -232,14 +252,14 @@ const subscriptions = {
         type: z.literal("RateLimited"),
         provider: z.string().min(1),
         /** Epoch milliseconds when sync resumes by itself. */
-        resumeAt: z.number().int().nonnegative(),
+        resumeAt: count,
       }),
       z.object({ type: z.literal("SyncResumed") }),
       z.object({ type: z.literal("NeedsReauth"), accountId, provider: z.string().min(1) }),
       z.object({ type: z.literal("Reconnected"), accountId }),
+      z.object({ type: z.literal("AccountRemoved"), accountId }),
       z.object({ type: z.literal("ModelDownloadFailed") }),
       z.object({ type: z.literal("ModelDownloadStarted") }),
-      z.object({ type: z.literal("UpdateReady"), version: z.string().min(1) }),
     ]),
     coalesceKey: undefined,
   },

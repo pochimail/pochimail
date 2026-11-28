@@ -90,7 +90,6 @@ const stateEntry: Record<string, string> = {
   RateLimitState: "RateLimit",
   EmptyCategoryState: "EmptyCategory",
   NothingToDoState: "NothingToDo",
-  UpdateReadyState: "UpdateReady",
 };
 
 describe("dev gallery", () => {

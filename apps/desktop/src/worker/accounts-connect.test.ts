@@ -1,6 +1,8 @@
 // Guards: a sign-in that leaks a token to the renderer, stores one outside the keychain, or leaves the person on a wrong state.
 import { createInMemorySecretStore } from "@pochimail/accounts/testing/in-memory-secret-store";
 import { ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
+import { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import { StorageError } from "@pochimail/kernel/errors";
 import { WorkspaceId } from "@pochimail/kernel/ids";
 import { err, unwrap } from "@pochimail/kernel/result";
@@ -37,6 +39,7 @@ const setup = async (options: {
   failTokenExchange?: boolean;
   /** Local storage refuses the account row, as it does when the worker has no database key. */
   failStorage?: boolean;
+  clearClassifierCache?: () => void;
 }) => {
   const server = await startFakeOAuthServer(
     options.address === undefined ? {} : { address: options.address },
@@ -85,8 +88,22 @@ const setup = async (options: {
   const procedures = createAccountProcedures({
     startScan: async () => {
       if (options.failScan) throw new Error("scan.start failed");
+      return { jobId: "job_1" };
     },
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
+    forgetTokens: () => {},
+    stopScans: async () => {},
+    forgetDigest: () => {},
+    ...(options.clearClassifierCache === undefined
+      ? {}
+      : { clearClassifierCache: options.clearClassifierCache }),
+    removeAccount: new RemoveAccount({
+      uow,
+      secrets,
+      revoker,
+      clock: { now: () => new Date("2026-11-21T10:00:00.000Z") },
+    }),
+    emit: () => {},
     workspaceId,
     uow,
     connectAccount: new ConnectAccount({
@@ -98,7 +115,18 @@ const setup = async (options: {
     signIn: (signal) => signIn.execute({ provider: "google", autonomy: "suggest", config }, signal),
   });
   const { port1, port2 } = new MessageChannel();
-  serveRpc(fromDomPort(port2), { procedures, subscriptions: {} });
+  const listed = new ListAccounts({ uow });
+  // The list belongs to the worker's handlers; here it only shows what connecting stored.
+  const list = async () =>
+    unwrap(await listed.execute(workspaceId)).map((account) => ({
+      id: account.id,
+      provider: "google" as const,
+      displayName: account.address,
+    }));
+  serveRpc(fromDomPort(port2), {
+    procedures: { ...procedures, "accounts.list": list },
+    subscriptions: {},
+  });
   const client = createRpcClient(fromDomPort(port1));
   return {
     client,
@@ -128,7 +156,6 @@ describe("accounts.connect", () => {
         displayName: "person@example.test",
       },
     ]);
-    expect(await client.call("app.state")).toEqual({ status: "ready", hasConnectedAccount: true });
     const stored = await secrets.get(`account/${workspaceId}/${accounts[0]?.id}`);
     expect(stored.ok && stored.value).toMatch(/^refresh-/);
     close();
@@ -219,6 +246,26 @@ describe("accounts.connect", () => {
     await client.call("accounts.cancelConnect");
     expect(await waiting).toEqual({ status: "cancelled" });
     await expect(fetch(redirect, { signal: AbortSignal.timeout(1000) })).rejects.toThrow();
+    close();
+  });
+
+  it("removing an account clears the classifier cache itself, and a removal that fails does not (guards mail-derived answers waiting on an outbox event)", async () => {
+    const clear = vi.fn();
+    const { client, close } = await setup({
+      address: "person@example.test",
+      clearClassifierCache: clear,
+    });
+    const connected = await client.call("accounts.connect", { provider: "google" });
+    if (connected.status !== "connected") throw new Error("connect failed");
+
+    expect(await client.call("accounts.remove", { accountId: "acc_missing" })).toMatchObject({
+      status: "failed",
+    });
+    expect(clear).not.toHaveBeenCalled();
+    expect(await client.call("accounts.remove", { accountId: connected.accountId })).toMatchObject({
+      status: "removed",
+    });
+    expect(clear).toHaveBeenCalledTimes(1);
     close();
   });
 });

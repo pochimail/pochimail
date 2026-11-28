@@ -1,4 +1,4 @@
-import { CATEGORIES } from "@pochimail/classification/model/category";
+import { EMAIL_TYPES } from "@pochimail/classification/model/email-type";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { ok } from "@pochimail/kernel/result";
 
@@ -15,7 +15,7 @@ export function degradeClassifier(inner: Classifier, every = 3): Classifier {
       return ok(
         answered.value.map((c) => {
           if (++seen % every !== 0) return c;
-          const next = CATEGORIES[(CATEGORIES.indexOf(c.category) + 1) % CATEGORIES.length];
+          const next = EMAIL_TYPES[(EMAIL_TYPES.indexOf(c.category) + 1) % EMAIL_TYPES.length];
           return next ? { ...c, category: next } : c;
         }),
       );
