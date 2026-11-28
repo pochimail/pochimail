@@ -1,6 +1,6 @@
 # Architecture decision records
 
-One file per decision. Accepted ADRs win.
+One file per decision; accepted wins.
 
 | # | Decision | Status |
 |---|---|---|
@@ -18,8 +18,8 @@ One file per decision. Accepted ADRs win.
 | 0012 | Delete to Trash, with approval | Accepted |
 | 0013 | Unsubscribe: user decides | Accepted |
 | 0014 | Store reports, not mail | Accepted |
-| 0015 | Bounded-context packages, gates | Accepted |
-| 0016 | Fixed types, automatic topics | Accepted |
+| 0015 | Packages, gates | Accepted |
+| 0016 | Types, topics | Accepted |
 | 0017 | E2E tests | Accepted |
-| 0018 | Patched llama binary test | Accepted |
-| 0019 | CPU-only tier path | Accepted |
+| 0018 | Llama build | Accepted |
+| 0019 | CPU tiers | Accepted |
