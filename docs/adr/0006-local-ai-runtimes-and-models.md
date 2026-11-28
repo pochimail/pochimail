@@ -4,7 +4,7 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 
 ## Decision
 - **Layers**, cheapest first: rules → decision heads (embeddings and calibrated classifiers) → generative LLM. Each decision stores its reason and confidence; all output is zod-validated.
-- **Generative runtime**: `node-llama-cpp` 3.22.3 (GGUF; Metal, CUDA or Vulkan, CPU) in the model-host process ([ADR 0002](0002-electron-process-model-and-ipc.md)), with JSON-schema grammar-constrained decoding.
+- **Generative runtime**: `node-llama-cpp` 3.22.3 (GGUF; Metal on macOS, CPU elsewhere, [ADR 0018](0018-patched-llama-binary-test-and-cpu-only-v1.md)) in the model-host process ([ADR 0002](0002-electron-process-model-and-ipc.md)), with JSON-schema grammar-constrained decoding.
 - **Embeddings and heads**: Transformers.js 4.3.2 on `onnxruntime-node`. Heads are small classifiers over embedding plus sender features, temperature-scaled on held-out data.
 - **Models** (Apache-2.0 or MIT; benchmark in `packages/ai/bench/results/`):
   - Tier T2 (16 GB or more, GPU or Apple Silicon): Gemma 4 E4B-it, Q4_K_M (~5 GB). Fallback: Qwen3.5-4B.
@@ -16,7 +16,7 @@ Status: Accepted (2026-11-17) · Amended by [0014](0014-store-reports-and-action
 - **On-device learning**: corrections become rules keyed by sender hash and type ([ADR 0014](0014-store-reports-and-actions-not-mail.md)); heads are re-fitted locally when idle.
 - **Distribution**: models download on first launch from exactly `huggingface.co` and its CDN hosts `us.aws.cdn.hf.co`, `us.gcp.cdn.hf.co`, `cdn-lfs-us-1.hf.co`, `cdn-lfs-eu-1.hf.co`, `transfer.xethub.hf.co`, `transfer.xethub-eu.hf.co` (no wildcard), resumable, SHA-256 verified, listed in a signed manifest. Our downloader resumes by range and checks the hash before rename.
 - **Eval**: fixture mailbox and a labeled multilingual set; precision, recall and emails per minute per tier; CI fails on regression.
-- **Packaging**: prebuilt binaries only; keep only the target OS and arch of `onnxruntime-node`; `asarUnpack` native modules.
+- **Packaging**: prebuilt binaries only; keep the target OS and arch of `onnxruntime-node`; `asarUnpack` native modules.
 
 ## Consequences
 Rules carry the bulk on T0 machines, and Autopilot acts only above the calibrated threshold, so weak machines see fewer automatic actions.

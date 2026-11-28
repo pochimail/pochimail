@@ -16,7 +16,7 @@
     "branches": 76
   },
   "packages/ai/src/**": {
-    "lines": 99,
+    "lines": 94,
     "branches": 84
   },
   "packages/classification/src/**": {

@@ -16,6 +16,16 @@ const linuxExecutableName = "pochimail";
 const driverPrebuilds = "node_modules/better-sqlite3-multiple-ciphers/prebuilds";
 const onlyPrebuild = (os: string): string[] => [`!${driverPrebuilds}/!(${os}-\${arch}).node`];
 
+/**
+ * onnxruntime-node ships every OS and CPU in `bin/napi-v6/<os>/<arch>` (about 290 MB): keep the target's folder only
+ * (ADR 0006): every other OS folder goes, and within the OS every other CPU.
+ */
+const runtimeBinaries = "node_modules/onnxruntime-node/bin/napi-v6";
+const onlyRuntime = (os: string): string[] => [
+  `!${runtimeBinaries}/!(${os})/**`,
+  `!${runtimeBinaries}/${os}/!(\${arch})/**`,
+];
+
 /** Unsigned smoke-build config (M0-10). Signing, notarization and update metadata arrive with the release tickets. */
 const config: Configuration = {
   appId: "com.pochimail.desktop",
@@ -26,9 +36,26 @@ const config: Configuration = {
   directories: { buildResources: "build", output: "release" },
   // The electron-vite output ships. Renderer deps are devDependencies bundled by Vite, so node_modules only carries the
   // production dependencies that stay external: the SQLite driver (M0-12).
-  files: ["out/**", "package.json"],
+  // Not needed at run time: Transformers.js bundles its web runtime, so onnxruntime-web (145 MB) is dead weight, and
+  // node-llama-cpp's git bundle of llama.cpp is only for source builds, which the app never does. Linux and Windows run
+  // the model on the CPU in v1 (ADR 0006), so the CUDA and Vulkan backends stay out.
+  files: [
+    "out/**",
+    "package.json",
+    "!node_modules/onnxruntime-web/**",
+    "!node_modules/node-llama-cpp/llama/gitRelease.bundle",
+    "!node_modules/@node-llama-cpp/*-cuda*/**",
+    "!node_modules/@node-llama-cpp/*-vulkan*/**",
+  ],
   // dlopen cannot read a .node file inside app.asar. The driver ships Node-API prebuilds for all six OS/CPU pairs.
-  asarUnpack: ["**/node_modules/better-sqlite3-multiple-ciphers/prebuilds/*.node"],
+  // The same holds for the local model runtimes: onnxruntime-node (embeddings), node-llama-cpp's per-platform binary
+  // packages (generative model) and sharp's, which Transformers.js loads at start (M3).
+  asarUnpack: [
+    "**/node_modules/better-sqlite3-multiple-ciphers/prebuilds/*.node",
+    "**/node_modules/onnxruntime-node/bin/**",
+    "**/node_modules/@node-llama-cpp/*/bins/**",
+    "**/node_modules/@img/*/lib/**",
+  ],
   extraMetadata: { homepage },
   asar: true,
   // The tray images load from the app's resources folder, outside app.asar.
@@ -52,13 +79,14 @@ const config: Configuration = {
     ],
     identity: null,
     // Both darwin prebuilds stay in both slices: the universal merge needs the same Mach-O files in each, and accepts the identical copies only when listed here.
-    files: [`!${driverPrebuilds}/!(darwin-*).node`],
-    x64ArchFiles: "**/prebuilds/darwin-*.node",
+    files: [`!${driverPrebuilds}/!(darwin-*).node`, `!${runtimeBinaries}/!(darwin)/**`],
+    x64ArchFiles:
+      "**/{prebuilds/darwin-*.node,onnxruntime-node/bin/**,@node-llama-cpp/*/bins/**,@img/**,@reflink/**}",
   },
   win: {
     icon: "build/icon.ico",
     target: [{ target: "nsis", arch: "x64" }],
-    files: onlyPrebuild("win32"),
+    files: [...onlyPrebuild("win32"), ...onlyRuntime("win32")],
   },
   linux: {
     icon: "build/icons",
@@ -66,7 +94,7 @@ const config: Configuration = {
     category: "Office",
     maintainer: "Pochimail contributors <noreply@users.noreply.github.com>",
     target: ["AppImage", "deb", "rpm"],
-    files: onlyPrebuild("linux"),
+    files: [...onlyPrebuild("linux"), ...onlyRuntime("linux")],
   },
 };
 
