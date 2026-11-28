@@ -24,3 +24,5 @@ overrides:
   "glob@7.2.3>minimatch": 3.1.5
   glob: 14.0.4
   minimatch: 11.0.4
+patchedDependencies:
+  node-llama-cpp@3.22.3: patches/node-llama-cpp@3.22.3.patch

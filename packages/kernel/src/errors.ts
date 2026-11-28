@@ -14,6 +14,7 @@ export const ERROR_CODES = [
   "storage.failed",
   "storage.not_found",
   "ai.unavailable",
+  "ai.invalid_output",
   "operation.cancelled",
   "action.outcome_unknown",
   "action.replay_expired",

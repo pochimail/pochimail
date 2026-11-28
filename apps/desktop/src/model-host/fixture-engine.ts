@@ -1,3 +1,4 @@
+import type { Classifier } from "@pochimail/classification/ports/classifier";
 import {
   createFakeEmbedder,
   createFakeLlmProvider,
@@ -8,7 +9,9 @@ import { DEMO_SEED, type DemoScale } from "../shared/demo.ts";
 import type { ModelHostEngine } from "./serve.ts";
 
 /** The fixture's ground-truth labels as the "model": same dataset in the worker and the host, no real model (M3). */
-export const createFixtureEngine = (scale: DemoScale): ModelHostEngine => {
+export const createFixtureEngine = (
+  scale: DemoScale,
+): ModelHostEngine & { readonly classifier: Classifier } => {
   const mailbox = generateMailbox({ seed: DEMO_SEED, scale });
   const labels = new Map(mailbox.labels.messages.map((l) => [l.messageId, l.category] as const));
   return {

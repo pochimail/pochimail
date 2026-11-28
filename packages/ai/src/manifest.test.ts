@@ -24,6 +24,7 @@ describe("model manifest", () => {
       "https://huggingface.co/o/r/resolve/main/m.bin",
       `https://huggingface.co/o/r/resolve/${commit}/m.bin?download=true`,
       `https://user@huggingface.co/o/r/resolve/${commit}/m.bin`,
+      "not a url",
     ])
       expect(accepts(entry(url))).toBe(false);
   });
@@ -42,6 +43,17 @@ describe("model manifest", () => {
     const url = `https://huggingface.co/o/r/resolve/${commit}/m.bin`;
     expect(accepts(entry(url, { role: "generative", tiers: ["T0", "T1"] }))).toBe(false);
     expect(manifestSchema.safeParse({ models: [entry(url), entry(url)] }).success).toBe(false);
+  });
+
+  // Guards: two files with one hash sharing a partial file, so one download never reaches its own path.
+  it("rejects a hash used by two files", () => {
+    const url = `https://huggingface.co/o/r/resolve/${commit}/m.bin`;
+    const second = { name: "n.bin", url, bytes: 1, sha256: sha };
+    const first = entry(url).files;
+    expect(accepts(entry(url, { files: [...first, second] }))).toBe(false);
+    expect(
+      manifestSchema.safeParse({ models: [entry(url), entry(url, { id: "n" })] }).success,
+    ).toBe(false);
   });
 
   // Guards: the bundled manifest drifting from ADR 0006 (models per tier).

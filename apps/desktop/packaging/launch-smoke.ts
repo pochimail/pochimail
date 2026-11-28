@@ -7,8 +7,13 @@ import { spawn } from "node:child_process";
 export const launchSmoke = async (
   binary: string,
   env: Record<string, string> = {},
+  userData?: string,
 ): Promise<{ code: number | null; output: string }> => {
-  const child = spawn(binary, process.platform === "linux" ? ["--no-sandbox"] : [], {
+  const args = [
+    ...(userData === undefined ? [] : [`--user-data-dir=${userData}`]),
+    ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+  ];
+  const child = spawn(binary, args, {
     env: { ...process.env, ...env, POCHIMAIL_SMOKE: "1" },
     stdio: ["ignore", "pipe", "inherit"],
   });

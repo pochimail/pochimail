@@ -26,6 +26,7 @@ export interface ModelDownloadRequest {
 export interface ModelDownloadResponse {
   readonly status: number;
   readonly contentRange?: string;
+  readonly retryAfter?: string;
   readonly body: AsyncIterable<Uint8Array>;
 }
 
@@ -170,9 +171,11 @@ export const createModelDownloader = (options: {
       if (!followed.ok) return followed;
       const { status, headers: received, body } = followed.value;
       const contentRange = received.get("content-range") ?? undefined;
+      const retryAfter = received.get("retry-after") ?? undefined;
       return ok({
         status,
         ...(contentRange === undefined ? {} : { contentRange }),
+        ...(retryAfter === undefined ? {} : { retryAfter }),
         body: guardBody(body ?? noBody(), idleMs, () => controller.abort(), release),
       });
     };
