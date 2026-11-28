@@ -11,6 +11,11 @@ export interface MessageSource {
     ws: WorkspaceId,
     accountIds: readonly AccountId[],
   ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
+  /** Emails per topic id for the given accounts; a topic with no email may be absent. */
+  countByTopic(
+    ws: WorkspaceId,
+    accountIds: readonly AccountId[],
+  ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
 }
 
 export interface MessageLabeler {

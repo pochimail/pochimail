@@ -32,6 +32,11 @@ export interface MessageReader {
     ws: WorkspaceId,
     accountIds: readonly AccountId[],
   ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
+  /** Emails per topic id over the given accounts, one aggregate read (a topic with no message may be absent). */
+  countByTopic(
+    ws: WorkspaceId,
+    accountIds: readonly AccountId[],
+  ): AsyncResult<Readonly<Record<string, number>>, StorageError>;
 }
 export interface MessageWriter {
   /** Inserts or updates by id; a re-run with the same input changes nothing (idempotent). */

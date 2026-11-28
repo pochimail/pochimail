@@ -55,6 +55,27 @@ export function mailboxRepositoryContract(make: () => { uow: MailboxUnitOfWork }
       unwrap(await uow.run(async (tx) => tx.repositories.messages.setTopics(WS_A, id, [])));
       expect(unwrap(await uow.reads.messages.get(WS_A, id)).topicIds).toEqual([]);
     });
+    it("countByTopic counts each topic once per email, only for the selected accounts (guards counts leaking across accounts or a topic counted twice)", async () => {
+      const { uow } = make();
+      const other = "acc-2" as AccountId;
+      await put(uow, [makeIncoming(1), makeIncoming(2), makeIncoming(3, { accountId: other })]);
+      const [t1, t2] = ["top_1" as TopicId, "top_2" as TopicId];
+      for (const [n, topics] of [
+        [1, [t1, t2]],
+        [2, [t1]],
+        [3, [t1]],
+      ] as const)
+        unwrap(
+          await uow.run(async (tx) =>
+            tx.repositories.messages.setTopics(WS_A, makeIncoming(n).id, topics),
+          ),
+        );
+      expect(unwrap(await uow.reads.messages.countByTopic(WS_A, [ACCOUNT_1]))).toEqual({
+        top_1: 2,
+        top_2: 1,
+      });
+      expect(unwrap(await uow.reads.messages.countByTopic(WS_A, []))).toEqual({});
+    });
     it("the ingest sequence only grows on a first insert (guards 'stored since' missing late mail)", async () => {
       const { uow } = make();
       await put(uow, [makeIncoming(2), makeIncoming(1)]);

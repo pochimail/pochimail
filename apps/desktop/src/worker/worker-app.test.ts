@@ -1,6 +1,12 @@
 import type { Classifier } from "@pochimail/classification/ports/classifier";
-import { createFakeClassifier } from "@pochimail/classification/testing/fake-ai";
+import {
+  createFakeClassifier,
+  createFakeTopicDiscoverer,
+} from "@pochimail/classification/testing/fake-ai";
 import { createGroundTruthClassifier } from "@pochimail/classification/testing/ground-truth-classifier";
+import { DiscoverTopics } from "@pochimail/classification/use-cases/discover-topics";
+import { AccountId, MessageId } from "@pochimail/kernel/ids";
+import { unwrap } from "@pochimail/kernel/result";
 import { createLogger } from "@pochimail/logger/logger";
 import { createFakeClock } from "@pochimail/testing/fake-clock";
 import { createFakeMailProvider } from "@pochimail/testing/fake-mail-provider";
@@ -19,6 +25,7 @@ import { createWorkerApp, type WorkerAdapters } from "./app.ts";
 import { createFixtureAdapters } from "./fixture-adapters.ts";
 import { createInMemorySettingsStore } from "./in-memory-settings-store.ts";
 
+const live = () => new AbortController().signal;
 const silent = createLogger({ sink: { write: () => {} } });
 const mailbox = generateMailbox({ seed: DEMO_SEED, scale: "small" });
 const labels = new Map(mailbox.labels.messages.map((l) => [l.messageId, l.category] as const));
@@ -203,9 +210,54 @@ describe("worker app over the real IPC layer", () => {
       accountIds: mailbox.accounts.map((a) => a.id),
     });
     for (const { category, count } of all.cleanable) expect(count).toBe(counts[category]);
+    // No topic is discovered by this scan yet, so none is listed (ADR 0016: only non-empty ones show).
+    expect(
+      await client.call("mailbox.topics", { accountIds: mailbox.accounts.map((a) => a.id) }),
+    ).toEqual([]);
     expect(all.cleanable.map((c) => c.count)).toEqual(
       [...all.cleanable.map((c) => c.count)].sort((a, b) => b - a),
     );
+    close();
+  });
+
+  // Guards: a sidebar that drops an empty topic, or counts that ignore the account switcher (#291).
+  it("mailbox.topics lists every topic, with 0 when it has no email for the selected accounts", async () => {
+    const { client, app, adapters, close } = await connect();
+    const accountIds = mailbox.accounts.map((a) => a.id);
+    expect(await client.call("mailbox.topics", { accountIds })).toEqual([]);
+    for (const id of accountIds) await client.call("scan.start", { accountId: id });
+    await app.idle();
+    const { uow, workspaceId } = adapters;
+    let next = 0;
+    const ids: string[] = [];
+    for (const id of accountIds) {
+      let cursor: string | undefined;
+      do {
+        const page = unwrap(
+          await uow.reads.messages.query(workspaceId, {
+            accountId: unwrap(AccountId(id)),
+            limit: 500,
+            ...(cursor === undefined ? {} : { cursor }),
+          }),
+        );
+        ids.push(...page.items.map((m) => m.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor !== undefined);
+    }
+    unwrap(
+      await new DiscoverTopics({
+        uow,
+        discoverer: createFakeTopicDiscoverer(),
+        ids: { next: (prefix) => `${prefix}_${++next}` },
+      }).execute({ workspaceId, messageIds: ids.map((id) => unwrap(MessageId(id))) }, live()),
+    );
+    const all = await client.call("mailbox.topics", { accountIds });
+    expect(all.length).toBeGreaterThan(0);
+    expect(all.some((t) => t.count > 0)).toBe(true);
+    const total = all.reduce((sum, t) => sum + t.count, 0);
+    const [first] = accountIds;
+    const scoped = await client.call("mailbox.topics", { accountIds: first ? [first] : [] });
+    expect(scoped.reduce((sum, t) => sum + t.count, 0)).toBeLessThan(total);
     close();
   });
 

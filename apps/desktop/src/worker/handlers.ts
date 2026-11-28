@@ -1,5 +1,6 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import type { ListAccounts } from "@pochimail/accounts/use-cases/list-accounts";
+import type { CountTopics } from "@pochimail/classification/use-cases/count-topics";
 import type { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import type { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import type { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
@@ -21,7 +22,8 @@ export interface HandlerDeps {
   readonly workspaceId: WorkspaceId;
   readonly listAccounts: ListAccounts;
   readonly getOverview: GetOverview;
-  readonly categories: CountTypes;
+  readonly types: CountTypes;
+  readonly topics: CountTopics;
   readonly digestStatus: GetDigestStatus;
   readonly settings: ManageSettings;
   readonly scans: ScanRunner;
@@ -133,12 +135,19 @@ export function createHandlers(deps: HandlerDeps): WorkerHandlers {
       },
       "mailbox.types": async ({ accountIds }) => {
         return unwrapOrThrow(
-          await deps.categories.execute(
+          await deps.types.execute(
             workspaceId,
             accountIds.map((id) => unwrapOrThrow(AccountId(id))),
           ),
         );
       },
+      "mailbox.topics": async ({ accountIds }) =>
+        unwrapOrThrow(
+          await deps.topics.execute(
+            workspaceId,
+            accountIds.map((id) => unwrapOrThrow(AccountId(id))),
+          ),
+        ).map((topic) => ({ ...topic })),
       "scan.status": ({ accountIds }) =>
         deps.scans.live(accountIds.map((id) => unwrapOrThrow(AccountId(id)))),
       "digest.get": ({ accountId }) =>

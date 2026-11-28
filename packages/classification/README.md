@@ -7,7 +7,7 @@ Understanding each email: its type, signals and topics, and the reason and confi
 ## Owns
 - The five email types (the stored `category` label holds one, ADR 0014), signal kinds, topics, derived data (`DerivedMessage`), stored signals.
 - Ports: `Classifier`, `Embedder`, `LlmProvider`, `TopicDiscoverer`, derived, signal and topic repositories, plain-data message and signal-facts sources, `ClassificationUnitOfWork`.
-- `ClassifyBatch`, `DiscoverTopics`, `DetectSignals`, `EvaluateSignals`, `EvaluateSuspicious`, `CountTypes`, the signal and suspicious rules, the signal age windows (`SignalSettings`), and the `MessageClassified` and `SignalDetected` events.
+- `ClassifyBatch`, `DiscoverTopics`, `DetectSignals`, `EvaluateSignals`, `EvaluateSuspicious`, `CountTypes`, `CountTopics`, the signal and suspicious rules, the signal age windows (`SignalSettings`), and the `MessageClassified` and `SignalDetected` events.
 - An in-memory adapter, fakes, and contract suites under `./testing/*`.
 
 ## May import

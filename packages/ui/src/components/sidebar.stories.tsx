@@ -64,7 +64,7 @@ function Frame({
   types = TYPES,
 }: {
   width: number;
-  types?: readonly (typeof TYPES)[number][];
+  types?: readonly (readonly [string, (typeof TYPES)[number][1], number])[];
 }) {
   const [account, setAccount] = useState<string | null>(null);
   const current = ACCOUNTS.find((a) => a.id === account)?.label ?? "All accounts";
@@ -115,7 +115,7 @@ function Frame({
                   {types.map(([label, Icon, count]) => (
                     <SidebarMenuItem key={label} reach="wide">
                       <SidebarMenuButton href="#type" tone="muted" tooltip={label}>
-                        <Icon />
+                        <Icon className={count === 0 ? "opacity-60" : undefined} />
                         <SidebarMenuLabel>{label}</SidebarMenuLabel>
                         <SidebarMenuBadge>{count.toLocaleString("en")}</SidebarMenuBadge>
                       </SidebarMenuButton>
@@ -187,9 +187,14 @@ export const IconRail: Story = { args: { width: 860 } };
 /** 560-760: rail, edge to edge (the desktop window minimum is 720). */
 export const IconRailEdgeToEdge: Story = { args: { width: 720 } };
 export const BottomTabs: Story = { args: { width: 420 } };
-/** Empty types are the caller's to omit (D5): here only Personal and Newsletters have mail. */
-export const HiddenEmptyTypes: Story = {
-  args: { width: 1100, types: [TYPES[0], TYPES[3]] },
+/** Empty types stay listed with a count of 0 at full contrast; only the icon is dimmed: here only Personal and Newsletters have mail. */
+export const EmptyTypesMuted: Story = {
+  args: {
+    width: 1100,
+    types: TYPES.map(([label, icon, count]) =>
+      label === "Personal" || label === "Newsletters" ? [label, icon, count] : [label, icon, 0],
+    ),
+  },
 };
 export const Dark: Story = {
   args: { width: 1100 },

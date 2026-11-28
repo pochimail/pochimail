@@ -102,6 +102,7 @@ const emptyHandlers: Handlers = {
       newsletter: 0,
       promotion: 0,
     }),
+    "mailbox.topics": () => [],
     "scan.status": () => [],
     "digest.get": () => ({ ready: false, itemCount: 0, archived: 0, saved: 0, unsubscribed: 0 }),
     "settings.get": () => DEFAULT_APP_SETTINGS,

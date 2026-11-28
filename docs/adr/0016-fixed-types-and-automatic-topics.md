@@ -10,6 +10,7 @@ The first design used seven hand-picked categories (People, Records, Purchases &
 - **Signals** (detected per email): needs a reply, waiting on them, time-sensitive, has a document, important sender, from a real person, user replied to sender, old and never opened. Signals drive protection ([ADR 0012](0012-delete-moves-to-trash-with-approval.md)) and Catch what matters.
 - **Topics** (automatic, open-ended): discovered from the user's own mailbox by the local model (e.g. "Job search", "Kindergarten", "Amazon orders"), named in the user's language, stable once created (the user can rename, merge or hide them). Topics organize: the sidebar, Review groupings and provider labels.
 - The UI shows only types and topics that contain email for the current selection.
+- Addendum (2026-11-26, #291), replacing the line above: every type and every topic is listed with its count; an empty one is muted, not hidden.
 
 ## Consequences
 - Safety and actions rest on a small, testable set; organization adapts to each mailbox.

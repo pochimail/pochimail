@@ -61,6 +61,7 @@ export function createSqliteRepositories(
     query: lift(core.messages.query),
     latestSequence: lift(core.messages.latestSequence),
     countByCategory: lift(core.messages.countByCategory),
+    countByTopic: lift(core.messages.countByTopic),
   };
   const derived = {
     get: lift(core.derived.get),
