@@ -203,11 +203,21 @@ describe("app frame", () => {
   );
 
   const TYPE_NAMES = ["Personal", "Transactional", "Alert emails", "Newsletters", "Promotions"];
-  const MUTED = /(^|\s)opacity-60(\s|$)/;
+  const DIMMED = /(^|\s)opacity-60(\s|$)/;
+  /** Muted means only the decorative icon is dimmed; the label, the 0 and the link keep full contrast. */
+  const dimmed = (row: HTMLElement) => {
+    const [icon, label, badge] = Array.from(row.children);
+    return {
+      icon: DIMMED.test(icon?.getAttribute("class") ?? ""),
+      label: DIMMED.test(label?.getAttribute("class") ?? ""),
+      badge: DIMMED.test(badge?.getAttribute("class") ?? ""),
+      row: DIMMED.test(row.className),
+    };
+  };
   const link = (nav: ReturnType<typeof within>, name: string) =>
     nav.getByRole("link", { name: new RegExp(`^${name}(, empty)?[\\d,]*$`) });
 
-  // Guards: a sidebar that looks empty or broken when a new account has no mail (#291).
+  // Guards: a sidebar that looks empty or broken when a new account has no mail, or a 0 dimmed below readable contrast (#291).
   it("lists all five types for an account with no mail, each muted and named empty", async () => {
     const state = setup();
     state.mailboxes.a1 = { ...zero };
@@ -217,7 +227,12 @@ describe("app frame", () => {
       await waitFor(() =>
         expect(link(nav, name).getAttribute("aria-label")).toBe(`${name}, empty`),
       );
-      expect(link(nav, name).className).toMatch(MUTED);
+      expect(dimmed(link(nav, name))).toEqual({
+        icon: true,
+        label: false,
+        badge: false,
+        row: false,
+      });
     }
   });
 
@@ -228,9 +243,14 @@ describe("app frame", () => {
     await waitFor(() => expect(link(nav, "Personal").textContent).toContain("12"));
     const promotions = link(nav, "Promotions");
     expect(promotions.getAttribute("aria-label")).toBe("Promotions, empty");
-    expect(promotions.className).toMatch(MUTED);
+    expect(dimmed(promotions)).toEqual({ icon: true, label: false, badge: false, row: false });
     expect(link(nav, "Personal").getAttribute("aria-label")).toBeNull();
-    expect(link(nav, "Personal").className).not.toMatch(MUTED);
+    expect(dimmed(link(nav, "Personal"))).toEqual({
+      icon: false,
+      label: false,
+      badge: false,
+      row: false,
+    });
 
     state.mailboxes.a1 = { ...zero, personal: 10, newsletter: 5, promotion: 4 };
     state.emit({ type: "ScanCompleted", accountId: "a1", processed: 4 });
