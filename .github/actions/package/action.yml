@@ -47,6 +47,15 @@ runs:
       if: steps.scope.outputs.run == 'true' && runner.os == 'Linux'
       run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:smoke
       shell: bash
+    # Installs each artifact the way a person does (dmg copy, silent NSIS, deb, rpm, AppImage), launches it and checks its version.
+    - name: Install and launch each artifact
+      if: steps.scope.outputs.run == 'true' && runner.os != 'Linux'
+      run: pnpm --filter @pochimail/desktop package:install
+      shell: bash
+    - name: Install and launch each artifact
+      if: steps.scope.outputs.run == 'true' && runner.os == 'Linux'
+      run: xvfb-run --auto-servernum pnpm --filter @pochimail/desktop package:install
+      shell: bash
     - name: Report artifact sizes
       if: steps.scope.outputs.run == 'true'
       run: pnpm --filter @pochimail/desktop package:size "${{ runner.os }} artifacts"
@@ -58,7 +67,6 @@ runs:
         name: pochimail-${{ runner.os }}
         path: |
           apps/desktop/release/*.dmg
-          apps/desktop/release/*.zip
           apps/desktop/release/*.exe
           apps/desktop/release/*.AppImage
           apps/desktop/release/*.deb

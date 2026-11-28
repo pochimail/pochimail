@@ -31,6 +31,15 @@ const MODEL_DOWNLOAD_HOSTS: readonly string[] = [
 ];
 
 /**
+ * The update notice reads one small file from the latest GitHub Release (#300): `github.com` answers with a redirect
+ * to `release-assets.githubusercontent.com`. Kept apart from the static hosts, like the model hosts. Exact names, no wildcard.
+ */
+const UPDATE_CHECK_HOSTS: readonly string[] = [
+  "github.com",
+  "release-assets.githubusercontent.com",
+];
+
+/**
  * One egress policy, used by the worker's HTTP client and the Electron session filter.
  */
 export interface HostAllowlist {
@@ -117,4 +126,5 @@ export const egressPolicy = {
   staticHosts: STATIC_EGRESS_HOSTS,
   create: (): HostAllowlist => createHostAllowlist(STATIC_EGRESS_HOSTS),
   createForModelDownloads: (): HostAllowlist => createHostAllowlist(MODEL_DOWNLOAD_HOSTS),
+  createForUpdateCheck: (): HostAllowlist => createHostAllowlist(UPDATE_CHECK_HOSTS),
 } as const;

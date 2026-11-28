@@ -240,7 +240,6 @@ const subscriptions = {
       z.object({ type: z.literal("Reconnected"), accountId }),
       z.object({ type: z.literal("ModelDownloadFailed") }),
       z.object({ type: z.literal("ModelDownloadStarted") }),
-      z.object({ type: z.literal("UpdateReady"), version: z.string().min(1) }),
     ]),
     coalesceKey: undefined,
   },

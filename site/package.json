@@ -1,0 +1,21 @@
+{
+  "name": "@pochimail/site",
+  "private": true,
+  "version": "0.0.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "biome check .",
+    "knip": "knip",
+    "test": "vitest run",
+    "build": "node scripts/build.ts",
+    "check": "node scripts/check.ts"
+  },
+  "devDependencies": {
+    "@pochimail/typescript-config": "workspace:*",
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  }
+}

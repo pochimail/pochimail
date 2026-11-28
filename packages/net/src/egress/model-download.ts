@@ -85,7 +85,7 @@ const guardBody = (
   },
 });
 
-type Hop = Awaited<ReturnType<StreamFetch>>;
+export type Hop = Awaited<ReturnType<StreamFetch>>;
 
 const discard = (body: Hop["body"]): void => {
   if (body !== null)
@@ -102,7 +102,7 @@ const redirectTarget = (response: Hop, from: URL): URL | undefined => {
 };
 
 /** Follows redirects by hand: every hop must pass the allow-list, so none can leave the model hosts. */
-const follow = async (
+export const follow = async (
   start: URL,
   call: (url: URL) => Promise<Hop>,
   allowlist: HostAllowlist,

@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import {
   appendFileSync,
   existsSync,
@@ -13,6 +12,7 @@ import { FuseState, FuseV1Options, getCurrentFuseWire } from "@electron/fuses";
 import { fuses } from "../src/main/fuses.ts";
 import { electronBinaryPath } from "./apply-fuses.ts";
 import { galleryLeaksIn } from "./gallery-check.ts";
+import { launchSmoke } from "./launch-smoke.ts";
 import { checkRuntimesOutput, checkUnpackedRuntimes } from "./runtime-check.ts";
 import { checkKeychainRestart, checkStorageOutput, storageSummary } from "./storage-check.ts";
 
@@ -75,25 +75,10 @@ if (Object.keys(expected).length !== Object.keys(fuses).filter((k) => /^\d+$/.te
 }
 console.log("fuses: ok");
 
-// Headless launch: Linux CI wraps this script in xvfb-run and its chrome-sandbox helper is not setuid, hence --no-sandbox there only. The app quits itself once the window has loaded.
-// Its own user data folder: Electron keys the single-instance lock on it, so the smoke neither fails while a real Pochimail runs nor touches its data.
+// Headless launch (see launch-smoke.ts). Its own user data folder: Electron keys the single-instance lock on it, so the smoke neither fails while a real Pochimail runs nor touches its data.
 const userData = mkdtempSync(join(tmpdir(), "pochimail-smoke-"));
 const launch = async (env: Record<string, string>): Promise<string> => {
-  const child = spawn(
-    binary,
-    [`--user-data-dir=${userData}`, ...(process.platform === "linux" ? ["--no-sandbox"] : [])],
-    {
-      env: { ...process.env, ...env, POCHIMAIL_SMOKE: "1" },
-      stdio: ["ignore", "pipe", "inherit"],
-    },
-  );
-  let output = "";
-  child.stdout.on("data", (chunk: Buffer) => {
-    output += chunk.toString();
-  });
-  const timer = setTimeout(() => child.kill(), 60_000);
-  const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
-  clearTimeout(timer);
+  const { code, output } = await launchSmoke(binary, env, userData);
   if (code !== 0 || !output.includes("smoke:window-loaded")) {
     throw new Error(`App did not start cleanly (exit ${code}). Output: ${output}`);
   }

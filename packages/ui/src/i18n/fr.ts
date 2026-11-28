@@ -1,8 +1,8 @@
-import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
 import { reviewMessages } from "./review-messages.ts";
+import { settingsMessages } from "./settings-messages.ts";
 import { sizeMessages } from "./size-messages.ts";
 import { storageMessages } from "./storage-messages.ts";
 import { summaryMessages } from "./summary-messages.ts";
@@ -191,7 +191,7 @@ export const fr = {
 
   "settings.title": entry("Réglages", []),
   "settings.description": entry("Les préférences et les réglages du compte apparaîtront ici.", []),
-  ...appearanceMessages.fr,
+  ...settingsMessages.fr,
 
   "nav.brand": entry("Pochimail", []),
   "nav.label": entry("Navigation principale", []),
@@ -277,11 +277,4 @@ export const fr = {
     [],
   ),
   "state.nothingToDo.action": entry("Retour à la vue d’ensemble", []),
-  "state.updateReady.title": entry("Une nouvelle version est prête", []),
-  "state.updateReady.body": entry(
-    "Pochimail {version} est prêt. Il s’installe au redémarrage, et vos emails restent où ils sont.",
-    ["version"],
-  ),
-  "state.updateReady.restart": entry("Redémarrer maintenant", []),
-  "state.updateReady.whatsNew": entry("Nouveautés", []),
 } satisfies Catalog;
