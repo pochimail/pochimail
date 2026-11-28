@@ -5,6 +5,7 @@ import { CLEANABLE_LABELS } from "@pochimail/cleanup/policies/labels";
 import { z } from "zod";
 import { DEVICE_NAMES } from "../platform-port.ts";
 import { CAPABILITIES, SETTINGS_LOCALES, THEMES, TIDY_CADENCES } from "../settings.ts";
+import { cleanupMutations, cleanupQueries } from "./cleanup-contract.ts";
 
 /**
  * The typed contract every screen uses (ADR 0002, M4-01). Handlers backed by core use cases live in worker/handlers.ts (M4-02).
@@ -36,6 +37,7 @@ const capabilitiesSchema = z.object(
 );
 
 const queries = {
+  ...cleanupQueries,
   "accounts.list": {
     input: z.undefined(),
     output: z
@@ -147,6 +149,7 @@ export const CONNECT_FAILURES = [
 export const CONNECT_CALL_TIMEOUT_MS = 6 * 60_000;
 
 const mutations = {
+  ...cleanupMutations,
   /** Real sign-in in the system browser, run by the worker. The answer carries no token: those never leave it. */
   "accounts.connect": {
     input: z.object({ provider: z.literal("google") }),
@@ -209,6 +212,7 @@ const subscriptions = {
     input: z.undefined(),
     event: z.discriminatedUnion("type", [
       z.object({ type: z.literal("ActionApplied"), actionId }),
+      z.object({ type: z.literal("ActionUndone"), actionId }),
       z.object({
         type: z.literal("ActionFailed"),
         actionId,

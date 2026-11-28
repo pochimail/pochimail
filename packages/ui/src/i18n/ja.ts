@@ -1,3 +1,4 @@
+import { activityMessages } from "./activity-messages.ts";
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
@@ -35,6 +36,7 @@ export const ja = {
   "review.counts.important": entry("大切な人からのもの", []),
   "review.cleanable.title": entry("整理できるもの", []),
   ...reviewMessages.ja,
+  ...activityMessages.ja,
   "review.loading": entry("確認する内容を読み込んでいます", []),
   "review.error.title": entry("確認する内容を読み込めませんでした。", []),
   "overview.pause": entry("一時停止", []),

@@ -8,6 +8,7 @@ import { err, ok } from "@pochimail/kernel/result";
 import type { Logger } from "@pochimail/logger/logger";
 import type { MailProvider } from "@pochimail/workflows/ports/mail-provider";
 import type { WorkflowUnitOfWork } from "@pochimail/workflows/ports/unit-of-work";
+import { accountOfEntry } from "./account-of-entry.ts";
 
 /** The slice of the worker's adapters recovery needs. */
 export interface PendingActionsDeps {
@@ -32,14 +33,10 @@ export async function resolvePendingActions(adapters: PendingActionsDeps): Promi
     clock: adapters.clock,
     ids: { next: (prefix) => `${prefix}_${crypto.randomUUID()}` },
     providerFor: async (entry: ActionLog) => {
-      const messageId = entry.command.messageIds[0];
-      if (messageId === undefined) return err(new NotFound("Message"));
-      const message = await uow.reads.messages.get(workspaceId, messageId);
-      if (!message.ok) return message;
-      const account = await uow.reads.accounts.get(workspaceId, message.value.accountId);
-      if (!account.ok) return account;
+      const account = await accountOfEntry(uow, workspaceId, entry);
+      if (account === undefined) return err(new NotFound("Message"));
       try {
-        return ok(adapters.providerFor(account.value));
+        return ok(adapters.providerFor(account));
       } catch {
         return err(new StorageError("No provider for the account"));
       }

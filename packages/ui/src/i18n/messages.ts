@@ -1,3 +1,4 @@
+import { activityMessages } from "./activity-messages.ts";
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { notificationMessages } from "./notification-messages.ts";
@@ -55,6 +56,7 @@ export const messages = {
   "review.counts.important": entry("From important people", []),
   "review.cleanable.title": entry("Safe to clean up", []),
   ...reviewMessages.en,
+  ...activityMessages.en,
   "review.loading": entry("Loading your review", []),
   "review.error.title": entry("I could not load your review.", []),
   "overview.pause": entry("Pause", []),

@@ -195,4 +195,35 @@ describe("query-from-events", () => {
     unsubscribe();
     close();
   });
+
+  it("re-reads the lists when an action is applied, undone or fails (guards an Activity list that stays stale after Undo)", async () => {
+    // Guards: ActionUndone or ActionFailed not refreshing what the screens show.
+    let emitEvent: ((event: EventOf<"app.events">) => void) | undefined;
+    const { client, server, close } = createFakeIpc();
+    serveRpc(server, {
+      procedures: {},
+      subscriptions: {
+        "app.events": (_input, push) => {
+          emitEvent = push;
+          return undefined;
+        },
+      },
+    });
+    const onMailboxChanged = vi.fn();
+    const unsubscribe = subscribeAppEvents(
+      client,
+      createOptimisticActionRegistry(),
+      undefined,
+      onMailboxChanged,
+    );
+
+    await vi.waitFor(() => expect(emitEvent).toBeTypeOf("function"));
+    emitEvent?.({ type: "ActionApplied", actionId: "a1" });
+    emitEvent?.({ type: "ActionUndone", actionId: "a1" });
+    emitEvent?.({ type: "ActionFailed", actionId: "a2", reason: "provider-error" });
+
+    await vi.waitFor(() => expect(onMailboxChanged).toHaveBeenCalledTimes(3));
+    unsubscribe();
+    close();
+  });
 });
