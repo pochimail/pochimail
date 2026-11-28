@@ -24,6 +24,7 @@ describe("model manifest", () => {
       "https://huggingface.co/o/r/resolve/main/m.bin",
       `https://huggingface.co/o/r/resolve/${commit}/m.bin?download=true`,
       `https://user@huggingface.co/o/r/resolve/${commit}/m.bin`,
+      "not a url",
     ])
       expect(accepts(entry(url))).toBe(false);
   });

@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { probeGpu } from "./gpu-probe.ts";
+
+vi.mock("node-llama-cpp", () => ({
+  getLlama: async () => ({ gpu: "vulkan", dispose: async () => {} }),
+}));
 
 const runtime = (gpu: false | "metal" | "cuda" | "vulkan") => async () => ({
   getLlama: async () => ({ gpu, dispose: async () => {} }),
@@ -16,5 +20,10 @@ describe("probeGpu", () => {
         throw new Error("no binary");
       }),
     ).toBe("none");
+  });
+
+  // Guards: the production loader never reaching the llama binding.
+  it("loads the real binding by default", async () => {
+    expect(await probeGpu()).toBe("vulkan");
   });
 });
