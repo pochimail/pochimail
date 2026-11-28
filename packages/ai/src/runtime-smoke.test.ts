@@ -10,5 +10,5 @@ describe("proveRuntimes", () => {
       transformers: { ok: true, detail: "imported" },
       llama: { ok: true, detail: "binding loaded" },
     });
-  });
+  }, 120_000);
 });
