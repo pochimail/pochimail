@@ -2,12 +2,9 @@ name: CI
 
 on:
   pull_request:
-  # GitHub merge queue: every required job below (check, package and e2e x3, eval, osv-scanner) runs for real on merge_group; only the macOS/Windows jobs are skipped, and only on pull_request.
+  # GitHub merge queue: every required job below (check, package and e2e x3, eval, osv-scanner) runs for real on merge_group; only the macOS/Windows jobs are skipped, and only on pull_request. There is no push trigger: the queue already ran the identical commit.
   merge_group:
     types: [checks_requested]
-  # Feature-branch pushes are covered by pull_request; only run push CI on main (avoids double runs).
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -20,7 +17,7 @@ concurrency:
 jobs:
   # Required status checks (branch protection), names must stay stable:
   #   check, package and e2e, each as (ubuntu-latest) (macos-latest) (windows-latest), plus eval and osv-scanner
-  # Pull requests get fast Linux feedback only. macOS and Windows are skipped on pull_request (GitHub treats a skipped required check as passing) and run for real on merge_group and push to main, so no PR or merge-queue entry can reach main without the 3-OS gate. Direct pushes by admins are a branch-protection setting (enforce_admins), not covered here.
+  # Pull requests get fast Linux feedback only. macOS and Windows are skipped on pull_request (GitHub treats a skipped required check as passing) and run for real on merge_group, so no PR or merge-queue entry can reach main without the 3-OS gate. Direct pushes by admins are a branch-protection setting (enforce_admins), not covered here.
   # These are explicit jobs, not a matrix: a matrix job skipped by a job-level `if` reports the unexpanded name `check (${{ matrix.os }})`, so the required names would never appear and the PR would block. The steps live once, in .github/actions/check.
   check-linux:
     name: check (ubuntu-latest)
@@ -55,12 +52,9 @@ jobs:
       - uses: ./.github/actions/check
 
   # Unsigned packaging smoke build per OS (brief §5.9); the steps live once, in .github/actions/package. Required checks: package (ubuntu-latest), package (macos-latest), package (windows-latest).
-  # Same shape as `check`: one explicit job per required name, never a matrix. macOS and Windows are skipped on pull_request (a skipped required check counts as passing, so PRs are not blocked) and run for real on merge_group and push to main. The Linux job runs on every PR; the action only does the work when the PR touches packaging inputs, otherwise it succeeds without building (documented in the action).
-  # `needs` only orders after the check jobs; check-macos/check-windows are skipped on pull_request, which would skip these jobs too, so run unless something failed or the run was cancelled. A merge_group run never skips: its check jobs are never skipped, and a failed one fails the queue entry itself.
+  # Same shape as `check`: one explicit job per required name, never a matrix. macOS and Windows are skipped on pull_request (a skipped required check counts as passing, so PRs are not blocked) and run for real on merge_group. Every package job runs in parallel with check; on every OS the action only builds when the PR or queue entry touches packaging inputs, otherwise it succeeds without building (documented in the action).
   package-linux:
     name: package (ubuntu-latest)
-    needs: [check-linux, check-macos, check-windows]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -71,8 +65,7 @@ jobs:
 
   package-macos:
     name: package (macos-latest)
-    needs: [check-linux, check-macos, check-windows]
-    if: ${{ github.event_name != 'pull_request' && !cancelled() && !contains(needs.*.result, 'failure') }}
+    if: github.event_name != 'pull_request'
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
@@ -83,8 +76,7 @@ jobs:
 
   package-windows:
     name: package (windows-latest)
-    needs: [check-linux, check-macos, check-windows]
-    if: ${{ github.event_name != 'pull_request' && !cancelled() && !contains(needs.*.result, 'failure') }}
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -93,7 +85,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/package
 
-  # Electron end-to-end tests (M4-19, ADR 0017); the steps live once, in .github/actions/e2e. Required checks: e2e (ubuntu-latest), e2e (macos-latest), e2e (windows-latest). Same OS policy as `package`: PRs run Linux, the merge queue and main run all three.
+  # Electron end-to-end tests (M4-19, ADR 0017); the steps live once, in .github/actions/e2e. Required checks: e2e (ubuntu-latest), e2e (macos-latest), e2e (windows-latest). Same OS policy as `package`: PRs run Linux, the merge queue runs all three.
   e2e-linux:
     name: e2e (ubuntu-latest)
     # The Linux runner is pinned: the baselines are rasterised there, and `ubuntu-latest` moves.
