@@ -47,7 +47,14 @@ export const manifestSchema = z
   .object({ models: z.array(modelSchema).min(1) })
   .refine((manifest) => new Set(manifest.models.map((m) => m.id)).size === manifest.models.length, {
     message: "Model ids must be unique",
-  });
+  })
+  .refine(
+    (manifest) => {
+      const hashes = manifest.models.flatMap((m) => m.files.map((file) => file.sha256));
+      return new Set(hashes).size === hashes.length;
+    },
+    { message: "File hashes must be unique: downloads are one job per hash (partial file name)" },
+  );
 export type ModelManifest = z.infer<typeof manifestSchema>;
 
 /** ADR 0006 models, verified on Hugging Face on 2026-11-25. Each URL is pinned to a commit. */

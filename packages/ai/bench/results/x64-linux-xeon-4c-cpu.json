@@ -1,0 +1,262 @@
+{
+  "date": "2026-11-25",
+  "machine": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "Intel(R) Xeon(R) 6975P-C",
+    "cores": 4,
+    "ramGb": 15
+  },
+  "cpuOnly": true,
+  "cpuProbe": {
+    "avx2": true,
+    "probeTokensPerSecond": 11.6
+  },
+  "emails": 14,
+  "embeddings": [
+    {
+      "model": "multilingual-e5-small",
+      "dim": 384,
+      "loadMs": 2118,
+      "emailsPerSecond": 130,
+      "p50LatencyMs": 7.5,
+      "mixed": {
+        "accuracy": 0.07142857142857142,
+        "macroF1": 0.07142857142857142,
+        "perClass": {
+          "people": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "records": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "purchases-travel": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "sign-ins-security": {
+            "precision": 0.5,
+            "recall": 0.5,
+            "f1": 0.5,
+            "support": 2
+          },
+          "notifications": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "newsletters": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "promotions": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          }
+        }
+      },
+      "crossLingual": {
+        "accuracy": 0.42857142857142855,
+        "macroF1": 0.33333333333333337,
+        "perClass": {
+          "people": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 1
+          },
+          "records": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 1
+          },
+          "purchases-travel": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 1
+          },
+          "sign-ins-security": {
+            "precision": 0.2,
+            "recall": 1,
+            "f1": 0.33333333333333337,
+            "support": 1
+          },
+          "notifications": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 1
+          },
+          "newsletters": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 1
+          },
+          "promotions": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 1
+          }
+        }
+      }
+    }
+  ],
+  "generative": [
+    {
+      "model": "qwen3.5-2b",
+      "backend": "cpu",
+      "loadMs": 11932,
+      "decodeTokensPerSecond": 13.7,
+      "promptTokensPerSecond": 56,
+      "classification": {
+        "accuracy": 0.7857142857142857,
+        "macroF1": 0.7482993197278912,
+        "perClass": {
+          "people": {
+            "precision": 1,
+            "recall": 0.5,
+            "f1": 0.6666666666666666,
+            "support": 2
+          },
+          "records": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "purchases-travel": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "sign-ins-security": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "notifications": {
+            "precision": 0.4,
+            "recall": 1,
+            "f1": 0.5714285714285715,
+            "support": 2
+          },
+          "newsletters": {
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "support": 2
+          },
+          "promotions": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          }
+        },
+        "emailsPerMinute": 20.5,
+        "p50LatencyMs": 2866,
+        "jsonParseRate": 1,
+        "byLanguage": {
+          "en": 0.857,
+          "fr": 0.714,
+          "ja": 0
+        }
+      },
+      "extraction": {
+        "exactDateRate": 1,
+        "nullCorrectRate": 0.455,
+        "emailsPerMinute": 19.8,
+        "jsonParseRate": 1
+      }
+    },
+    {
+      "model": "gemma-4-e4b",
+      "backend": "cpu",
+      "loadMs": 45729,
+      "decodeTokensPerSecond": 7.1,
+      "promptTokensPerSecond": 37.6,
+      "classification": {
+        "accuracy": 1,
+        "macroF1": 1,
+        "perClass": {
+          "people": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "records": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "purchases-travel": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "sign-ins-security": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "notifications": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "newsletters": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          },
+          "promotions": {
+            "precision": 1,
+            "recall": 1,
+            "f1": 1,
+            "support": 2
+          }
+        },
+        "emailsPerMinute": 26.3,
+        "p50LatencyMs": 2368,
+        "jsonParseRate": 1,
+        "byLanguage": {
+          "en": 1,
+          "fr": 1,
+          "ja": 0
+        }
+      },
+      "extraction": {
+        "exactDateRate": 1,
+        "nullCorrectRate": 0.818,
+        "emailsPerMinute": 25.2,
+        "jsonParseRate": 1
+      }
+    }
+  ],
+  "cpuProbeNote": "median of five runs of the shipped kernel on the same runner type"
+}
