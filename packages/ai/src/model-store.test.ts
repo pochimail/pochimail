@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -205,6 +205,18 @@ describe("model store", () => {
     const missing = setup({ files: {} });
     expect(await missing.store.download("T1")).toEqual({ ok: false, error: "failed" });
     expect(await modelFolder()).toEqual([]);
+  });
+
+  // Guards: a models folder that cannot be created throwing out of download instead of failing it.
+  it("fails when the models folder cannot be created", async () => {
+    const blocked = join(dir, "blocked");
+    await writeFile(blocked, "not a folder");
+    const store = createModelStore({
+      dir: blocked,
+      manifest,
+      transport: async () => ({ ok: false, error: "unreachable" }),
+    });
+    expect(await store.download("T1")).toEqual({ ok: false, error: "failed" });
   });
 
   // Guards: two overlapping download calls writing the same partial file and corrupting it.
