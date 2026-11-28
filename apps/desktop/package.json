@@ -14,7 +14,7 @@
   },
   "scripts": {
     "postinstall": "install-electron",
-    "dev": "node --env-file-if-exists=../../.env node_modules/electron-vite/bin/electron-vite.js dev",
+    "dev": "node scripts/dev.ts",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc",
