@@ -1,6 +1,7 @@
 import type { Account } from "@pochimail/accounts/model/account";
 import type { OAuthTokenSource } from "@pochimail/accounts/ports/oauth";
 import { accountSecretKey, ConnectAccount } from "@pochimail/accounts/use-cases/connect-account";
+import { RemoveAccount } from "@pochimail/accounts/use-cases/remove-account";
 import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { openStorage } from "@pochimail/db/open-storage";
 import { createSqliteJobQueue } from "@pochimail/db/sqlite-job-queue";
@@ -57,7 +58,7 @@ export interface AccountsRuntimeOptions {
 export const createAccountsRuntime = (
   start: WorkerStart,
   options: AccountsRuntimeOptions,
-): (WorkerApp & { readonly close: () => void }) | undefined => {
+): (Pick<WorkerApp, "handlers" | "idle"> & { readonly close: () => void }) | undefined => {
   if (start.databaseKey === undefined) return undefined;
   const storage = openStorage(start.databasePath, start.databaseKey);
   start.databaseKey.fill(0);
@@ -133,8 +134,16 @@ export const createAccountsRuntime = (
   });
   const accounts = createAccountProcedures({
     revoke: (token, signal) => revoker.revoke("gmail", token, signal),
+    forgetTokens: (accountId) => tokenSources.delete(accountId),
+    stopScans: app.stopScans,
+    forgetDigest: app.forgetDigest,
+    ...(options.clearClassifierCache === undefined
+      ? {}
+      : { clearClassifierCache: options.clearClassifierCache }),
+    emit: app.emitAppEvent,
     workspaceId: LOCAL_WORKSPACE,
     uow,
+    removeAccount: new RemoveAccount({ uow, secrets: start.secrets, revoker, clock }),
     connectAccount: new ConnectAccount({
       uow,
       secrets: start.secrets,
@@ -147,16 +156,18 @@ export const createAccountsRuntime = (
         { provider: "google", autonomy: DEFAULT_APP_SETTINGS.autonomy, config: oauthConfig },
         signal,
       ),
-    // The first scan of a new account starts right after connecting; a failure is the scan's own event, never the connect's.
+    // A scan of a new or reconnected account starts right after; a failure is the scan's own event, never the connect's.
     startScan: async (accountId) => {
       try {
-        await app.handlers.procedures["scan.start"]?.({ accountId });
+        const started = await app.handlers.procedures["scan.start"]?.({ accountId });
+        if (started === undefined) throw new Error("scan.start is not served");
+        return started;
       } catch {
-        options.logger.error("first scan could not start", {
+        options.logger.error("scan could not start", {
           operation: "scan.start",
           code: "storage.failed",
         });
-        throw new Error("first scan could not start");
+        throw new Error("scan could not start");
       }
     },
   });

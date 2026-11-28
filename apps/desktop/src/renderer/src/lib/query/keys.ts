@@ -1,5 +1,7 @@
 /** Query keys for worker-backed data. Centralized so subscriptions can update the same caches without refetching. */
 export const queryKeys = {
+  /** Accounts that lost access, filled by worker events only (never invalidated: nothing could refetch it). */
+  needsReauth: () => ["needs-reauth"] as const,
   appState: () => ["app", "state"] as const,
   accounts: () => ["accounts", "list"] as const,
   typeCounts: (accountIds: readonly string[]) => ["mailbox", "types", accountIds] as const,

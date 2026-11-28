@@ -102,6 +102,13 @@ export class ScanRunner {
     return ok(undefined);
   }
 
+  /** Stops every scan of an account and waits until each run has ended, so nothing of it is written afterwards. */
+  async stopAccount(accountId: AccountId): Promise<void> {
+    const mine = [...this.jobs.values()].filter((job) => job.accountId === accountId);
+    for (const job of mine) this.cancel(job.id);
+    await Promise.all(mine.map((job) => job.run));
+  }
+
   /** Read-only: the running and paused jobs, optionally for some accounts. Never starts or changes anything. */
   live(accountIds?: readonly AccountId[]): {
     jobId: string;

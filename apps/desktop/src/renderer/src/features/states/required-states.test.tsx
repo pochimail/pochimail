@@ -170,6 +170,14 @@ describe("required states from worker events", () => {
     expect(state.needsReauth).toEqual([{ accountId: "b", provider: "Outlook" }]);
   });
 
+  it("removing an account clears its reconnect notice (guards a Reconnect for an account that no longer exists)", () => {
+    const state = run(
+      { type: "NeedsReauth", accountId: "a", provider: "Gmail" },
+      { type: "AccountRemoved", accountId: "a" },
+    );
+    expect(state.needsReauth).toEqual([]);
+  });
+
   it("a retried sign-in or download clears its failure (guards a stale failure after retry)", () => {
     const state = run(
       { type: "SignInCancelled" },

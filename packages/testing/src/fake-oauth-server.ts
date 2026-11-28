@@ -19,6 +19,8 @@ export interface FakeOAuthServer {
   issueRefreshToken(): string;
   /** Later refreshes with this token answer `invalid_grant` (what a revoked consent looks like). */
   revokeRefreshToken(token: string): void;
+  /** The next sign-ins name this address in their id token, as another person choosing another account would. */
+  signInAs(address: string): void;
   /** The next `/authorize` answers like a user who clicked "Cancel". */
   denyNextConsent(): void;
   /** How many `grant_type=refresh_token` requests arrived (cache-behaviour checks). */
@@ -81,6 +83,7 @@ export const startFakeOAuthServer = async (
   let refreshCount = 0;
   let challenge: string | undefined;
   let denyConsent = false;
+  let signedInAs = options.address;
   const expiresIn = options.expiresIn ?? 3600;
   const rotateRefreshTokens = options.rotateRefreshTokens ?? false;
 
@@ -168,10 +171,10 @@ export const startFakeOAuthServer = async (
           writeJson(response, 200, {
             access_token: `access-${issued}`,
             refresh_token: refresh,
-            ...(options.address === undefined
+            ...(signedInAs === undefined
               ? {}
               : {
-                  id_token: `e30.${Buffer.from(JSON.stringify({ email: options.address })).toString("base64url")}.sig`,
+                  id_token: `e30.${Buffer.from(JSON.stringify({ email: signedInAs })).toString("base64url")}.sig`,
                 }),
             token_type: "Bearer",
             expires_in: expiresIn,
@@ -205,6 +208,9 @@ export const startFakeOAuthServer = async (
     },
     revokeRefreshToken: (token) => {
       revokedRefreshTokens.add(token);
+    },
+    signInAs: (address) => {
+      signedInAs = address;
     },
     denyNextConsent: () => {
       denyConsent = true;

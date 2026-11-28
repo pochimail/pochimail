@@ -51,10 +51,10 @@ import {
 } from "lucide-react";
 import { type ComponentType, useEffect } from "react";
 import { isMacDesktop } from "../../lib/platform.ts";
+import { ProviderIcon } from "../../lib/provider-icon.tsx";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { TYPE_LABELS } from "../../lib/type-labels.ts";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
-import { ProviderIcon } from "./provider-icon.tsx";
 import { SyncProgress } from "./sync-progress.tsx";
 import { visibleTypes } from "./visible-types.ts";
 

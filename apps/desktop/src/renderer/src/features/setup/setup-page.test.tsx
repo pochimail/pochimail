@@ -56,7 +56,7 @@ const harness = (opts: Options = {}) => {
   port2.start();
   serveRpc(fromDomPort(port2), {
     procedures: {
-      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true }),
+      "app.state": () => ({ status: "ready" as const, hasConnectedAccount: true, needsReauth: [] }),
       "device.name": () => "Mac" as const,
       "accounts.list": () => [
         { id: "acc-1", provider: "google" as const, displayName: "a@example.test" },
