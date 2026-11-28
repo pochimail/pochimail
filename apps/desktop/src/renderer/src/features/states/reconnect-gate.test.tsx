@@ -16,13 +16,11 @@ const ACCOUNTS = [
   { id: "a2", provider: "google" as const, displayName: "bob@example.test" },
 ];
 const noCounts = {
-  people: 0,
-  records: 0,
-  "purchases-travel": 0,
-  "sign-ins-security": 0,
-  notifications: 0,
-  newsletters: 0,
-  promotions: 0,
+  personal: 0,
+  transactional: 0,
+  notification: 0,
+  newsletter: 0,
+  promotion: 0,
 };
 
 const setup = (
@@ -47,7 +45,7 @@ const setup = (
       "device.name": () => "device" as const,
       "accounts.list": () => accounts,
       "accounts.reconnect": reconnect,
-      "mailbox.categories": () => noCounts,
+      "mailbox.types": () => noCounts,
       "overview.get": () => ({
         scanned: 0,
         toReview: 0,

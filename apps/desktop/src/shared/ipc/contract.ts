@@ -147,7 +147,6 @@ export const CONNECT_FAILURES = [
 
 /** Why a reconnect failed: the sign-in reasons, plus a consent for another mailbox than the account's. */
 export const RECONNECT_FAILURES = [...CONNECT_FAILURES, "not-found", "wrong-account"] as const;
-/** Why a removal failed (nothing was deleted): never the provider's message, an address or a token. */
 const REMOVE_FAILURES = ["not-found", "storage-unavailable", "unknown"] as const;
 
 /** Sign-in waits for the person in their browser (five minutes, ADR 0007), so this one call outlives the default RPC timeout. */

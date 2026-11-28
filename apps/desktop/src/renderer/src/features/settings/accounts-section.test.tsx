@@ -15,13 +15,11 @@ type Account = OutputOf<"accounts.list">[number];
 const ANN: Account = { id: "a1", provider: "google", displayName: "ann@example.test" };
 const BOB: Account = { id: "a2", provider: "microsoft", displayName: "bob@example.test" };
 const noCounts = {
-  people: 0,
-  records: 0,
-  "purchases-travel": 0,
-  "sign-ins-security": 0,
-  notifications: 0,
-  newsletters: 0,
-  promotions: 0,
+  personal: 0,
+  transactional: 0,
+  notification: 0,
+  newsletter: 0,
+  promotion: 0,
 };
 
 const setup = (
@@ -48,7 +46,7 @@ const setup = (
       "accounts.list": () => [...accounts],
       "accounts.remove": remove,
       "accounts.reconnect": async () => ({ status: "reconnected" as const }),
-      "mailbox.categories": () => noCounts,
+      "mailbox.types": () => noCounts,
       "scan.status": () => [],
       "settings.get": () => ({
         autonomy: "suggest" as const,

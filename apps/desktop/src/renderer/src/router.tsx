@@ -22,8 +22,8 @@ import { AppearanceControls } from "./features/settings/appearance-controls.tsx"
 import { SettingsPage } from "./features/settings/settings-page.tsx";
 import { SetupPage } from "./features/setup/setup-page.tsx";
 import { AppFrame } from "./features/shell/app-frame.tsx";
-import { TypePage } from "./features/type/type-page.tsx";
 import { ReconnectGate } from "./features/states/reconnect-gate.tsx";
+import { TypePage } from "./features/type/type-page.tsx";
 import { WelcomePage } from "./features/welcome/welcome-page.tsx";
 import { ScanStatusProvider } from "./lib/scan-status.tsx";
 
@@ -183,13 +183,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   onboardingRoute.addChildren([welcomeRoute, connectRoute, setupRoute]),
   shellRoute.addChildren([
-    gateRoute.addChildren([
-      overviewRoute,
-      reviewRoute,
-      typeRoute,
-      documentsRoute,
-      activityRoute,
-    ]),
+    gateRoute.addChildren([overviewRoute, reviewRoute, typeRoute, documentsRoute, activityRoute]),
     settingsRoute,
   ]),
   ...galleryRoutes,

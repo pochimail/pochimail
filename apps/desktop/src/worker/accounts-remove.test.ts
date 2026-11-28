@@ -38,7 +38,7 @@ const twoAccounts = async () => {
 describe("accounts.remove over the real worker", () => {
   it("removes one account's data, token and access and leaves the other untouched (guards a removal that wipes or keeps the wrong account)", async () => {
     const { h, first, second } = await twoAccounts();
-    const secondCategories = await h.client.call("mailbox.categories", { accountIds: [second] });
+    const secondTypes = await h.client.call("mailbox.types", { accountIds: [second] });
     const secondCursors = cursorsOf(h, second);
     expect(secondCursors.length).toBeGreaterThan(0);
     const firstToken = await secretOf(h, first);
@@ -52,12 +52,10 @@ describe("accounts.remove over the real worker", () => {
 
     expect((await h.client.call("accounts.list")).map((account) => account.id)).toEqual([second]);
     expect((await h.client.call("overview.get", {})).scanned).toBe(9);
-    expect(await h.client.call("mailbox.categories", { accountIds: [first] })).toEqual(
-      Object.fromEntries(Object.keys(secondCategories).map((category) => [category, 0])),
+    expect(await h.client.call("mailbox.types", { accountIds: [first] })).toEqual(
+      Object.fromEntries(Object.keys(secondTypes).map((type) => [type, 0])),
     );
-    expect(await h.client.call("mailbox.categories", { accountIds: [second] })).toEqual(
-      secondCategories,
-    );
+    expect(await h.client.call("mailbox.types", { accountIds: [second] })).toEqual(secondTypes);
     expect(cursorsOf(h, second)).toEqual(secondCursors);
     expect(h.rowsOf(first)).toBe(0);
     expect(await secretOf(h, first)).toBeNull();
