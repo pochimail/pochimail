@@ -31,10 +31,10 @@ import {
 import { focusOrCreateWindow, holdSingleInstanceLock } from "./single-instance.ts";
 import { smokeRuntimes } from "./smoke-runtimes.ts";
 import { smokeStorage } from "./smoke-storage.ts";
-import { startUpdates } from "./updater/start-updates.ts";
 import { registerStorageCalls } from "./storage-calls.ts";
 import { createStorageGate, type StorageGate } from "./storage-gate.ts";
 import { createAppTray } from "./tray.ts";
+import { startUpdates } from "./updater/start-updates.ts";
 import { createWorkerLifecycle, type WorkerLifecycle } from "./worker-lifecycle.ts";
 
 // A packaged app never honours the dev-server variable, so an environment override cannot point the window elsewhere.
@@ -214,11 +214,13 @@ const createWindow = (): void => {
   else void window.loadURL(devServerUrl);
 };
 
-app.on("web-contents-created", (_event, contents) =>
-  hardenWebContents(contents, (url) => isAppUrl(url, { devServerOrigin, rendererFile })),
-);
+const appUrl = (url: string): boolean => isAppUrl(url, { devServerOrigin, rendererFile });
+const openExternal = (url: string): Promise<void> => shell.openExternal(url);
+const windows = (): BrowserWindow[] => BrowserWindow.getAllWindows();
 
-const openOrFocus = (): void => focusOrCreateWindow(BrowserWindow.getAllWindows(), createWindow);
+app.on("web-contents-created", (_event, contents) => hardenWebContents(contents, appUrl));
+
+const openOrFocus = (): void => focusOrCreateWindow(windows(), createWindow);
 // Before anything opens the database: a refused process starts nothing (#320).
 const holdsLock = holdSingleInstanceLock(app, openOrFocus);
 
@@ -230,7 +232,7 @@ if (holdsLock)
     lockDownSession();
     registerOsCalls({
       ipc: ipcMain,
-      openExternal: (url) => shell.openExternal(url),
+      openExternal,
       showItemInFolder: (path) => shell.showItemInFolder(path),
       chooseFolder: async () => {
         const result = await dialog.showOpenDialog({
@@ -238,22 +240,11 @@ if (holdsLock)
         });
         return result.canceled ? null : (result.filePaths[0] ?? null);
       },
-      isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
+      isAppUrl: appUrl,
       appDataDirs: () => [app.getPath("userData")],
     });
-    registerStorageCalls({
-      ipc: ipcMain,
-      gate: processStorageGate(),
-      isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-    });
-    startUpdates({
-      app,
-      ipc: ipcMain,
-      openExternal: (url) => shell.openExternal(url),
-      isAppUrl: (url) => isAppUrl(url, { devServerOrigin, rendererFile }),
-      windows: () => BrowserWindow.getAllWindows(),
-      logger,
-    });
+    registerStorageCalls({ ipc: ipcMain, gate: processStorageGate(), isAppUrl: appUrl });
+    startUpdates({ app, ipc: ipcMain, openExternal, isAppUrl: appUrl, windows, logger });
     createWindow();
     const locale = localeFromLanguages(app.getPreferredSystemLanguages());
     // Packaged: the images ship as extra resources next to app.asar (electron-builder.config.ts).
@@ -297,7 +288,7 @@ if (holdsLock)
       processStorageGate().dispose();
     });
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+      if (windows().length === 0) createWindow();
     });
   });
 
