@@ -27,6 +27,7 @@ const setup = (path: string) => {
         promotion: 0,
       }),
       "scan.status": () => [],
+      "activity.list": () => ({ entries: [], nextCursor: null }),
       "overview.get": () => ({
         scanned: 0,
         toReview: 0,

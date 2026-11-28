@@ -168,6 +168,9 @@ export function createHandlers(deps: HandlerDeps): Handlers {
           deps.events.subscribe("ActionApplied", (event) =>
             emit({ type: "ActionApplied", actionId: event.payload.actionId }),
           ),
+          deps.events.subscribe("ActionUndone", (event) =>
+            emit({ type: "ActionUndone", actionId: event.payload.actionId }),
+          ),
           deps.events.subscribe("ActionFailed", (event) =>
             emit({
               type: "ActionFailed",

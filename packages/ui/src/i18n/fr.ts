@@ -1,3 +1,4 @@
+import { activityMessages } from "./activity-messages.ts";
 import { appearanceMessages } from "./appearance-messages.ts";
 import { connectMessages } from "./connect-messages.ts";
 import { type Catalog, entry } from "./messages.ts";
@@ -36,6 +37,7 @@ export const fr = {
   "review.counts.important": entry("De personnes importantes", []),
   "review.cleanable.title": entry("À nettoyer sans risque", []),
   ...reviewMessages.fr,
+  ...activityMessages.fr,
   "review.loading": entry("Chargement de votre examen", []),
   "review.error.title": entry("Je n’ai pas pu charger votre examen.", []),
   "overview.pause": entry("Pause", []),

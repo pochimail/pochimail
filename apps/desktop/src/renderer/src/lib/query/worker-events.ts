@@ -20,11 +20,15 @@ const dispatchAppEvent = (event: EventOf<"app.events">, handlers: AppEventHandle
       handlers.registry.apply(event.actionId);
       handlers.onMailboxChanged();
       break;
+    case "ActionUndone":
+      handlers.onMailboxChanged();
+      break;
     case "ScanCompleted":
       handlers.onMailboxChanged();
       break;
     case "ActionFailed":
       handlers.registry.fail(event.actionId);
+      handlers.onMailboxChanged();
       break;
     case "ScanFailed":
       handlers.onScanFailed();

@@ -62,6 +62,7 @@ export function reduceRequiredStates(
     case "UpdateReady":
       return { ...state, updateVersion: event.version };
     case "ActionApplied":
+    case "ActionUndone":
     case "ActionFailed":
     case "ScanCompleted":
     case "ScanFailed":

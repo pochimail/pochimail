@@ -21,6 +21,7 @@ export function AppEventsBridge({ client }: { client: RpcClient }) {
         () => {
           void queryClient.invalidateQueries({ queryKey: ["mailbox"] });
           void queryClient.invalidateQueries({ queryKey: ["overview"] });
+          void queryClient.invalidateQueries({ queryKey: ["activity"] });
         },
         () => void queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
         () => void queryClient.invalidateQueries({ queryKey: queryKeys.digest() }),

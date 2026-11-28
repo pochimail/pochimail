@@ -4,6 +4,7 @@ import type { Classifier } from "@pochimail/classification/ports/classifier";
 import { CountTypes } from "@pochimail/classification/use-cases/count-types";
 import { GetDigestStatus } from "@pochimail/cleanup/use-cases/get-digest-status";
 import { GetOverview } from "@pochimail/cleanup/use-cases/get-overview";
+import { ProposeSuggestions } from "@pochimail/cleanup/use-cases/propose-suggestions";
 import { RecordDigestReady } from "@pochimail/cleanup/use-cases/record-digest-ready";
 import type { Clock } from "@pochimail/kernel/clock";
 import type { WorkspaceId } from "@pochimail/kernel/ids";
@@ -25,6 +26,8 @@ import { ScanRunner } from "@pochimail/workflows/use-cases/scan-runner";
 import type { Handlers } from "../shared/ipc/server.ts";
 import type { DeviceName } from "../shared/platform-port.ts";
 import type { SettingsStore } from "../shared/settings.ts";
+import { createActivityProcedures } from "./activity-procedures.ts";
+import { createCleanupProcedures } from "./cleanup-procedures.ts";
 import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers } from "./handlers.ts";
 import { ManageSettings } from "./manage-settings.ts";
@@ -120,17 +123,54 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
 
   if (adapters.power) pauseScansOnLowPower(scans, adapters.power);
 
-  const handlers = createHandlers({
+  const settings = new ManageSettings({ store: adapters.settings });
+  const propose = new ProposeSuggestions({ uow, clock });
+  // Review is not empty after the first scan: a completed scan proposes. A failure is logged, never fatal.
+  bus.subscribe("ScanCompleted", async (event) => {
+    try {
+      const proposed = await propose.execute(
+        { workspaceId, accountId: event.payload.accountId },
+        new AbortController().signal,
+      );
+      if (!proposed.ok)
+        adapters.logger.error("suggestions not proposed", { code: proposed.error.code });
+    } catch {
+      adapters.logger.error("suggestions not proposed", { code: "storage.failed" });
+    }
+  });
+
+  const base = createHandlers({
     workspaceId,
     listAccounts: new ListAccounts({ uow }),
     getOverview: new GetOverview({ uow, clock }),
     categories: new CountTypes({ uow }),
     digestStatus: new GetDigestStatus({ tally }),
-    settings: new ManageSettings({ store: adapters.settings }),
+    settings,
     scans,
     events: bus,
     deviceName: adapters.deviceName,
   });
+  const handlers: Handlers = {
+    procedures: {
+      ...base.procedures,
+      ...createCleanupProcedures({
+        workspaceId,
+        clock,
+        ids: { next: (prefix) => `${prefix}_${crypto.randomUUID()}` },
+        uow,
+        propose,
+        flush,
+        providerFor: adapters.providerFor,
+        autonomy: async () => {
+          const current = await settings.get(workspaceId);
+          if (!current.ok) throw current.error;
+          return current.value.autonomy;
+        },
+      }),
+      ...createActivityProcedures({ workspaceId, uow }),
+    },
+    subscriptions: base.subscriptions,
+  };
   return {
     handlers,
     idle: async () => {
