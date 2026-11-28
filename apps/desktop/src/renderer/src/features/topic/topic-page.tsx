@@ -8,7 +8,7 @@ import { useTopics } from "../../lib/use-topics.ts";
 export function TopicPage() {
   const t = useT();
   const navigate = useNavigate();
-  const { topicId } = useParams({ from: "/shell/topic/$topicId" });
+  const { topicId } = useParams({ from: "/shell/gate/topic/$topicId" });
   const { accountIds, loaded } = useSelectedAccounts();
   const topic = useTopics(accountIds, loaded).data?.find((item) => item.id === topicId);
   return (
