@@ -28,6 +28,7 @@ import type { DeviceName } from "../shared/platform-port.ts";
 import type { SettingsStore } from "../shared/settings.ts";
 import { createDigestTally } from "./digest-tally.ts";
 import { createHandlers, type WorkerHandlers } from "./handlers.ts";
+import { logScanFailure } from "./log-scan-failure.ts";
 import { ManageSettings } from "./manage-settings.ts";
 import { resolvePendingActions } from "./pending-actions.ts";
 
@@ -105,8 +106,8 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
     uow,
     workspaceId,
     newJobId: adapters.newJobId,
-    scanFor: (account) =>
-      new RunScan({
+    scanFor: (account) => {
+      const run = new RunScan({
         uow,
         provider: adapters.providerFor(account),
         classifier: limiter ? limitClassifier(adapters.classifier, limiter) : adapters.classifier,
@@ -122,7 +123,16 @@ export function createWorkerApp(adapters: WorkerAdapters): WorkerApp {
         workspaceId,
         accountId: account.id,
         flush,
-      }),
+      });
+      return {
+        execute: async (request, signal) => {
+          const outcome = await run.execute(request, signal);
+          if (!outcome.ok && outcome.error.code !== "operation.cancelled")
+            logScanFailure(adapters.logger, outcome.error);
+          return outcome;
+        },
+      };
+    },
   });
 
   if (adapters.power) pauseScansOnLowPower(scans, adapters.power);

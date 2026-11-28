@@ -98,6 +98,11 @@ export const fr = {
     [],
   ),
   "overview.empty.action": entry("Connecter un compte", []),
+  "overview.syncing.title": entry("Synchronisation de vos premiers emails", []),
+  "overview.syncing.description": entry(
+    "Rien n’est encore trié. Je lis vos emails sur cet appareil ; si cette vue reste vide, réessayez.",
+    [],
+  ),
   "overview.worker.unavailable": entry("Je n’ai pas pu charger la vue d’ensemble.", []),
   "overview.retry": entry("Réessayer", []),
   "overview.scan.paused": entry("En pause. Rien n’a été modifié.", []),

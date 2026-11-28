@@ -1,6 +1,5 @@
 import type { EmailType } from "@pochimail/classification/model/email-type";
 import { Button } from "@pochimail/ui/components/button";
-import { EmptyState } from "@pochimail/ui/components/empty-state";
 import { RecommendationRow } from "@pochimail/ui/components/recommendation-row";
 import { SignalRow } from "@pochimail/ui/components/signal-row";
 import { Skeleton } from "@pochimail/ui/components/skeleton";
@@ -10,13 +9,14 @@ import { type T, useLocale, useT } from "@pochimail/ui/i18n/i18n-provider.tsx";
 import { deviceLabel } from "@pochimail/ui/i18n/locale.ts";
 import type { UserLocale } from "@pochimail/ui/i18n/messages.ts";
 import { cn } from "@pochimail/ui/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { queryKeys } from "../../lib/query/keys.ts";
 import { type ScanStatus, useScanStatus } from "../../lib/scan-status.tsx";
 import { PAGE_MAIN_CLASS, PageHeading, SECTION_TITLE_CLASS } from "../../lib/screen-heading.tsx";
 import { useWorkerClient } from "../../lib/worker-context.tsx";
 import { FiguresSection } from "./figures-section.tsx";
+import { NoFiguresState } from "./no-figures-state.tsx";
 import {
   type CleanRowView,
   cleanRows,
@@ -188,6 +188,12 @@ export function OverviewPage() {
     (a) => account === undefined || a.id === account,
   );
   const scan = useScanStatus(scopedAccounts.map((a) => a.id));
+  // No scan runs and no mail is stored yet: starting again is the retry (a start while one runs shares that job).
+  const startSync = useMutation({
+    mutationFn: () =>
+      Promise.all(scopedAccounts.map((a) => client.call("scan.start", { accountId: a.id }))),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["scan", "status"] }),
+  });
 
   const locale = useLocale();
   const device = deviceLabel(deviceName.data ?? "device", locale);
@@ -200,7 +206,7 @@ export function OverviewPage() {
     });
   const review = (target: ReviewTarget) => goToType(target.category, target.review);
 
-  const view = overviewView(data, scan.active, overview.isError);
+  const view = overviewView(data, scan.active, overview.isError, scopedAccounts.length > 0);
   const rows = data === undefined ? [] : cleanRows(data, t);
   const signals = data === undefined ? [] : signalRows(data, t);
 
@@ -244,22 +250,13 @@ export function OverviewPage() {
           <Skeleton className="h-40" />
         </div>
       )}
-      {view === "error" && (
-        <EmptyState
-          title={t("overview.worker.unavailable")}
-          action={{ label: t("overview.retry"), onClick: () => void overview.refetch() }}
-        />
-      )}
-      {view === "empty" && (
-        <EmptyState
-          title={t("overview.empty.title")}
-          description={t("overview.empty.description")}
-          action={{
-            label: t("overview.empty.action"),
-            onClick: () => void navigate({ to: "/connect" }),
-          }}
-        />
-      )}
+      <NoFiguresState
+        view={view}
+        t={t}
+        onRetry={() => void overview.refetch()}
+        onConnect={() => void navigate({ to: "/connect" })}
+        onSync={() => startSync.mutate()}
+      />
       {view === "content" && data !== undefined && (
         <div className="flex flex-col gap-8">
           <CleanUpSection data={data} rows={rows} t={t} locale={locale} onReview={review} />

@@ -48,8 +48,8 @@ export class RunScan {
       const outcome = await this.run(request, signal);
       if (outcome.ok) return outcome;
       failure = outcome.error;
-    } catch {
-      failure = new StorageError();
+    } catch (cause) {
+      failure = new StorageError("Scan crashed", { cause });
     }
     if (failure.code !== "operation.cancelled") {
       // A grant the provider refuses even after a token refresh is dead: only reconnecting helps (ADR 0007).

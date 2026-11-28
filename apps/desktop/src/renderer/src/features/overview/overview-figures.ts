@@ -53,16 +53,18 @@ const TYPE_COPY: Record<Cleanable, { sentence: MessageKey; reason: MessageKey }>
   },
 };
 
-export type OverviewView = "loading" | "error" | "empty" | "content";
+export type OverviewView = "loading" | "error" | "empty" | "syncing" | "content";
 
-/** What the screen shows: skeletons until the first answer, an error with retry when the first answer failed, the empty state for an account with no emails, else the figures. */
+/** What the screen shows: skeletons until the first answer, an error with retry when the first answer failed, the connect prompt only when there is no account, the syncing state for an account with no emails yet, else the figures. */
 export const overviewView = (
   data: OverviewData | undefined,
   scanning: boolean,
   failed: boolean,
+  hasAccount: boolean,
 ): OverviewView => {
   if (data === undefined) return failed ? "error" : "loading";
-  return data.scanned === 0 && !scanning ? "empty" : "content";
+  if (data.scanned > 0 || scanning) return "content";
+  return hasAccount ? "syncing" : "empty";
 };
 
 /** Emails sorted by action, so delete comes before archive and unsubscribe; each row keeps its own Review target. */
